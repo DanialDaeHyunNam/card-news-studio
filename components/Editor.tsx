@@ -1,0 +1,600 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { toPng } from "html-to-image";
+import type { Card, CardElement, Operation, Project, TextElement } from "@/lib/types";
+import { EXPORT_WIDTH, FORMATS } from "@/lib/types";
+import { applyOperations, newId } from "@/lib/ops";
+import { collectTargets, snapPosition } from "@/lib/snap";
+import { DEFAULT_MODEL, MODELS } from "@/lib/models";
+import { addUsage, emptyUsage, fmtCost, fmtTokens, type UsageEvent, type UsageTotals } from "@/lib/usage";
+import { useLang } from "@/lib/i18n";
+import LangSwitch from "./LangSwitch";
+import CardView, { cardHeight } from "./CardView";
+import Inspector from "./Inspector";
+import ChatPanel from "./ChatPanel";
+
+const SNAP_PX = 6;
+
+interface DragState {
+  mode: "move" | "resize";
+  cardId: string;
+  elId: string;
+  startClientX: number;
+  startClientY: number;
+  baseX: number;
+  baseY: number;
+  baseW: number;
+  baseH: number; // percent h for shape/image (resize)
+  measuredH: number; // rendered height percent (snapping)
+  hasH: boolean;
+  targetsV: number[];
+  targetsH: number[];
+  displayW: number;
+  displayH: number;
+  pushed: boolean;
+}
+
+interface EditorProps {
+  project: Project;
+  onChange: (p: Project) => void;
+  onClose: () => void;
+}
+
+export default function Editor({ project, onChange, onClose }: EditorProps) {
+  const { lang, t } = useLang();
+  const [cardIdx, setCardIdx] = useState(0);
+  const [selectedElId, setSelectedElId] = useState<string | null>(null);
+  const [editingElId, setEditingElId] = useState<string | null>(null);
+  const [guides, setGuides] = useState<{ v: number[]; h: number[] } | null>(null);
+  const [exportJob, setExportJob] = useState<{ card: Card; name: string } | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [keyStatus, setKeyStatus] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    fetch("/api/keys")
+      .then((r) => r.json())
+      .then((d) => {
+        const k: Record<string, boolean> = d.keys ?? {};
+        setKeyStatus(k);
+        // If this project's model has no connected key, switch to one that does.
+        const cur = MODELS.find((m) => m.id === (projectRef.current.model ?? DEFAULT_MODEL));
+        const avail = MODELS.find((m) => m.implemented && k[m.envVar]);
+        if ((!cur || !k[cur.envVar]) && avail && avail.id !== projectRef.current.model) {
+          mutate((p) => void (p.model = avail.id));
+        }
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const projectRef = useRef(project);
+  projectRef.current = project;
+  const dragRef = useRef<DragState | null>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const exportRef = useRef<HTMLDivElement>(null);
+  const exportResolveRef = useRef<(() => void) | null>(null);
+  const historyRef = useRef<Project[]>([]);
+
+  const safeCardIdx = Math.min(cardIdx, project.cards.length - 1);
+  const card = project.cards[safeCardIdx];
+  const selectedEl = card.elements.find((e) => e.id === selectedElId) ?? null;
+  const editingEl = (card.elements.find((e) => e.id === editingElId) ?? null) as TextElement | null;
+
+  const displayW = project.format === "9:16" ? 330 : 470;
+  const displayH = cardHeight(project.format, displayW);
+  const scale = displayW / EXPORT_WIDTH;
+
+  function pushHistory() {
+    historyRef.current.push(structuredClone(projectRef.current));
+    if (historyRef.current.length > 60) historyRef.current.shift();
+  }
+
+  function undo() {
+    const prev = historyRef.current.pop();
+    if (prev) {
+      onChange(prev);
+      setSelectedElId(null);
+      setEditingElId(null);
+    }
+  }
+
+  // All state changes flow through here (except undo, which restores a snapshot).
+  function mutate(fn: (p: Project) => void, withHistory = false) {
+    if (withHistory) pushHistory();
+    const p = structuredClone(projectRef.current);
+    fn(p);
+    p.updatedAt = Date.now();
+    onChange(p);
+  }
+
+  function patchElement(cardId: string, elId: string, patch: Record<string, unknown>, withHistory = false) {
+    mutate((p) => {
+      const el = p.cards.find((c) => c.id === cardId)?.elements.find((e) => e.id === elId);
+      if (el) Object.assign(el, patch);
+    }, withHistory);
+  }
+
+  // --- drag / resize ------------------------------------------------------
+  function startDrag(e: React.PointerEvent, el: CardElement, mode: "move" | "resize") {
+    if (editingElId) return;
+    e.preventDefault();
+    setSelectedElId(el.id);
+    const cardNode = stageRef.current?.querySelector<HTMLElement>(".cardview");
+    if (!cardNode) return;
+    const { targetsV, targetsH, rects } = collectTargets(cardNode, el.id);
+    const measured = rects.get(el.id);
+    dragRef.current = {
+      mode,
+      cardId: card.id,
+      elId: el.id,
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      baseX: el.x,
+      baseY: el.y,
+      baseW: el.w,
+      baseH: el.type === "text" ? 0 : el.h,
+      measuredH: measured?.h ?? 5,
+      hasH: el.type !== "text",
+      targetsV,
+      targetsH,
+      displayW,
+      displayH,
+      pushed: false,
+    };
+  }
+
+  useEffect(() => {
+    const onMove = (ev: PointerEvent) => {
+      const d = dragRef.current;
+      if (!d) return;
+      ev.preventDefault();
+      if (!d.pushed) {
+        pushHistory();
+        d.pushed = true;
+      }
+      const dx = ((ev.clientX - d.startClientX) / d.displayW) * 100;
+      const dy = ((ev.clientY - d.startClientY) / d.displayH) * 100;
+      if (d.mode === "move") {
+        const snapped = snapPosition({
+          x: d.baseX + dx,
+          y: d.baseY + dy,
+          w: d.baseW,
+          h: d.measuredH,
+          targetsV: d.targetsV,
+          targetsH: d.targetsH,
+          thresholdV: (SNAP_PX / d.displayW) * 100,
+          thresholdH: (SNAP_PX / d.displayH) * 100,
+        });
+        setGuides(snapped.guides.v.length || snapped.guides.h.length ? snapped.guides : null);
+        patchElement(d.cardId, d.elId, {
+          x: Math.round(snapped.x * 100) / 100,
+          y: Math.round(snapped.y * 100) / 100,
+        });
+      } else {
+        const patch: Record<string, number> = {
+          w: Math.round(Math.max(3, d.baseW + dx) * 100) / 100,
+        };
+        if (d.hasH) patch.h = Math.round(Math.max(2, d.baseH + dy) * 100) / 100;
+        patchElement(d.cardId, d.elId, patch);
+      }
+    };
+    const onUp = () => {
+      if (dragRef.current) {
+        dragRef.current = null;
+        setGuides(null);
+      }
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // --- keyboard -----------------------------------------------------------
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const typing = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z" && !typing) {
+        e.preventDefault();
+        undo();
+      } else if ((e.key === "Delete" || e.key === "Backspace") && !typing && selectedElId) {
+        e.preventDefault();
+        removeElement(selectedElId);
+      } else if (e.key === "Escape") {
+        setEditingElId(null);
+        setSelectedElId(null);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedElId, safeCardIdx]);
+
+  // --- element / card CRUD -------------------------------------------------
+  function removeElement(elId: string) {
+    mutate((p) => {
+      const c = p.cards.find((x) => x.id === card.id);
+      if (c) c.elements = c.elements.filter((e) => e.id !== elId);
+    }, true);
+    setSelectedElId(null);
+  }
+
+  function addElement(el: CardElement) {
+    mutate((p) => {
+      p.cards.find((x) => x.id === card.id)?.elements.push(el);
+    }, true);
+    setSelectedElId(el.id);
+  }
+
+  function addCard() {
+    const c: Card = {
+      id: newId(),
+      background: project.theme.background,
+      elements: [
+        {
+          id: newId(),
+          type: "text",
+          x: 8,
+          y: 42,
+          w: 84,
+          text: "새 카드",
+          fontSize: 64,
+          fontWeight: 800,
+          color: project.theme.textColor,
+          align: "center",
+          lineHeight: 1.3,
+        },
+      ],
+    };
+    mutate((p) => p.cards.splice(safeCardIdx + 1, 0, c), true);
+    setCardIdx(safeCardIdx + 1);
+    setSelectedElId(null);
+  }
+
+  function duplicateCard(idx: number) {
+    mutate((p) => {
+      const copy = structuredClone(p.cards[idx]);
+      copy.id = newId();
+      copy.elements.forEach((e) => (e.id = newId()));
+      p.cards.splice(idx + 1, 0, copy);
+    }, true);
+    setCardIdx(idx + 1);
+  }
+
+  function removeCard(idx: number) {
+    if (project.cards.length <= 1) return;
+    mutate((p) => p.cards.splice(idx, 1), true);
+    setCardIdx(Math.max(0, Math.min(idx, project.cards.length - 2)));
+    setSelectedElId(null);
+  }
+
+  function moveCard(idx: number, dir: -1 | 1) {
+    const to = idx + dir;
+    if (to < 0 || to >= project.cards.length) return;
+    mutate((p) => {
+      const [c] = p.cards.splice(idx, 1);
+      p.cards.splice(to, 0, c);
+    }, true);
+    setCardIdx(to);
+  }
+
+  // --- AI chat apply --------------------------------------------------------
+  function applyChat(args: {
+    userText: string;
+    userThumbs: string[];
+    reply: string;
+    operations: Operation[];
+    attachmentOriginals: string[];
+    usage?: UsageEvent;
+  }) {
+    pushHistory();
+    let next = applyOperations(projectRef.current, args.operations, args.attachmentOriginals);
+    next = {
+      ...next,
+      usage: addUsage(next.usage, args.usage),
+      chat: [
+        ...next.chat,
+        { role: "user" as const, text: args.userText, images: args.userThumbs.length ? args.userThumbs : undefined },
+        { role: "assistant" as const, text: args.reply },
+      ],
+    };
+    onChange(next);
+  }
+
+  // --- PNG export -----------------------------------------------------------
+  useEffect(() => {
+    if (!exportJob || !exportRef.current) return;
+    let cancelled = false;
+    (async () => {
+      await new Promise((r) => setTimeout(r, 100)); // let images paint
+      try {
+        const url = await toPng(exportRef.current!, { skipFonts: true, pixelRatio: 1 });
+        if (!cancelled) {
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = exportJob.name;
+          a.click();
+        }
+      } catch (err) {
+        console.error(err);
+        alert(t("ed_export_fail"));
+      }
+      exportResolveRef.current?.();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [exportJob]);
+
+  async function exportPng(cards: { card: Card; index: number }[]) {
+    if (exporting) return;
+    setExporting(true);
+    const base = (project.name || "card").replace(/[^\w가-힣-]+/g, "_");
+    for (const { card: c, index } of cards) {
+      await new Promise<void>((resolve) => {
+        exportResolveRef.current = resolve;
+        setExportJob({ card: c, name: `${base}-${String(index + 1).padStart(2, "0")}.png` });
+      });
+    }
+    setExportJob(null);
+    setExporting(false);
+  }
+
+  // ---------------------------------------------------------------------------
+  return (
+    <div className="editor">
+      <header className="topbar">
+        <button className="btn ghost" onClick={onClose}>
+          {t("ed_back")}
+        </button>
+        <input
+          className="name-input"
+          value={project.name}
+          onFocus={pushHistory}
+          onChange={(e) => mutate((p) => void (p.name = e.target.value))}
+        />
+        <span className="badge">
+          {FORMATS[project.format].label} · {FORMATS[project.format].w}×{FORMATS[project.format].h}
+        </span>
+        <select
+          className="model-select"
+          value={project.model ?? DEFAULT_MODEL}
+          onChange={(e) => mutate((p) => void (p.model = e.target.value), true)}
+          title={t("ed_model_title")}
+        >
+          {MODELS.map((m) => (
+            <option key={m.id} value={m.id} disabled={!m.implemented}>
+              {m.short}
+              {!m.implemented ? ` · ${t("model_soon")}` : keyStatus[m.envVar] === false ? ` · ${t("ed_key_missing")}` : ""}
+            </option>
+          ))}
+        </select>
+        <UsageChip usage={project.usage} />
+        <div className="spacer" />
+        <LangSwitch />
+        <button className="btn ghost" onClick={undo} disabled={historyRef.current.length === 0}>
+          {t("ed_undo")}
+        </button>
+        <button
+          className="btn"
+          disabled={exporting}
+          onClick={() => exportPng([{ card, index: safeCardIdx }])}
+        >
+          {t("ed_export_one")}
+        </button>
+        <button
+          className="btn primary"
+          disabled={exporting}
+          onClick={() => exportPng(project.cards.map((c, i) => ({ card: c, index: i })))}
+        >
+          {exporting ? t("ed_exporting") : t("ed_export_all")}
+        </button>
+      </header>
+
+      <div className="editor-body">
+        <aside className="cards-strip">
+          {project.cards.map((c, i) => (
+            <div
+              key={c.id}
+              className={`thumb ${i === safeCardIdx ? "active" : ""}`}
+              onClick={() => {
+                setCardIdx(i);
+                setSelectedElId(null);
+                setEditingElId(null);
+              }}
+            >
+              <div className="thumb-preview">
+                <CardView card={c} theme={project.theme} format={project.format} width={112} />
+              </div>
+              <div className="thumb-bar">
+                <span className="thumb-num">{i + 1}</span>
+                <button title={t("th_up")} onClick={(e) => (e.stopPropagation(), moveCard(i, -1))}>↑</button>
+                <button title={t("th_down")} onClick={(e) => (e.stopPropagation(), moveCard(i, 1))}>↓</button>
+                <button title={t("th_dup")} onClick={(e) => (e.stopPropagation(), duplicateCard(i))}>⧉</button>
+                <button title={t("th_del")} onClick={(e) => (e.stopPropagation(), removeCard(i))}>✕</button>
+              </div>
+            </div>
+          ))}
+          <button className="btn add-card" onClick={addCard}>
+            {t("ed_add_card")}
+          </button>
+        </aside>
+
+        <section className="canvas-area">
+          <div className="canvas-stage" ref={stageRef} style={{ width: displayW, height: displayH }}>
+            <CardView
+              card={card}
+              theme={project.theme}
+              format={project.format}
+              width={displayW}
+              selectedElementId={selectedElId}
+              editingElementId={editingElId}
+              guides={guides ?? undefined}
+              onElementPointerDown={(e, el) => startDrag(e, el, "move")}
+              onElementDoubleClick={(el) => {
+                if (el.type === "text") {
+                  pushHistory();
+                  setEditingElId(el.id);
+                }
+              }}
+              onResizeStart={(e, el) => startDrag(e, el, "resize")}
+              onBackgroundPointerDown={() => {
+                setSelectedElId(null);
+                setEditingElId(null);
+              }}
+            />
+            {editingEl && (
+              <InlineTextEditor
+                el={editingEl}
+                scale={scale}
+                fontFamily={editingEl.fontFamily || project.theme.fontFamily}
+                onChange={(text) => patchElement(card.id, editingEl.id, { text })}
+                onDone={() => setEditingElId(null)}
+              />
+            )}
+          </div>
+        </section>
+
+        <Inspector
+          project={project}
+          card={card}
+          element={selectedEl}
+          beginEdit={pushHistory}
+          onPatchElement={(patch, withHistory) =>
+            selectedEl && patchElement(card.id, selectedEl.id, patch, withHistory)
+          }
+          onPatchCard={(patch) => mutate((p) => Object.assign(p.cards.find((c) => c.id === card.id)!, patch), true)}
+          onPatchTheme={(patch) => mutate((p) => Object.assign(p.theme, patch), true)}
+          onRemoveElement={() => selectedEl && removeElement(selectedEl.id)}
+          onAddElement={addElement}
+        />
+
+        <ChatPanel
+          project={project}
+          selection={{ cardId: card.id, elementId: selectedElId ?? undefined }}
+          selectionLabel={
+            selectedEl
+              ? `${t("sel_card")} ${safeCardIdx + 1} · ${selectedEl.type === "text" ? t("sel_text") : selectedEl.type === "shape" ? t("sel_shape") : t("sel_image")}`
+              : `${t("sel_card")} ${safeCardIdx + 1}`
+          }
+          onApply={applyChat}
+        />
+      </div>
+
+      {exportJob && (
+        <div style={{ position: "fixed", left: -20000, top: 0 }}>
+          <div ref={exportRef} style={{ width: EXPORT_WIDTH }}>
+            <CardView card={exportJob.card} theme={project.theme} format={project.format} width={EXPORT_WIDTH} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function UsageChip({ usage }: { usage?: UsageTotals }) {
+  const { lang, t } = useLang();
+  const [open, setOpen] = useState(false);
+  const u = usage ?? emptyUsage();
+  const totalTokens = u.inputTokens + u.outputTokens + u.cacheReadTokens + u.cacheCreationTokens;
+  return (
+    <div className="usage-wrap">
+      <button className="btn ghost" onClick={() => setOpen((v) => !v)} title={t("usage_title")}>
+        ⚡ {fmtCost(u.costUsd)} · {fmtTokens(totalTokens)} tok
+      </button>
+      {open && (
+        <div className="usage-pop" onMouseLeave={() => setOpen(false)}>
+          <div className="usage-row big">
+            <span>{t("usage_total")}</span>
+            <b>{fmtCost(u.costUsd)}</b>
+          </div>
+          <div className="usage-row">
+            <span>{t("usage_calls")}</span>
+            <b>{lang === "ko" ? `${u.calls}회` : `×${u.calls}`}</b>
+          </div>
+          <div className="usage-row">
+            <span>{t("usage_in")}</span>
+            <b>{fmtTokens(u.inputTokens)}</b>
+          </div>
+          <div className="usage-row">
+            <span>{t("usage_out")}</span>
+            <b>{fmtTokens(u.outputTokens)}</b>
+          </div>
+          <div className="usage-row">
+            <span>{t("usage_cache")}</span>
+            <b>
+              {fmtTokens(u.cacheReadTokens)} / {fmtTokens(u.cacheCreationTokens)}
+            </b>
+          </div>
+          {Object.keys(u.byModel).length > 0 && <div className="usage-sep" />}
+          {Object.entries(u.byModel).map(([id, m]) => (
+            <div className="usage-row" key={id}>
+              <span>{MODELS.find((x) => x.id === id)?.label ?? id}</span>
+              <b>
+                {lang === "ko" ? `${m.calls}회` : `×${m.calls}`} · {fmtCost(m.costUsd)}
+              </b>
+            </div>
+          ))}
+          <div className="usage-note">{t("usage_note")}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function InlineTextEditor({
+  el,
+  scale,
+  fontFamily,
+  onChange,
+  onDone,
+}: {
+  el: TextElement;
+  scale: number;
+  fontFamily: string;
+  onChange: (text: string) => void;
+  onDone: () => void;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const node = ref.current;
+    if (node) {
+      node.style.height = "auto";
+      node.style.height = `${node.scrollHeight}px`;
+    }
+  }, [el.text]);
+  useEffect(() => {
+    ref.current?.focus();
+    ref.current?.select();
+  }, []);
+  return (
+    <textarea
+      ref={ref}
+      className="inline-edit"
+      value={el.text}
+      onChange={(e) => onChange(e.target.value)}
+      onBlur={onDone}
+      onKeyDown={(e) => {
+        if (e.key === "Escape" || (e.key === "Enter" && (e.metaKey || e.ctrlKey))) onDone();
+      }}
+      style={{
+        position: "absolute",
+        left: `${el.x}%`,
+        top: `${el.y}%`,
+        width: `${el.w}%`,
+        fontSize: el.fontSize * scale,
+        fontWeight: el.fontWeight,
+        color: el.color,
+        textAlign: el.align,
+        lineHeight: el.lineHeight,
+        letterSpacing: el.letterSpacing !== undefined ? `${el.letterSpacing}em` : undefined,
+        fontFamily,
+      }}
+    />
+  );
+}
