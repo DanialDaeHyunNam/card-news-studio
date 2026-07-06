@@ -104,7 +104,7 @@ pill-shaped topic bar.
   Lorem Picsum / Unsplash license — free to use, bundled deliberately for offline use),
   pure-CSS "how it works" demo loop (`components/HowItWorks.tsx`, 10s keyframes in
   globals.css), OpusClip-style footer (`components/Footer.tsx`).
-- `lib/site.ts` holds `GITHUB_URL` (null until the public repo exists — set it and the
-  header button + footer star CTA appear) and the owner's Threads/X links.
+- `lib/site.ts`: `GITHUB_URL` → https://github.com/DanialDaeHyunNam/card-news-studio (public, MIT)
+  and the owner's Threads/X links. Header button + footer star CTA read it.
 - Not done: multi-select, z-order controls, redo, zip export, font picker,
   mobile layout polish, drag-reorder for card strip.
