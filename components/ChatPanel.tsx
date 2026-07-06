@@ -20,7 +20,7 @@ interface ChatPanelProps {
   }) => void;
 }
 
-const QUICK_PROMPTS: DictKey[] = ["chat_q1", "chat_q2", "chat_q3"];
+const QUICK_PROMPTS: DictKey[] = ["chat_q1", "chat_q2", "chat_q3", "chat_q4"];
 
 export default function ChatPanel({ project, selection, selectionLabel, onApply }: ChatPanelProps) {
   const { lang, t } = useLang();

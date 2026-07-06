@@ -179,6 +179,7 @@ const D = {
   chat_q1: ["이 카드 타이틀 더 강하게", "Punch up this card's title"],
   chat_q2: ["전체 색 일관성 정리해줘", "Unify colors across cards"],
   chat_q3: ["마지막에 CTA 카드 추가", "Add a CTA card at the end"],
+  chat_q4: ["어울리는 배경 사진 깔아줘", "Add fitting photo backgrounds"],
   chat_img_fail: ["이미지를 읽을 수 없습니다.", "Couldn't read that image."],
   chat_req_fail: ["요청에 실패했습니다.", "Request failed."],
 } as const;

@@ -13,8 +13,11 @@ bun dev            # http://localhost:3000
 bun run build      # typecheck + prod build — run after EVERY change
 ```
 
-No tests. Verification = `bun run build` + driving the UI. AI routes need
-`ANTHROPIC_API_KEY` in `.env.local` (or an `ant auth login` profile).
+No tests. Verification = `bun run build` + driving the UI. AI routes need at
+least one provider key in `.env.local` (`ANTHROPIC_API_KEY` and/or
+`OPENAI_API_KEY` — see `.env.example`), or paste one in the app's 🔑 key modal
+(dev-only, writes `.env.local` + `process.env`, no restart needed). The UI
+auto-selects a model whose key is connected.
 
 ## Architecture
 
@@ -47,6 +50,12 @@ No tests. Verification = `bun run build` + driving the UI. AI routes need
     youtube `source` with transcript — prompt tells the model to quote real 자막 lines) → `{theme, cards}`
   - `chat`: sanitized project JSON (image srcs stripped) + selection + history +
     image attachments → `{reply, operations[]}`
+  - `photo`: same-origin proxy for Lorem Picsum (`/api/photo?id=N&w=&h=&g=1`) so
+    AI-picked photo backgrounds survive html-to-image export (no CORS). The AI
+    chooses from the curated library in `lib/photos.ts` — IDs + bilingual tags
+    injected into both prompts via `photoLibraryPrompt(cardH)`. Tags were written
+    by actually viewing each photo; when adding entries, LOOK at the image first
+    (contact-sheet trick: grid HTML + headless screenshot). Never guess IDs/tags.
   - `youtube`: URL → title/author/caption lines WITHOUT an API key, via the InnerTube
     player API with the **ANDROID client** (the watch-page timedtext URLs return empty
     bodies without a proof-of-origin token; WEB client returns no tracks — verified 2026-07).
@@ -103,7 +112,10 @@ pill-shaped topic bar.
   center/cover` as the card background string. Photos in `public/templates/` from
   Lorem Picsum / Unsplash license — free to use, bundled deliberately for offline use),
   pure-CSS "how it works" demo loop (`components/HowItWorks.tsx`, 10s keyframes in
-  globals.css), OpusClip-style footer (`components/Footer.tsx`).
+  globals.css), OpusClip-style footer (`components/Footer.tsx`),
+  AI photo backgrounds — chat "어울리는 배경 사진 깔아줘" (quick chip `chat_q4`) or
+  generate-time request picks from the curated free library (`lib/photos.ts` +
+  `/api/photo` proxy), always with a theme-tinted scrim over the photo.
 - `lib/site.ts`: `GITHUB_URL` → https://github.com/DanialDaeHyunNam/card-news-studio (public, MIT)
   and the owner's Threads/X links. Header button + footer star CTA read it.
 - Not done: multi-select, z-order controls, redo, zip export, font picker,

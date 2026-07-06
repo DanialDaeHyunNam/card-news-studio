@@ -1,4 +1,5 @@
 import { FORMATS, type Format } from "./types";
+import { photoLibraryPrompt } from "./photos";
 
 function coordinateDocs(format: Format): string {
   const { w, h } = FORMATS[format];
@@ -34,6 +35,10 @@ ${coordinateDocs(format)}
   에세이/스토리/감성 톤이면 텍스트 요소에 fontFamily '"Nanum Myeongjo", "Noto Serif KR", AppleMyungjo, Batang, Georgia, serif' (명조)를 쓸 수 있음.
 - 참고 스타일(reference)이 주어지면 그 색/톤/말투를 일관되게 이어갈 것.
 - 이미지 요소는 생성하지 말 것 (사용자가 채팅으로 추가함).
+- 배경 사진: 기본은 단색/그라디언트. 단, 사용자가 주제에서 사진 배경을 요청했거나
+  감성/여행/스토리 톤이라 사진이 확실히 어울리면 아래 라이브러리를 사용할 것.
+
+${photoLibraryPrompt(FORMATS[format].h)}
 
 ## 유튜브 자막이 원문으로 주어진 경우
 - 영상의 핵심 흐름을 카드 시리즈로 재구성할 것.
@@ -68,6 +73,10 @@ ${coordinateDocs(format)}
 - 첨부 이미지를 카드에 넣어달라고 하면 add_element로 type "image", src "attachment:N"을 사용.
 - "원본 그대로"라고 하면 fit "contain"과 첨부의 실제 비율에 맞는 w/h를 계산해 배치 (w/h 퍼센트는 카드 비율을 감안해 이미지 비율이 유지되도록).
 - 이미지 주변 텍스트와 겹치지 않게 필요한 경우 기존 요소 위치도 함께 조정.
+
+${photoLibraryPrompt(FORMATS[format].h)}
+- 특정 카드만 지정했으면 그 카드만, "전체" 또는 지정이 없으면 모든 카드에 적용할 것.
+- 사진을 깐 카드의 텍스트가 어두운 색이면 밝은 색으로 함께 update_element 할 것.
 
 ## 출력 언어
 - reply와 새로 쓰는 카피는 ${outLang}로 작성할 것.
