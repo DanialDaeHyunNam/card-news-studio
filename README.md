@@ -1,44 +1,94 @@
 # Card News Studio
 
-AI-powered card news maker for social media. Type a topic, get a full carousel
-drafted by Claude — then refine it on a Figma-like canvas and export PNGs.
+**AI-powered card news maker for social media.** Type a topic — or paste an
+article or a YouTube link — and Claude (or GPT, or Gemini) drafts a full themed
+carousel: hook → body → CTA. Then refine it on a Figma-like canvas with smart
+guides and an AI chat, and export PNGs.
 
-카드뉴스 제작 툴입니다. 주제를 입력하면 Claude가 카피와 레이아웃을 설계하고,
-캔버스에서 자유롭게 다듬은 뒤 PNG로 내보낼 수 있습니다.
+> 주제 하나로 카드뉴스 한 세트. 주제·원문·유튜브 링크를 넣으면 AI가 카피와
+> 레이아웃을 설계하고, 캔버스에서 자유롭게 다듬은 뒤 PNG로 내보냅니다.
+
+Open source (**MIT**). Runs **entirely on your own computer** — no server, no
+database, no account. Your projects live in your browser's localStorage and your
+API keys never leave your machine.
+
+- 🧠 **Deep-dive on how it works:** [ARCHITECTURE.md](ARCHITECTURE.md)
+- 🛠️ **Want to hack on it or add a model/template/language:** [CONTRIBUTING.md](CONTRIBUTING.md)
+
+---
 
 ## Features
 
-- **AI draft generation** — topic/article in, a themed card set out (hook → body → CTA), powered by Claude structured outputs
-- **Canvas editor** — drag anything anywhere, with Figma-style smart guides (snap to other elements' edges/centers and the card center)
-- **Inline editing** — double-click text to edit in place; full control of font size, weight, color, alignment, line height
-- **AI chat editing (multimodal)** — select a card or element and ask for changes in natural language; paste or drop images into chat and ask to place them ("원본 그대로 넣어줘")
-- **Style continuity** — start a new set that inherits the theme and tone of a previous project
-- **Formats** — 1:1 (1080×1080), 4:5 (1080×1350), 9:16 (1080×1920), chosen per project
-- **PNG export** — per card or the whole set, at full resolution
-- **No server state** — everything lives in your browser's localStorage; API keys never reach the client
+- **AI draft generation** — a topic/article/YouTube video in, a themed card set
+  out, streamed card-by-card into the editor as the model writes it. Powered by
+  structured JSON output.
+- **Multi-provider** — Claude (Opus / Sonnet / Haiku), OpenAI (GPT-5.x), and
+  Gemini share one dispatcher. The app auto-selects a good-value default for
+  whichever provider's key you've connected.
+- **Canvas editor** — drag anything anywhere with Figma-style smart guides (snap
+  to other elements' edges/centers and the card center); inline text editing;
+  full inspector (font, size, weight, color, alignment, tracking, line height).
+- **AI chat editing (multimodal)** — select a card or element and ask for changes
+  in plain language. Paste or drop images into chat and ask to place them; the
+  original full-resolution image is preserved on export.
+- **Layers & z-order** — reorder overlapping elements, background dim/scrim,
+  per-element opacity, all controllable by hand or by the AI.
+- **Brand color** — pin a point color; every element using it recolors together
+  when you change it (a real design token, not a one-off value).
+- **YouTube → cards** — paste a video URL; captions are fetched (no API key
+  needed) and turned into a card set that quotes the real transcript.
+- **Style continuity** — start a new set that inherits a previous project's theme
+  and tone.
+- **Templates** — 10 starter sets (bilingual copy), each a launchpad you make your own.
+- **Formats** — 1:1 (1080×1080), 4:5 (1080×1350), 9:16 (1080×1920).
+- **PNG export** — per card or the whole set, at full 1080-wide resolution.
+- **Bilingual** — English / Korean throughout (UI, templates, and AI copy).
+- **In-app keys** — paste a provider key in the 🔑 panel; it's written to
+  `.env.local` and applied instantly, no restart, no file editing.
 
-## Getting started
+## Quickstart (local)
+
+You need [Node.js](https://nodejs.org) (which includes `npm`) and
+[Git](https://git-scm.com). [Bun](https://bun.sh) works too and is faster.
 
 ```bash
-bun install            # or npm install
-cp .env.example .env.local   # add your ANTHROPIC_API_KEY
-bun dev                # http://localhost:3000
+git clone https://github.com/DanialDaeHyunNam/card-news-studio.git
+cd card-news-studio
+npm install          # or: bun install
+npm run dev          # or: bun dev   → http://localhost:3000
 ```
 
-Requires an [Anthropic API key](https://platform.claude.com/). The key is read
-server-side only (route handlers proxy all model calls).
+Open http://localhost:3000, click **🔑 API Keys**, and paste an
+[Anthropic](https://platform.claude.com/settings/keys) or
+[OpenAI](https://platform.openai.com/api-keys) key. Generation unlocks the
+instant a key is connected. (You can also `cp .env.example .env.local` and set
+the keys there.)
 
-## How it works
+## Runs locally by design
 
-- `app/api/generate` — topic → `{theme, cards[]}` via Claude (`claude-opus-4-8`) with a JSON schema-constrained response
-- `app/api/chat` — project JSON + selection + chat (with image attachments) → `{reply, operations[]}`; operations are a small edit language (`update_element`, `add_card`, …) applied client-side in `lib/ops.ts`
-- Attached images are sent to the model resized; when the AI places one on a card it references `attachment:N` and the client substitutes the full-resolution original
-- Coordinates are percent-based; `fontSize`/`radius` are px at 1080-wide export scale, so cards render identically in thumbnails, canvas, and export
+Card News Studio has **no hosted product** — it's a tool you run yourself. That's
+deliberate:
+
+- Your **API keys** stay in `.env.local` on your machine; the browser only ever
+  sees model *output*, never the key.
+- Your **projects** live in your browser's localStorage — nothing is uploaded.
+- The route handlers (`app/api/*`) exist only so the key never reaches the
+  client; there is no server state and no database.
+
+You *can* deploy the landing page to a host like Vercel as a **showcase**. When
+it detects it's running on a public deployment (`process.env.VERCEL`), the app
+shows a bilingual macOS/Windows install guide instead of the live tool — because
+the tool only works with local keys. See
+[ARCHITECTURE.md → Hosted vs. local mode](ARCHITECTURE.md#hosted-vs-local-mode).
 
 ## Stack
 
-Next.js 16 · React 19 · TypeScript · [@anthropic-ai/sdk](https://github.com/anthropics/anthropic-sdk-typescript) · html-to-image
+[Next.js 16](https://nextjs.org) (App Router, Turbopack) · React 19 · TypeScript ·
+[@anthropic-ai/sdk](https://github.com/anthropics/anthropic-sdk-typescript) ·
+[html-to-image](https://github.com/bubkoo/html-to-image). No Tailwind (hand-written
+CSS in `app/globals.css`), no test framework — verification is `npm run build`
+(typecheck + prod build) plus driving the UI.
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE) — free to use, fork, and modify.

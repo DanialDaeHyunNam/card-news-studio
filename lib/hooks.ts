@@ -1,0 +1,33 @@
+import { useEffect, useState, type RefObject } from "react";
+
+// True when running on a public deployment (Vercel), where the tool can't
+// actually run — API keys and projects only exist on the user's own machine.
+// Read from the `data-hosted` attribute `app/layout.tsx` stamps on <html>
+// server-side, so it's correct on the first client render (no flash). The app
+// is fully client-rendered, so the lazy initializer has no hydration concern.
+export function useHosted() {
+  const [hosted] = useState(
+    () => typeof document !== "undefined" && document.documentElement.dataset.hosted === "1",
+  );
+  return hosted;
+}
+
+// Close a popover when the user points down anywhere outside `ref`. The ref must
+// wrap BOTH the trigger and the menu, so clicking the trigger counts as "inside"
+// (its own onClick handles the toggle). Only listens while `active` is true.
+export function useClickOutside(
+  ref: RefObject<HTMLElement | null>,
+  onOutside: () => void,
+  active = true,
+) {
+  useEffect(() => {
+    if (!active) return;
+    const handler = (e: Event) => {
+      const el = ref.current;
+      if (el && !el.contains(e.target as Node)) onOutside();
+    };
+    // Capture phase so it fires before the target's own handlers.
+    document.addEventListener("pointerdown", handler, true);
+    return () => document.removeEventListener("pointerdown", handler, true);
+  }, [ref, onOutside, active]);
+}

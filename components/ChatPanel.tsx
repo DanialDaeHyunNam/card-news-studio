@@ -1,15 +1,20 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Operation, Project } from "@/lib/types";
 import { fileToAttachment, type Attachment } from "@/lib/image";
 import type { UsageEvent } from "@/lib/usage";
+import { getTemplates, instantiateTemplate, type Template } from "@/lib/templates";
+import { readSSE, extractReply, parseStructured } from "@/lib/stream";
+import { useClickOutside } from "@/lib/hooks";
 import { useLang, type DictKey } from "@/lib/i18n";
+import CardView from "./CardView";
 
 interface ChatPanelProps {
   project: Project;
   selection: { cardId?: string; elementId?: string };
   selectionLabel: string;
+  disabled?: boolean;
   onApply: (args: {
     userText: string;
     userThumbs: string[];
@@ -22,14 +27,48 @@ interface ChatPanelProps {
 
 const QUICK_PROMPTS: DictKey[] = ["chat_q1", "chat_q2", "chat_q3", "chat_q4"];
 
-export default function ChatPanel({ project, selection, selectionLabel, onApply }: ChatPanelProps) {
+export default function ChatPanel({ project, selection, selectionLabel, disabled, onApply }: ChatPanelProps) {
   const { lang, t } = useLang();
   const [input, setInput] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tplRef, setTplRef] = useState<Template | null>(null);
+  const [tplOpen, setTplOpen] = useState(false);
+  // Transient turn shown while streaming, before it lands in project.chat.
+  const [streamUser, setStreamUser] = useState<{ text: string; thumbs: string[] } | null>(null);
+  const [streamReply, setStreamReply] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const tplWrapRef = useRef<HTMLDivElement>(null);
+  useClickOutside(tplWrapRef, () => setTplOpen(false), tplOpen);
+
+  // Thumbnail previews for the template-reference menu (instantiated once per lang).
+  const templatePreviews = useMemo(
+    () =>
+      getTemplates(lang).map((tpl) => {
+        const project = instantiateTemplate(tpl);
+        return { tpl, firstCard: project.cards[0], theme: project.theme };
+      }),
+    [lang],
+  );
+  const activeTpl = tplRef ? (templatePreviews.find((p) => p.tpl.id === tplRef.id) ?? null) : null;
+
+  function scrollDown() {
+    requestAnimationFrame(() => listRef.current?.scrollTo({ top: listRef.current.scrollHeight }));
+  }
+
+  // On open (and when switching to a different project), pin the chat to the
+  // latest message. The 150ms re-scroll covers chat image thumbnails painting.
+  useEffect(() => {
+    const toBottom = () => {
+      const el = listRef.current;
+      if (el) el.scrollTop = el.scrollHeight;
+    };
+    toBottom();
+    const t = setTimeout(toBottom, 150);
+    return () => clearTimeout(t);
+  }, [project.id]);
 
   async function addFiles(files: FileList | File[]) {
     const imgs = Array.from(files).filter((f) => f.type.startsWith("image/"));
@@ -45,12 +84,17 @@ export default function ChatPanel({ project, selection, selectionLabel, onApply 
 
   async function send(text?: string) {
     const message = (text ?? input).trim();
-    if (!message || busy) return;
+    if (!message || busy || disabled) return;
     setBusy(true);
     setError(null);
     const atts = attachments;
+    const userThumbs = atts.map((a) => a.thumb);
+    setStreamUser({ text: message, thumbs: userThumbs });
+    setStreamReply("");
     setInput("");
     setAttachments([]);
+    scrollDown();
+    const tpl = tplRef;
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -61,26 +105,51 @@ export default function ChatPanel({ project, selection, selectionLabel, onApply 
           history: project.chat.map((m) => ({ role: m.role, text: m.text })),
           message,
           attachments: atts.map((a) => ({ apiDataUrl: a.apiDataUrl, width: a.width, height: a.height })),
+          templateRef: tpl ? { name: tpl.name, theme: tpl.theme, cards: tpl.cards } : undefined,
           lang,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || `요청 실패 (${res.status})`);
+
+      // Validation failures come back as JSON, not an event stream.
+      if (!res.headers.get("content-type")?.includes("event-stream")) {
+        const d = await res.json().catch(() => null);
+        throw new Error(d?.error || `요청 실패 (${res.status})`);
+      }
+
+      let acc = "";
+      let doneText = "";
+      let usage: UsageEvent | undefined;
+      for await (const ev of readSSE(res)) {
+        if (ev.type === "delta") {
+          acc += ev.text ?? "";
+          setStreamReply(extractReply(acc));
+          scrollDown();
+        } else if (ev.type === "error") {
+          throw new Error(ev.error || t("chat_req_fail"));
+        } else if (ev.type === "done") {
+          doneText = ev.text || acc;
+          usage = ev.usage;
+        }
+      }
+
+      const parsed = parseStructured<{ reply?: string; operations?: unknown }>(doneText || acc);
       onApply({
         userText: message,
-        userThumbs: atts.map((a) => a.thumb),
-        reply: data.reply ?? "",
-        operations: Array.isArray(data.operations) ? data.operations : [],
+        userThumbs,
+        reply: parsed.reply ?? extractReply(acc),
+        operations: Array.isArray(parsed.operations) ? (parsed.operations as Operation[]) : [],
         attachmentOriginals: atts.map((a) => a.dataUrl),
-        usage: data.usage,
+        usage,
       });
-      requestAnimationFrame(() => {
-        listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
-      });
+      setStreamUser(null);
+      setStreamReply("");
+      scrollDown();
     } catch (e) {
       setError(e instanceof Error ? e.message : t("chat_req_fail"));
       setInput(message);
       setAttachments(atts);
+      setStreamUser(null);
+      setStreamReply("");
     } finally {
       setBusy(false);
     }
@@ -100,9 +169,7 @@ export default function ChatPanel({ project, selection, selectionLabel, onApply 
       </div>
 
       <div className="chat-list" ref={listRef}>
-        {project.chat.length === 0 && (
-          <p className="hint">{t("chat_hint")}</p>
-        )}
+        {project.chat.length === 0 && !streamUser && <p className="hint">{t("chat_hint")}</p>}
         {project.chat.map((m, i) => (
           <div key={i} className={`chat-msg ${m.role}`}>
             {m.images?.map((src, j) => (
@@ -110,23 +177,71 @@ export default function ChatPanel({ project, selection, selectionLabel, onApply 
               <img key={j} src={src} alt="" className="chat-thumb" />
             ))}
             <div className="chat-bubble">{m.text}</div>
+            {m.role === "assistant" && m.ops !== undefined && (
+              <div className="chat-done">
+                ✓ {m.ops > 0 ? `${m.ops}${t("chat_applied")}` : t("chat_no_change")}
+              </div>
+            )}
           </div>
         ))}
-        {busy && <div className="chat-msg assistant"><div className="chat-bubble typing">{t("chat_thinking")}</div></div>}
+        {streamUser && (
+          <div className="chat-msg user">
+            {streamUser.thumbs.map((src, j) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={j} src={src} alt="" className="chat-thumb" />
+            ))}
+            <div className="chat-bubble">{streamUser.text}</div>
+          </div>
+        )}
+        {busy && (
+          <div className="chat-msg assistant">
+            {streamReply ? (
+              <div className="chat-bubble">
+                {streamReply}
+                <span className="stream-caret" />
+              </div>
+            ) : (
+              <div className="chat-bubble typing">{t("chat_thinking")}</div>
+            )}
+          </div>
+        )}
       </div>
 
       {error && <div className="chat-error">{error}</div>}
 
-      <div className="quick-chips">
-        {QUICK_PROMPTS.map((q) => (
-          <button key={q} className="chip" disabled={busy} onClick={() => void send(t(q))}>
-            {t(q)}
-          </button>
-        ))}
-      </div>
+      {/* Preset prompts — only on a fresh chat; they vanish once a turn exists. */}
+      {project.chat.length === 0 && !streamUser && (
+        <div className="quick-chips">
+          {QUICK_PROMPTS.map((q) => (
+            <button key={q} className="chip" disabled={busy || disabled} onClick={() => void send(t(q))}>
+              {t(q)}
+            </button>
+          ))}
+        </div>
+      )}
 
-      {attachments.length > 0 && (
+      {/* Thumbnails: referenced template + attached images, side by side. */}
+      {(activeTpl || attachments.length > 0) && (
         <div className="attach-row">
+          {activeTpl && (
+            <div className="ref-tpl-item">
+              <span className="ref-tpl-thumb">
+                <CardView
+                  card={activeTpl.firstCard}
+                  theme={activeTpl.theme}
+                  format={activeTpl.tpl.format}
+                  width={34}
+                />
+              </span>
+              <span className="ref-tpl-meta">
+                <b>{activeTpl.tpl.name}</b>
+                <small>{t("chat_tpl_active")}</small>
+              </span>
+              <button onClick={() => setTplRef(null)} title="✕">
+                ✕
+              </button>
+            </div>
+          )}
           {attachments.map((a) => (
             <div key={a.id} className="attach-item">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -138,9 +253,48 @@ export default function ChatPanel({ project, selection, selectionLabel, onApply 
       )}
 
       <div className="chat-input-row">
-        <button className="btn icon" title={t("chat_attach")} onClick={() => fileRef.current?.click()}>
-          🖼
-        </button>
+        <div className="chat-actions">
+          <button
+            className="btn icon attach-btn"
+            title={t("chat_attach")}
+            disabled={disabled}
+            onClick={() => fileRef.current?.click()}
+          >
+            +
+          </button>
+          <div className="tpl-ref-wrap" ref={tplWrapRef}>
+            <button
+              className={`btn icon attach-btn tpl-btn ${tplRef ? "on" : ""}`}
+              disabled={busy || disabled}
+              onClick={() => setTplOpen((v) => !v)}
+              title={t("chat_tpl_pick")}
+            >
+              ◫
+            </button>
+            {tplOpen && (
+              <div className="tpl-ref-menu">
+                {templatePreviews.map(({ tpl, firstCard, theme }) => (
+                  <button
+                    key={tpl.id}
+                    className={`tpl-ref-item ${tplRef?.id === tpl.id ? "on" : ""}`}
+                    onClick={() => {
+                      setTplRef(tpl);
+                      setTplOpen(false);
+                    }}
+                  >
+                    <span className="tpl-ref-thumb">
+                      <CardView card={firstCard} theme={theme} format={tpl.format} width={48} />
+                    </span>
+                    <span className="tpl-ref-text">
+                      <b>{tpl.name}</b>
+                      <small>{tpl.description}</small>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
         <input
           ref={fileRef}
           type="file"
@@ -153,9 +307,10 @@ export default function ChatPanel({ project, selection, selectionLabel, onApply 
           }}
         />
         <textarea
-          rows={2}
+          rows={3}
           placeholder={t("chat_ph")}
           value={input}
+          disabled={disabled}
           onChange={(e) => setInput(e.target.value)}
           onPaste={(e) => {
             const files = Array.from(e.clipboardData.files);
@@ -171,7 +326,7 @@ export default function ChatPanel({ project, selection, selectionLabel, onApply 
             }
           }}
         />
-        <button className="btn primary" disabled={busy || !input.trim()} onClick={() => void send()}>
+        <button className="btn primary" disabled={busy || disabled || !input.trim()} onClick={() => void send()}>
           {busy ? "…" : t("chat_send")}
         </button>
       </div>

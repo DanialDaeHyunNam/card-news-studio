@@ -1,11 +1,18 @@
 import { NextResponse } from "next/server";
 import type Anthropic from "@anthropic-ai/sdk";
-import { structuredRequest, errorMessage } from "@/lib/ai";
+import { streamResponse } from "@/lib/ai";
 import { chatSystem } from "@/lib/prompts";
 import { chatSchema } from "@/lib/schemas";
-import { FORMATS, type ChatMessage, type Format, type Project } from "@/lib/types";
+import { FORMATS, type ChatMessage, type Format, type Project, type Theme } from "@/lib/types";
 
 export const maxDuration = 300;
+
+// A built-in template the user pinned as a style reference in the chat.
+interface TemplateRef {
+  name: string;
+  theme: Partial<Theme>;
+  cards: { background?: string; elements: Record<string, unknown>[] }[];
+}
 
 interface ChatBody {
   project: Project;
@@ -14,6 +21,7 @@ interface ChatBody {
   message: string; // the new user request
   lang?: "ko" | "en";
   attachments?: { apiDataUrl: string; width: number; height: number }[];
+  templateRef?: TemplateRef; // optional style/layout reference
 }
 
 const IMAGE_MEDIA_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"] as const;
@@ -26,13 +34,16 @@ function parseDataUrl(dataUrl: string): { mediaType: ImageMediaType; data: strin
 }
 
 // Image srcs are large data URLs the model doesn't need — strip before sending.
+// `n` is the 1-based card number the user sees on the thumbnail, so references
+// like "1,2번 카드" / "3~5번" map unambiguously to the right cards.
 function sanitizeProject(project: Project) {
   return {
     id: project.id,
     name: project.name,
     format: project.format,
     theme: project.theme,
-    cards: project.cards.map((c) => ({
+    cards: project.cards.map((c, i) => ({
+      n: i + 1,
       ...c,
       elements: c.elements.map((el) =>
         el.type === "image" ? { ...el, src: "[image-data omitted]" } : el,
@@ -64,10 +75,14 @@ export async function POST(req: Request) {
     attachmentInfo.push(`첨부 ${i}: ${a.width}×${a.height}px → src로 "attachment:${i}" 사용`);
   });
 
+  const selIdx = body.selection?.cardId
+    ? body.project.cards.findIndex((c) => c.id === body.selection!.cardId)
+    : -1;
+  const selNum = selIdx >= 0 ? selIdx + 1 : null;
   const selection = body.selection?.elementId
-    ? `카드 ${body.selection.cardId}의 요소 ${body.selection.elementId}`
-    : body.selection?.cardId
-      ? `카드 ${body.selection.cardId} (요소 미선택)`
+    ? `${selNum}번 카드(id ${body.selection.cardId})의 요소 ${body.selection.elementId}`
+    : selNum
+      ? `${selNum}번 카드 (요소 미선택)`
       : "없음";
 
   const transcript = (body.history ?? [])
@@ -75,10 +90,26 @@ export async function POST(req: Request) {
     .map((m) => `${m.role === "user" ? "사용자" : "AI"}: ${m.text}`)
     .join("\n");
 
+  // A pinned template gives the model a concrete style/layout to graft onto the
+  // current cards. It is a REFERENCE — text content stays unless the user asks
+  // otherwise; extra instructions ("bg photo from the attached image only") win.
+  let templateBlock = "";
+  if (body.templateRef?.cards?.length) {
+    const ref = body.templateRef;
+    templateBlock =
+      `## 참조 템플릿: ${ref.name}\n` +
+      `사용자가 "이 템플릿 적용" 등을 요청하면, 현재 카드의 텍스트 내용은 유지한 채 아래 템플릿의 ` +
+      `테마 색·카드 배경·요소 배치와 서체 스타일을 현재 카드들에 반영하는 operations를 만드세요. ` +
+      `카드 수가 다르면 현재 카드를 기준으로 매핑하고, 사용자의 추가 지시(예: 특정 배경만 첨부 이미지로 교체)를 최우선으로 따르세요.\n` +
+      `theme: ${JSON.stringify(ref.theme)}\n` +
+      `cards(layout): ${JSON.stringify(ref.cards).slice(0, 12000)}`;
+  }
+
   const context = [
     `## 프로젝트 JSON\n${JSON.stringify(sanitizeProject(body.project))}`,
     `## 현재 선택\n${selection}`,
     attachmentInfo.length ? `## 첨부 이미지\n${attachmentInfo.join("\n")}` : "",
+    templateBlock,
     transcript ? `## 이전 대화\n${transcript}` : "",
     `## 요청\n${body.message.trim()}`,
   ]
@@ -87,16 +118,11 @@ export async function POST(req: Request) {
 
   blocks.push({ type: "text", text: context });
 
-  try {
-    const { data, usage } = await structuredRequest<{ reply: string; operations: unknown[] }>({
-      system: chatSystem(body.project.format, body.lang),
-      content: blocks,
-      schema: chatSchema,
-      model: body.project.model,
-    });
-    return NextResponse.json({ ...data, usage });
-  } catch (e) {
-    console.error("[chat]", e);
-    return NextResponse.json({ error: errorMessage(e) }, { status: 500 });
-  }
+  // Streams `{reply, operations}` — the reply renders char-by-char, then ops apply.
+  return streamResponse({
+    system: chatSystem(body.project.format, body.lang),
+    content: blocks,
+    schema: chatSchema,
+    model: body.project.model,
+  });
 }

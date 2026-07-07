@@ -2,17 +2,21 @@
 
 import { useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
-import type { Card, CardElement, Operation, Project, TextElement } from "@/lib/types";
+import type { Card, CardElement, GenProgress, Operation, Project, TextElement } from "@/lib/types";
 import { EXPORT_WIDTH, FORMATS } from "@/lib/types";
 import { applyOperations, newId } from "@/lib/ops";
 import { collectTargets, snapPosition } from "@/lib/snap";
-import { DEFAULT_MODEL, MODELS } from "@/lib/models";
+import { DEFAULT_MODEL, MODELS, pickDefaultModel } from "@/lib/models";
 import { addUsage, emptyUsage, fmtCost, fmtTokens, type UsageEvent, type UsageTotals } from "@/lib/usage";
 import { useLang } from "@/lib/i18n";
+import { useClickOutside } from "@/lib/hooks";
 import LangSwitch from "./LangSwitch";
 import CardView, { cardHeight } from "./CardView";
 import Inspector from "./Inspector";
 import ChatPanel from "./ChatPanel";
+import ModelPicker from "./ModelPicker";
+import KeyPanel from "./KeyPanel";
+import Slideshow from "./Slideshow";
 
 const SNAP_PX = 6;
 
@@ -39,17 +43,43 @@ interface EditorProps {
   project: Project;
   onChange: (p: Project) => void;
   onClose: () => void;
+  generating?: GenProgress | null;
 }
 
-export default function Editor({ project, onChange, onClose }: EditorProps) {
+export default function Editor({ project, onChange, onClose, generating }: EditorProps) {
   const { lang, t } = useLang();
+  const gen = !!generating;
   const [cardIdx, setCardIdx] = useState(0);
   const [selectedElId, setSelectedElId] = useState<string | null>(null);
   const [editingElId, setEditingElId] = useState<string | null>(null);
   const [guides, setGuides] = useState<{ v: number[]; h: number[] } | null>(null);
   const [exportJob, setExportJob] = useState<{ card: Card; name: string } | null>(null);
   const [exporting, setExporting] = useState(false);
-  const [keyStatus, setKeyStatus] = useState<Record<string, boolean>>({});
+  const [keyStatus, setKeyStatus] = useState<Record<string, boolean> | null>(null);
+  const [keyWritable, setKeyWritable] = useState(true);
+  const [showKeys, setShowKeys] = useState(false);
+  const [showSlideshow, setShowSlideshow] = useState(false);
+  // Brand point color (global, persisted). Changing it recolors every element
+  // that used the old accent — the accent behaves like a variable/token.
+  const [brandColor, setBrandColor] = useState<string>(() => {
+    if (typeof window === "undefined") return project.theme.accent || "#3b82f6";
+    return window.localStorage.getItem("cardnews.accent") || project.theme.accent || "#3b82f6";
+  });
+
+  function setBrand(v: string) {
+    setBrandColor(v);
+    try {
+      window.localStorage.setItem("cardnews.accent", v);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  // Apply an accent to this set: retarget theme.accent AND recolor every element
+  // currently using the old accent color, so the point color cascades everywhere.
+  function applyAccent(next: string) {
+    mutate((p) => reAccent(p, next), true);
+  }
 
   useEffect(() => {
     fetch("/api/keys")
@@ -57,16 +87,30 @@ export default function Editor({ project, onChange, onClose }: EditorProps) {
       .then((d) => {
         const k: Record<string, boolean> = d.keys ?? {};
         setKeyStatus(k);
-        // If this project's model has no connected key, switch to one that does.
+        setKeyWritable(Boolean(d.writable));
+        // If this project's model has no connected key, switch to a value model
+        // whose key is connected.
         const cur = MODELS.find((m) => m.id === (projectRef.current.model ?? DEFAULT_MODEL));
-        const avail = MODELS.find((m) => m.implemented && k[m.envVar]);
-        if ((!cur || !k[cur.envVar]) && avail && avail.id !== projectRef.current.model) {
-          mutate((p) => void (p.model = avail.id));
+        const target = pickDefaultModel(k);
+        const targetInfo = MODELS.find((m) => m.id === target);
+        if ((!cur || !k[cur.envVar]) && targetInfo && k[targetInfo.envVar] && target !== projectRef.current.model) {
+          mutate((p) => void (p.model = target));
         }
       })
-      .catch(() => {});
+      .catch(() => setKeyStatus({}));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // While generating, follow the newest card so the canvas "draws" too; reset
+  // to the first card once the run finishes.
+  useEffect(() => {
+    if (gen) {
+      if (project.cards.length > 0) setCardIdx(project.cards.length - 1);
+    } else {
+      setCardIdx(0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gen, project.cards.length]);
 
   const projectRef = useRef(project);
   projectRef.current = project;
@@ -76,10 +120,11 @@ export default function Editor({ project, onChange, onClose }: EditorProps) {
   const exportResolveRef = useRef<(() => void) | null>(null);
   const historyRef = useRef<Project[]>([]);
 
-  const safeCardIdx = Math.min(cardIdx, project.cards.length - 1);
-  const card = project.cards[safeCardIdx];
-  const selectedEl = card.elements.find((e) => e.id === selectedElId) ?? null;
-  const editingEl = (card.elements.find((e) => e.id === editingElId) ?? null) as TextElement | null;
+  // Cards can momentarily be empty while a fresh generation is still streaming.
+  const safeCardIdx = project.cards.length ? Math.min(cardIdx, project.cards.length - 1) : 0;
+  const card = project.cards[safeCardIdx] as Card | undefined;
+  const selectedEl = card?.elements.find((e) => e.id === selectedElId) ?? null;
+  const editingEl = (card?.elements.find((e) => e.id === editingElId) ?? null) as TextElement | null;
 
   const displayW = project.format === "9:16" ? 330 : 470;
   const displayH = cardHeight(project.format, displayW);
@@ -117,7 +162,7 @@ export default function Editor({ project, onChange, onClose }: EditorProps) {
 
   // --- drag / resize ------------------------------------------------------
   function startDrag(e: React.PointerEvent, el: CardElement, mode: "move" | "resize") {
-    if (editingElId) return;
+    if (editingElId || !card) return;
     e.preventDefault();
     setSelectedElId(el.id);
     const cardNode = stageRef.current?.querySelector<HTMLElement>(".cardview");
@@ -217,6 +262,7 @@ export default function Editor({ project, onChange, onClose }: EditorProps) {
 
   // --- element / card CRUD -------------------------------------------------
   function removeElement(elId: string) {
+    if (!card) return;
     mutate((p) => {
       const c = p.cards.find((x) => x.id === card.id);
       if (c) c.elements = c.elements.filter((e) => e.id !== elId);
@@ -225,10 +271,32 @@ export default function Editor({ project, onChange, onClose }: EditorProps) {
   }
 
   function addElement(el: CardElement) {
+    if (!card) return;
     mutate((p) => {
       p.cards.find((x) => x.id === card.id)?.elements.push(el);
     }, true);
     setSelectedElId(el.id);
+  }
+
+  // Change stacking order (elements render in array order; 0 = back).
+  function reorderElement(elId: string, dir: "back" | "backward" | "forward" | "front") {
+    if (!card) return;
+    mutate((p) => {
+      const c = p.cards.find((x) => x.id === card.id);
+      if (!c) return;
+      const i = c.elements.findIndex((e) => e.id === elId);
+      if (i < 0) return;
+      const [el] = c.elements.splice(i, 1);
+      const j =
+        dir === "back"
+          ? 0
+          : dir === "front"
+            ? c.elements.length
+            : dir === "backward"
+              ? Math.max(0, i - 1)
+              : Math.min(c.elements.length, i + 1);
+      c.elements.splice(j, 0, el);
+    }, true);
   }
 
   function addCard() {
@@ -300,7 +368,7 @@ export default function Editor({ project, onChange, onClose }: EditorProps) {
       chat: [
         ...next.chat,
         { role: "user" as const, text: args.userText, images: args.userThumbs.length ? args.userThumbs : undefined },
-        { role: "assistant" as const, text: args.reply },
+        { role: "assistant" as const, text: args.reply, ops: args.operations.length },
       ],
     };
     onChange(next);
@@ -347,143 +415,225 @@ export default function Editor({ project, onChange, onClose }: EditorProps) {
 
   // ---------------------------------------------------------------------------
   return (
-    <div className="editor">
+    <div className={`editor ${gen ? "gen" : ""}`}>
       <header className="topbar">
-        <button className="btn ghost" onClick={onClose}>
+        <button className="btn ghost" onClick={onClose} disabled={gen}>
           {t("ed_back")}
         </button>
         <input
           className="name-input"
           value={project.name}
+          readOnly={gen}
           onFocus={pushHistory}
           onChange={(e) => mutate((p) => void (p.name = e.target.value))}
         />
         <span className="badge">
           {FORMATS[project.format].label} · {FORMATS[project.format].w}×{FORMATS[project.format].h}
         </span>
-        <select
-          className="model-select"
+        <ModelPicker
           value={project.model ?? DEFAULT_MODEL}
-          onChange={(e) => mutate((p) => void (p.model = e.target.value), true)}
-          title={t("ed_model_title")}
-        >
-          {MODELS.map((m) => (
-            <option key={m.id} value={m.id} disabled={!m.implemented}>
-              {m.short}
-              {!m.implemented ? ` · ${t("model_soon")}` : keyStatus[m.envVar] === false ? ` · ${t("ed_key_missing")}` : ""}
-            </option>
-          ))}
-        </select>
+          onChange={(id) => mutate((p) => void (p.model = id), true)}
+          keys={keyStatus}
+          onConnectKey={() => setShowKeys(true)}
+          disabled={gen}
+        />
+        <div className="accent-ctl" title={t("brand_title")}>
+          <span className="accent-label">{t("brand_label")}</span>
+          <span className="accent-swatch">
+            <input
+              type="color"
+              value={/^#[0-9a-fA-F]{6}$/.test(project.theme.accent) ? project.theme.accent : "#3b82f6"}
+              disabled={gen}
+              onChange={(e) => {
+                const v = e.target.value;
+                applyAccent(v); // cascade: recolor every element using the point color
+                if (!project.ignoreBrand) setBrand(v); // following → this becomes the brand
+              }}
+            />
+          </span>
+          <button
+            className={`accent-auto ${project.ignoreBrand ? "on" : ""}`}
+            disabled={gen}
+            title={t("brand_title")}
+            onClick={() => {
+              if (project.ignoreBrand) {
+                // re-follow the brand: adopt the global brand color into this set
+                mutate((p) => {
+                  p.ignoreBrand = false;
+                  reAccent(p, brandColor);
+                }, true);
+              } else {
+                mutate((p) => void (p.ignoreBrand = true), true);
+              }
+            }}
+          >
+            {t("brand_ignore")}
+          </button>
+        </div>
         <UsageChip usage={project.usage} />
         <div className="spacer" />
         <LangSwitch />
-        <button className="btn ghost" onClick={undo} disabled={historyRef.current.length === 0}>
+        <button className="btn ghost" onClick={undo} disabled={gen || historyRef.current.length === 0}>
           {t("ed_undo")}
         </button>
         <button
+          className="btn ghost"
+          onClick={() => setShowSlideshow(true)}
+          disabled={gen || project.cards.length === 0}
+        >
+          {t("ed_slideshow")}
+        </button>
+        <button
           className="btn"
-          disabled={exporting}
-          onClick={() => exportPng([{ card, index: safeCardIdx }])}
+          disabled={exporting || gen || !card}
+          onClick={() => card && exportPng([{ card, index: safeCardIdx }])}
         >
           {t("ed_export_one")}
         </button>
         <button
           className="btn primary"
-          disabled={exporting}
+          disabled={exporting || gen || project.cards.length === 0}
           onClick={() => exportPng(project.cards.map((c, i) => ({ card: c, index: i })))}
         >
           {exporting ? t("ed_exporting") : t("ed_export_all")}
         </button>
       </header>
 
-      <div className="editor-body">
-        <aside className="cards-strip">
-          {project.cards.map((c, i) => (
-            <div
-              key={c.id}
-              className={`thumb ${i === safeCardIdx ? "active" : ""}`}
-              onClick={() => {
-                setCardIdx(i);
-                setSelectedElId(null);
-                setEditingElId(null);
-              }}
-            >
-              <div className="thumb-preview">
-                <CardView card={c} theme={project.theme} format={project.format} width={112} />
-              </div>
-              <div className="thumb-bar">
-                <span className="thumb-num">{i + 1}</span>
-                <button title={t("th_up")} onClick={(e) => (e.stopPropagation(), moveCard(i, -1))}>↑</button>
-                <button title={t("th_down")} onClick={(e) => (e.stopPropagation(), moveCard(i, 1))}>↓</button>
-                <button title={t("th_dup")} onClick={(e) => (e.stopPropagation(), duplicateCard(i))}>⧉</button>
-                <button title={t("th_del")} onClick={(e) => (e.stopPropagation(), removeCard(i))}>✕</button>
-              </div>
-            </div>
-          ))}
-          <button className="btn add-card" onClick={addCard}>
-            {t("ed_add_card")}
-          </button>
-        </aside>
+      <div className={`editor-body ${gen ? "gen" : ""}`}>
+        {gen ? (
+          <>
+            <aside className="cards-strip gen">
+              {project.cards.map((c, i) => (
+                <div key={c.id} className={`thumb ${i === safeCardIdx ? "active" : ""}`}>
+                  <div className="thumb-preview">
+                    <CardView card={c} theme={project.theme} format={project.format} width={112} />
+                  </div>
+                  <div className="thumb-bar">
+                    <span className="thumb-num">{i + 1}</span>
+                  </div>
+                </div>
+              ))}
+              {Array.from({ length: Math.max(0, (generating?.total ?? 0) - project.cards.length) }).map((_, i) => (
+                <div key={`ghost-${i}`} className="thumb ghost">
+                  <div className="thumb-preview shimmer" />
+                </div>
+              ))}
+            </aside>
 
-        <section className="canvas-area">
-          <div className="canvas-stage" ref={stageRef} style={{ width: displayW, height: displayH }}>
-            <CardView
+            <section className="canvas-area gen-canvas">
+              {card ? (
+                <div className="canvas-stage" style={{ width: displayW, height: displayH }}>
+                  <CardView key={card.id} card={card} theme={project.theme} format={project.format} width={displayW} />
+                </div>
+              ) : (
+                <div className="gen-prep" style={{ width: displayW, height: displayH }}>
+                  <div className="gen-spinner" />
+                  <p>{t("gen_designing")}</p>
+                </div>
+              )}
+              <div className="gen-progress-pill">
+                <span className="gen-spinner sm" />
+                {project.cards.length > 0
+                  ? lang === "ko"
+                    ? `카드 ${project.cards.length} / ${generating?.total} 만드는 중…`
+                    : `Building card ${project.cards.length} / ${generating?.total}…`
+                  : t("gen_designing")}
+              </div>
+            </section>
+          </>
+        ) : card ? (
+          <>
+            <aside className="cards-strip">
+              {project.cards.map((c, i) => (
+                <div
+                  key={c.id}
+                  className={`thumb ${i === safeCardIdx ? "active" : ""}`}
+                  onClick={() => {
+                    setCardIdx(i);
+                    setSelectedElId(null);
+                    setEditingElId(null);
+                  }}
+                >
+                  <div className="thumb-preview">
+                    <CardView card={c} theme={project.theme} format={project.format} width={112} />
+                  </div>
+                  <div className="thumb-bar">
+                    <span className="thumb-num">{i + 1}</span>
+                    <button title={t("th_up")} onClick={(e) => (e.stopPropagation(), moveCard(i, -1))}>↑</button>
+                    <button title={t("th_down")} onClick={(e) => (e.stopPropagation(), moveCard(i, 1))}>↓</button>
+                    <button title={t("th_dup")} onClick={(e) => (e.stopPropagation(), duplicateCard(i))}>⧉</button>
+                    <button title={t("th_del")} onClick={(e) => (e.stopPropagation(), removeCard(i))}>✕</button>
+                  </div>
+                </div>
+              ))}
+              <button className="btn add-card" onClick={addCard}>
+                {t("ed_add_card")}
+              </button>
+            </aside>
+
+            <section className="canvas-area">
+              <div className="canvas-stage" ref={stageRef} style={{ width: displayW, height: displayH }}>
+                <CardView
+                  card={card}
+                  theme={project.theme}
+                  format={project.format}
+                  width={displayW}
+                  selectedElementId={selectedElId}
+                  editingElementId={editingElId}
+                  guides={guides ?? undefined}
+                  onElementPointerDown={(e, el) => startDrag(e, el, "move")}
+                  onElementDoubleClick={(el) => {
+                    if (el.type === "text") {
+                      pushHistory();
+                      setEditingElId(el.id);
+                    }
+                  }}
+                  onResizeStart={(e, el) => startDrag(e, el, "resize")}
+                  onBackgroundPointerDown={() => {
+                    setSelectedElId(null);
+                    setEditingElId(null);
+                  }}
+                />
+                {editingEl && (
+                  <InlineTextEditor
+                    el={editingEl}
+                    scale={scale}
+                    fontFamily={editingEl.fontFamily || project.theme.fontFamily}
+                    onChange={(text) => patchElement(card.id, editingEl.id, { text })}
+                    onDone={() => setEditingElId(null)}
+                  />
+                )}
+              </div>
+            </section>
+
+            <Inspector
+              project={project}
               card={card}
-              theme={project.theme}
-              format={project.format}
-              width={displayW}
-              selectedElementId={selectedElId}
-              editingElementId={editingElId}
-              guides={guides ?? undefined}
-              onElementPointerDown={(e, el) => startDrag(e, el, "move")}
-              onElementDoubleClick={(el) => {
-                if (el.type === "text") {
-                  pushHistory();
-                  setEditingElId(el.id);
-                }
-              }}
-              onResizeStart={(e, el) => startDrag(e, el, "resize")}
-              onBackgroundPointerDown={() => {
-                setSelectedElId(null);
-                setEditingElId(null);
-              }}
+              element={selectedEl}
+              beginEdit={pushHistory}
+              onPatchElement={(patch, withHistory) =>
+                selectedEl && patchElement(card.id, selectedEl.id, patch, withHistory)
+              }
+              onPatchCard={(patch) => mutate((p) => Object.assign(p.cards.find((c) => c.id === card.id)!, patch), true)}
+              onPatchTheme={(patch) => mutate((p) => Object.assign(p.theme, patch), true)}
+              onRemoveElement={() => selectedEl && removeElement(selectedEl.id)}
+              onReorderElement={reorderElement}
+              onSelectElement={setSelectedElId}
+              onAddElement={addElement}
             />
-            {editingEl && (
-              <InlineTextEditor
-                el={editingEl}
-                scale={scale}
-                fontFamily={editingEl.fontFamily || project.theme.fontFamily}
-                onChange={(text) => patchElement(card.id, editingEl.id, { text })}
-                onDone={() => setEditingElId(null)}
-              />
-            )}
-          </div>
-        </section>
 
-        <Inspector
-          project={project}
-          card={card}
-          element={selectedEl}
-          beginEdit={pushHistory}
-          onPatchElement={(patch, withHistory) =>
-            selectedEl && patchElement(card.id, selectedEl.id, patch, withHistory)
-          }
-          onPatchCard={(patch) => mutate((p) => Object.assign(p.cards.find((c) => c.id === card.id)!, patch), true)}
-          onPatchTheme={(patch) => mutate((p) => Object.assign(p.theme, patch), true)}
-          onRemoveElement={() => selectedEl && removeElement(selectedEl.id)}
-          onAddElement={addElement}
-        />
-
-        <ChatPanel
-          project={project}
-          selection={{ cardId: card.id, elementId: selectedElId ?? undefined }}
-          selectionLabel={
-            selectedEl
-              ? `${t("sel_card")} ${safeCardIdx + 1} · ${selectedEl.type === "text" ? t("sel_text") : selectedEl.type === "shape" ? t("sel_shape") : t("sel_image")}`
-              : `${t("sel_card")} ${safeCardIdx + 1}`
-          }
-          onApply={applyChat}
-        />
+            <ChatPanel
+              project={project}
+              selection={{ cardId: card.id, elementId: selectedElId ?? undefined }}
+              selectionLabel={
+                selectedEl
+                  ? `${t("sel_card")} ${safeCardIdx + 1} · ${selectedEl.type === "text" ? t("sel_text") : selectedEl.type === "shape" ? t("sel_shape") : t("sel_image")}`
+                  : `${t("sel_card")} ${safeCardIdx + 1}`
+              }
+              onApply={applyChat}
+            />
+          </>
+        ) : null}
       </div>
 
       {exportJob && (
@@ -493,22 +643,67 @@ export default function Editor({ project, onChange, onClose }: EditorProps) {
           </div>
         </div>
       )}
+
+      {showSlideshow && project.cards.length > 0 && (
+        <Slideshow project={project} start={safeCardIdx} onClose={() => setShowSlideshow(false)} />
+      )}
+
+      {showKeys && keyStatus && (
+        <div className="modal-overlay" onClick={() => setShowKeys(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <span>{t("modal_title")}</span>
+              <button className="modal-close" onClick={() => setShowKeys(false)}>
+                ✕
+              </button>
+            </div>
+            <KeyPanel
+              keys={keyStatus}
+              writable={keyWritable}
+              onSaved={(v) => setKeyStatus((k) => ({ ...(k ?? {}), [v]: true }))}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
+}
+
+// Normalize a hex color for comparison (#abc → #aabbcc, lowercased).
+function normHex(c: string): string {
+  const h = c.trim().toLowerCase();
+  const m = /^#([0-9a-f]{3})$/.exec(h);
+  return m ? `#${m[1].split("").map((x) => x + x).join("")}` : h;
+}
+
+// Point color as a token: set theme.accent and recolor every text/shape element
+// that used the previous accent, so one change updates it everywhere.
+function reAccent(p: Project, next: string) {
+  const prev = normHex(p.theme.accent);
+  p.theme.accent = next;
+  for (const c of p.cards) {
+    for (const el of c.elements) {
+      if ((el.type === "text" || el.type === "shape") && normHex(el.color) === prev) {
+        el.color = next;
+      }
+    }
+  }
 }
 
 function UsageChip({ usage }: { usage?: UsageTotals }) {
   const { lang, t } = useLang();
   const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  useClickOutside(wrapRef, () => setOpen(false), open);
   const u = usage ?? emptyUsage();
   const totalTokens = u.inputTokens + u.outputTokens + u.cacheReadTokens + u.cacheCreationTokens;
   return (
-    <div className="usage-wrap">
+    <div className="usage-wrap" ref={wrapRef}>
       <button className="btn ghost" onClick={() => setOpen((v) => !v)} title={t("usage_title")}>
         ⚡ {fmtCost(u.costUsd)} · {fmtTokens(totalTokens)} tok
       </button>
       {open && (
-        <div className="usage-pop" onMouseLeave={() => setOpen(false)}>
+        <div className="usage-pop">
           <div className="usage-row big">
             <span>{t("usage_total")}</span>
             <b>{fmtCost(u.costUsd)}</b>

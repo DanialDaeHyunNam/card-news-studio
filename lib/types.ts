@@ -26,6 +26,7 @@ export interface TextElement {
   lineHeight: number;
   fontFamily?: string; // overrides theme.fontFamily (e.g. serif for story cards)
   letterSpacing?: number; // em units; e.g. -0.03 tight headline, 0.1 spaced overline
+  opacity?: number; // 0–1 element alpha (default 1)
 }
 
 export interface ShapeElement {
@@ -37,6 +38,7 @@ export interface ShapeElement {
   h: number;
   color: string;
   radius: number;
+  opacity?: number; // 0–1 element alpha (default 1) — handy for translucent scrims
 }
 
 export interface ImageElement {
@@ -49,6 +51,8 @@ export interface ImageElement {
   src: string; // data URL
   fit: "cover" | "contain";
   radius: number;
+  dim?: number; // 0–1 black overlay opacity over the image (scrim for text readability)
+  opacity?: number; // 0–1 element alpha (default 1)
 }
 
 export type CardElement = TextElement | ShapeElement | ImageElement;
@@ -70,6 +74,7 @@ export interface ChatMessage {
   role: "user" | "assistant";
   text: string;
   images?: string[]; // small thumbnails for display only
+  ops?: number; // operations applied (assistant turns) — drives the "done" marker
 }
 
 export interface Project {
@@ -80,6 +85,7 @@ export interface Project {
   cards: Card[];
   chat: ChatMessage[];
   model?: string; // lib/models.ts id; undefined = default
+  ignoreBrand?: boolean; // this set uses a custom accent instead of the brand color
   usage?: import("./usage").UsageTotals; // cumulative AI spend for this project
   createdAt: number;
   updatedAt: number;
@@ -93,6 +99,7 @@ export interface Operation {
     | "update_element"
     | "add_element"
     | "remove_element"
+    | "reorder_element"
     | "update_card"
     | "add_card"
     | "remove_card"
@@ -103,6 +110,21 @@ export interface Operation {
   patch?: Record<string, unknown>;
   element?: Record<string, unknown>;
   card?: { background?: string; elements?: Record<string, unknown>[] };
+}
+
+// Generation request from Home → Root, and the live progress Root feeds the Editor.
+export interface GenConfig {
+  topic: string;
+  format: Format;
+  cardCount: number;
+  model: string;
+  referenceId?: string;
+  accent?: string; // fixed brand point color (hex); omitted = AI chooses
+}
+export interface GenProgress {
+  total: number;
+  done: number;
+  phase: "prep" | "cards";
 }
 
 export const DEFAULT_FONT = `Pretendard, -apple-system, "Noto Sans KR", "Apple SD Gothic Neo", sans-serif`;
