@@ -82,6 +82,16 @@ On Vercel it activates automatically via `VERCEL=1`. **Deploy from the project
 folder only** — never a parent directory that might contain other projects or
 private data. Preview the hosted behavior locally with `HOSTED_DEMO=1 bun dev`.
 
+## Releasing (bump the version!)
+
+The app shows its version in the footer, and a locally-running copy compares it
+against the canonical deploy's `/api/version` to prompt updates. That only works
+if you **bump `version` in `package.json` on every release** and redeploy. Skip
+the bump and old local copies never learn there's an update. Use plain
+`MAJOR.MINOR.PATCH` (the compare is numeric per dotted segment). Preview the
+"update available" banner locally without deploying:
+`NEXT_PUBLIC_APP_VERSION=0.0.1 npm run dev`.
+
 ## Pull requests
 
 - Keep PRs focused; describe the change and how you verified it in the browser.
