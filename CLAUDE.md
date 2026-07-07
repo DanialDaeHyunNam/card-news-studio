@@ -106,6 +106,15 @@ pill-shaped topic bar.
   mirrors all-libertas). `/` is statically prerendered → the flag bakes at BUILD
   time, which is correct on Vercel (VERCEL=1 during build). Preview locally with
   `HOSTED_DEMO=1 bun dev`. **Deploy from `card-news/` only**, never a parent dir.
+- **Versioning / releases**: `package.json` `version` is the single source (inlined
+  as `NEXT_PUBLIC_APP_VERSION` by `next.config.ts`, exposed via `/api/version`,
+  shown in header/footer). A local copy compares against the canonical deploy's
+  `/api/version` (`lib/hooks.ts` `useUpdateCheck` → `lib/site.ts` `isNewerVersion`,
+  `CANONICAL_URL`) and shows an "update available" chip/guide when behind. So the
+  update prompt ONLY fires if you **bump the version every release**. Full release
+  checklist (bump → CHANGELOG.md → commit → `git tag` + `gh release create` →
+  redeploy) is in `CONTRIBUTING.md` → Releasing. Keep `CHANGELOG.md` current — the
+  version chip links users to GitHub releases.
 
 ## Status / TODO ideas
 

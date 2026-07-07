@@ -82,14 +82,27 @@ On Vercel it activates automatically via `VERCEL=1`. **Deploy from the project
 folder only** — never a parent directory that might contain other projects or
 private data. Preview the hosted behavior locally with `HOSTED_DEMO=1 bun dev`.
 
-## Releasing (bump the version!)
+## Releasing
 
-The app shows its version in the footer, and a locally-running copy compares it
-against the canonical deploy's `/api/version` to prompt updates. That only works
-if you **bump `version` in `package.json` on every release** and redeploy. Skip
-the bump and old local copies never learn there's an update. Use plain
-`MAJOR.MINOR.PATCH` (the compare is numeric per dotted segment). Preview the
-"update available" banner locally without deploying:
+The app shows its version in the header/footer, and a locally-running copy
+compares it against the canonical deploy's `/api/version` to prompt updates. The
+"update available" chip only fires when the deployed version is higher, so every
+release must bump the version, write notes, tag, and redeploy:
+
+1. **Bump** `version` in `package.json` (`MAJOR.MINOR.PATCH`; the compare is
+   numeric per dotted segment).
+2. **Write release notes** — add a section to [CHANGELOG.md](CHANGELOG.md) for
+   the new version (Added / Changed / Fixed). The version chip links users to the
+   GitHub releases page, so notes are what they see.
+3. **Commit** (`Release vX.Y.Z`) and push.
+4. **Tag + GitHub release** so the releases page has content:
+   ```bash
+   git tag vX.Y.Z && git push origin vX.Y.Z
+   gh release create vX.Y.Z --title "vX.Y.Z" --notes-file <(sed -n '/## X.Y.Z/,/## /p' CHANGELOG.md)
+   ```
+5. **Redeploy** so the canonical `/api/version` returns the new version.
+
+Preview the "update available" state locally without deploying anything:
 `NEXT_PUBLIC_APP_VERSION=0.0.1 npm run dev`.
 
 ## Pull requests
