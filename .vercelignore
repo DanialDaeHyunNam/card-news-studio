@@ -1,0 +1,12 @@
+# Never upload local secrets to the deploy. The hosted site is a showcase +
+# install guide (see ARCHITECTURE.md → Hosted vs. local mode) — it must NOT
+# carry any provider key, or the public /api/* routes could be abused.
+.env
+.env.local
+.env*.local
+
+# Local-only cruft
+.gstack/
+
+# Agent working notes — already public in the repo, not needed on the deploy
+CLAUDE.md
