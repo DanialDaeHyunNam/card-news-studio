@@ -165,6 +165,27 @@ export default function Home({ projects, error, onGenerate, onOpen, onCreate, on
           <LogoMark size={22} /> Card News Studio
         </div>
         <div className="nav-actions">
+          {!hosted && hasUpdate ? (
+            <button
+              className="btn ghost ver-chip update"
+              onClick={() => setShowUpdate(true)}
+              title={`v${VERSION} → v${latest}`}
+            >
+              ⬆ {t("ver_update_available")}
+            </button>
+          ) : GITHUB_URL ? (
+            <a
+              className="btn ghost ver-chip"
+              href={`${GITHUB_URL}/releases`}
+              target="_blank"
+              rel="noreferrer"
+              title={t("ver_releases")}
+            >
+              v{VERSION}
+            </a>
+          ) : (
+            <span className="btn ghost ver-chip">v{VERSION}</span>
+          )}
           <LangSwitch />
           <button
             className="btn ghost"

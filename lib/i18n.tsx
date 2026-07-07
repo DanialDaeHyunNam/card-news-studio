@@ -290,6 +290,8 @@ const D = {
   // version / update
   ver_latest_tag: ["최신 버전", "latest"],
   ver_check: ["최신 버전 확인 ↗", "Check for the latest ↗"],
+  ver_update_available: ["업데이트 가능", "Update available"],
+  ver_releases: ["릴리스 노트 보기 (GitHub)", "View releases on GitHub"],
   update_banner: ["🔄 새 버전이 나왔어요", "🔄 A new version is available"],
   update_banner_cta: ["업데이트 방법 보기", "How to update"],
   upd_title: ["최신 버전으로 업데이트", "Update to the latest"],

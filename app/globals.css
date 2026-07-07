@@ -2452,6 +2452,30 @@ input[type="range"]::-webkit-slider-thumb {
   color: #b9d0ff;
 }
 
+/* header version chip — subtle when current, solid green when an update exists */
+.ver-chip {
+  font-family: var(--mono, ui-monospace, "SF Mono", Menlo, Consolas, monospace);
+  font-size: 12px;
+  letter-spacing: 0.01em;
+  color: var(--text-dim);
+  padding: 9px 13px;
+}
+.ver-chip:hover:not(:disabled) {
+  color: var(--text);
+}
+.ver-chip.update {
+  font-family: inherit;
+  font-weight: 700;
+  color: #05130d;
+  background: #6ee7b7;
+  border-color: #6ee7b7;
+}
+.ver-chip.update:hover:not(:disabled) {
+  color: #05130d;
+  background: #34d399;
+  border-color: #34d399;
+}
+
 .inst-overlay {
   position: fixed;
   inset: 0;
