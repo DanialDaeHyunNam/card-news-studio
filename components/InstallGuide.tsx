@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { GITHUB_URL } from "@/lib/site";
 import { useLang } from "@/lib/i18n";
+import LangSwitch from "./LangSwitch";
 
 // Shown ONLY on a hosted deploy (see useHosted) — the tool can't run on a public
 // URL because API keys live in .env.local and projects in localStorage, both of
@@ -59,9 +60,12 @@ export default function InstallGuide({ onClose }: { onClose: () => void }) {
   return (
     <div className="inst-overlay" onClick={onClose}>
       <div className="inst-panel" onClick={(e) => e.stopPropagation()}>
-        <button className="inst-close" onClick={onClose} aria-label="Close">
-          ✕
-        </button>
+        <div className="inst-topbar">
+          <LangSwitch />
+          <button className="inst-close" onClick={onClose} aria-label="Close">
+            ✕
+          </button>
+        </div>
 
         <div className="inst-head">
           <h2 className="inst-title">{t("inst_title")}</h2>

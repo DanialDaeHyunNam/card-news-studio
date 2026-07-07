@@ -2358,10 +2358,16 @@ input[type="range"]::-webkit-slider-thumb {
   box-shadow: 0 30px 90px rgba(0, 0, 0, 0.8);
   text-align: left;
 }
-.inst-close {
+.inst-topbar {
   position: absolute;
-  top: 20px;
-  right: 20px;
+  top: 16px;
+  right: 16px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.inst-close {
   background: transparent;
   border: none;
   color: var(--text-dim);
@@ -2382,6 +2388,7 @@ input[type="range"]::-webkit-slider-thumb {
   font-weight: 800;
   letter-spacing: -0.02em;
   margin: 0 0 12px;
+  padding-right: 104px; /* clear the language toggle + close button */
 }
 .inst-lede {
   color: var(--text-dim);
