@@ -4,6 +4,7 @@ import { useState } from "react";
 import { GITHUB_URL } from "@/lib/site";
 import { useLang } from "@/lib/i18n";
 import LangSwitch from "./LangSwitch";
+import CopyButton from "./CopyButton";
 
 // Shown ONLY on a hosted deploy (see useHosted) — the tool can't run on a public
 // URL because API keys live in .env.local and projects in localStorage, both of
@@ -29,27 +30,6 @@ const GIT_URL = "https://git-scm.com/downloads";
 function detectOS(): OS {
   if (typeof navigator === "undefined") return "mac";
   return /win/i.test(navigator.userAgent) ? "win" : "mac";
-}
-
-function CopyButton({ text }: { text: string }) {
-  const { t } = useLang();
-  const [done, setDone] = useState(false);
-  return (
-    <button
-      className={`inst-copy ${done ? "ok" : ""}`}
-      onClick={async () => {
-        try {
-          await navigator.clipboard.writeText(text);
-          setDone(true);
-          setTimeout(() => setDone(false), 1400);
-        } catch {
-          /* clipboard blocked (insecure context) — user can select manually */
-        }
-      }}
-    >
-      {done ? t("inst_copied") : t("inst_copy")}
-    </button>
-  );
 }
 
 export default function InstallGuide({ onClose }: { onClose: () => void }) {

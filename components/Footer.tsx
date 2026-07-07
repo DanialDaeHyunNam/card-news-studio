@@ -1,7 +1,8 @@
 "use client";
 
-import { GITHUB_URL, SOCIAL } from "@/lib/site";
+import { CANONICAL_URL, GITHUB_URL, SOCIAL, VERSION } from "@/lib/site";
 import { useLang } from "@/lib/i18n";
+import { useHosted } from "@/lib/hooks";
 import LogoMark from "./LogoMark";
 
 function XIcon() {
@@ -14,6 +15,7 @@ function XIcon() {
 
 export default function Footer() {
   const { t } = useLang();
+  const hosted = useHosted();
   return (
     <footer className="site-footer">
       <div className="footer-inner">
@@ -58,7 +60,19 @@ export default function Footer() {
         </div>
 
         <div className="footer-bottom">
-          <span>© 2026 Card News Studio. All rights reserved.</span>
+          <span className="footer-copy">
+            © 2026 Card News Studio. All rights reserved.
+            <span className="footer-version">
+              v{VERSION}
+              {hosted ? (
+                <span className="footer-latest-tag">{t("ver_latest_tag")}</span>
+              ) : (
+                <a href={CANONICAL_URL} target="_blank" rel="noreferrer" className="footer-check">
+                  {t("ver_check")}
+                </a>
+              )}
+            </span>
+          </span>
           <div className="footer-socials">
             <a href={SOCIAL.threads.url} target="_blank" rel="noreferrer" title="Threads">
               <span className="footer-icon">@</span>

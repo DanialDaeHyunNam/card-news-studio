@@ -286,6 +286,30 @@ const D = {
   ],
   inst_or: ["또는, 직접 설치하기 ↓", "Or, install it yourself ↓"],
   inst_source: ["소스 코드 보기 (GitHub) ↗", "View source on GitHub ↗"],
+
+  // version / update
+  ver_latest_tag: ["최신 버전", "latest"],
+  ver_check: ["최신 버전 확인 ↗", "Check for the latest ↗"],
+  update_banner: ["🔄 새 버전이 나왔어요", "🔄 A new version is available"],
+  update_banner_cta: ["업데이트 방법 보기", "How to update"],
+  upd_title: ["최신 버전으로 업데이트", "Update to the latest"],
+  upd_lede: [
+    "새 버전이 나왔어요. 아래 방법 중 하나로 업데이트하면 최신 기능·수정이 바로 반영됩니다. 프로젝트와 API 키는 그대로 유지돼요.",
+    "A newer version is out. Update with either method below to get the latest features and fixes. Your projects and API key stay exactly as they are.",
+  ],
+  upd_ai_sub: [
+    "AI 코딩 CLI(Claude Code·Cursor 등)를 켜고 아래 한 줄만 붙여넣으면, 알아서 최신으로 올리고 다시 실행합니다.",
+    "Open your AI coding CLI (Claude Code, Cursor, …) and paste the one line below — it pulls the latest and reruns it for you.",
+  ],
+  upd_ai_prompt: [
+    "지금 이 card-news-studio 폴더를 최신 버전으로 업데이트하고 다시 실행해줘: git pull 받고, 의존성 설치(npm install) 후 개발 서버를 재시작(npm run dev)해줘.",
+    "Update this card-news-studio folder to the latest version and run it again: git pull, then npm install, then restart the dev server with npm run dev.",
+  ],
+  upd_manual_t: ["직접 업데이트하기", "Update it yourself"],
+  upd_manual_desc: [
+    "card-news-studio 폴더의 터미널에서 아래를 실행하세요. (개발 서버가 켜져 있으면 Ctrl+C로 먼저 끄고요.)",
+    "In the card-news-studio folder's terminal, run these. (If the dev server is running, stop it first with Ctrl+C.)",
+  ],
 } as const;
 
 export type DictKey = keyof typeof D;

@@ -5,7 +5,7 @@ import type { Format, GenConfig, Project } from "@/lib/types";
 import { FORMATS, defaultTheme } from "@/lib/types";
 import { newId } from "@/lib/ops";
 import { getTemplates, instantiateTemplate } from "@/lib/templates";
-import { GITHUB_URL } from "@/lib/site";
+import { GITHUB_URL, VERSION } from "@/lib/site";
 import { MODELS, PROVIDER_LABELS, pickDefaultModel } from "@/lib/models";
 import CardView from "./CardView";
 import HowItWorks from "./HowItWorks";
@@ -15,7 +15,8 @@ import KeyPanel from "./KeyPanel";
 import LangSwitch from "./LangSwitch";
 import ModelPicker from "./ModelPicker";
 import InstallGuide from "./InstallGuide";
-import { useHosted } from "@/lib/hooks";
+import UpdateGuide from "./UpdateGuide";
+import { useHosted, useUpdateCheck } from "@/lib/hooks";
 import { useLang, type DictKey } from "@/lib/i18n";
 
 interface HomeProps {
@@ -35,6 +36,10 @@ export default function Home({ projects, error, onGenerate, onOpen, onCreate, on
   // every "real action" opens the install guide instead of doing the action.
   const hosted = useHosted();
   const [showInstall, setShowInstall] = useState(false);
+  // Local copies check the canonical deploy for a newer version.
+  const { latest, hasUpdate } = useUpdateCheck(hosted);
+  const [showUpdate, setShowUpdate] = useState(false);
+  const [updDismissed, setUpdDismissed] = useState(false);
   const [topic, setTopic] = useState("");
   const [format, setFormat] = useState<Format>("4:5");
   const [cardCount, setCardCount] = useState(6);
@@ -136,6 +141,24 @@ export default function Home({ projects, error, onGenerate, onOpen, onCreate, on
           <span>🖥 {t("hosted_banner")}</span>
           <b>{t("hosted_banner_cta")} →</b>
         </button>
+      )}
+      {!hosted && hasUpdate && !updDismissed && (
+        <div className="update-banner">
+          <button className="update-banner-main" onClick={() => setShowUpdate(true)}>
+            <span>
+              {t("update_banner")} — <b>v{latest}</b>{" "}
+              <span className="update-cur">({lang === "ko" ? "현재" : "now"} v{VERSION})</span>
+            </span>
+            <b className="update-cta">{t("update_banner_cta")} →</b>
+          </button>
+          <button
+            className="update-banner-x"
+            title="✕"
+            onClick={() => setUpdDismissed(true)}
+          >
+            ✕
+          </button>
+        </div>
       )}
       <header className="home-nav">
         <div className="logo">
@@ -355,6 +378,7 @@ export default function Home({ projects, error, onGenerate, onOpen, onCreate, on
       <Footer />
 
       {showInstall && <InstallGuide onClose={() => setShowInstall(false)} />}
+      {showUpdate && <UpdateGuide latest={latest} onClose={() => setShowUpdate(false)} />}
     </div>
   );
 }

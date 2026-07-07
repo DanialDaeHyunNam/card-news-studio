@@ -2336,6 +2336,122 @@ input[type="range"]::-webkit-slider-thumb {
   background: linear-gradient(180deg, rgba(59, 130, 246, 0.18), rgba(59, 130, 246, 0.06));
 }
 
+/* update-available banner (local copy only) — green to read as "good news" */
+.update-banner {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(52, 211, 153, 0.12), rgba(52, 211, 153, 0.04));
+}
+.update-banner:hover {
+  background: linear-gradient(180deg, rgba(52, 211, 153, 0.17), rgba(52, 211, 153, 0.05));
+}
+.update-banner-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: none;
+  background: none;
+  color: var(--text);
+  font-size: 13px;
+  padding: 11px 20px;
+  flex-wrap: wrap;
+}
+.update-banner-main b {
+  color: #6ee7b7;
+  font-weight: 700;
+}
+.update-cur {
+  color: var(--text-dim);
+  font-weight: 400;
+}
+.update-cta {
+  white-space: nowrap;
+}
+.update-banner-x {
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  padding: 0 16px;
+  font-size: 13px;
+}
+.update-banner-x:hover {
+  color: var(--text);
+}
+
+/* update guide — version chips + manual section */
+.upd-versions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 14px;
+}
+.upd-ver {
+  font-family: var(--mono, ui-monospace, "SF Mono", Menlo, Consolas, monospace);
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+}
+.upd-ver.old {
+  color: var(--text-dim);
+}
+.upd-ver.new {
+  color: #6ee7b7;
+  border-color: rgba(52, 211, 153, 0.4);
+  background: rgba(52, 211, 153, 0.08);
+}
+.upd-arrow {
+  color: var(--text-dim);
+}
+.upd-manual h3 {
+  font-size: 17px;
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+.upd-manual > p {
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0 0 14px;
+  max-width: 58ch;
+}
+
+/* footer version line */
+.footer-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.footer-version {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+.footer-latest-tag {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6ee7b7;
+  border: 1px solid rgba(52, 211, 153, 0.4);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+.footer-check {
+  color: #8ab4ff;
+}
+.footer-check:hover {
+  color: #b9d0ff;
+}
+
 .inst-overlay {
   position: fixed;
   inset: 0;
