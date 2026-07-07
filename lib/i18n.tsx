@@ -274,6 +274,17 @@ const D = {
   inst_copy: ["복사", "Copy"],
   inst_copied: ["복사됨 ✓", "Copied ✓"],
   inst_browser_hint: ["여기서 카드 생성·편집·PNG 내보내기를 합니다.", "Generate, edit, and export PNGs right here."],
+  inst_ai_head: ["⚡ 가장 쉬운 방법 — AI 코딩 CLI", "⚡ Easiest way — an AI coding CLI"],
+  inst_ai_rec: ["강력 추천", "Strongly recommended"],
+  inst_ai_sub: [
+    "Claude Code·Cursor 같은 AI 코딩 CLI를 이미 쓴다면, 터미널에서 켜고 아래 한 줄만 붙여넣으세요. 필요한 건 알아서 설치하고 실행까지 해줍니다. (뭔지 모르면 아래 수동 설치를 따라가세요.)",
+    "If you already use an AI coding CLI (Claude Code, Cursor, …), open it in your terminal and paste the one line below. It installs whatever's needed and runs it for you. (Not sure what that is? Use the manual install below.)",
+  ],
+  inst_ai_prompt: [
+    "{repo} 를 클론해서 로컬에서 실행해줘. 실행에 필요한 게 (Node.js 등) 없으면 알아서 설치하고, 의존성 설치 후 개발 서버를 띄운 다음 localhost:3000을 브라우저로 열어줘.",
+    "Clone {repo} and run it locally. If anything it needs (Node.js, etc.) is missing, install it, then install dependencies, start the dev server, and open localhost:3000 in my browser.",
+  ],
+  inst_or: ["또는, 직접 설치하기 ↓", "Or, install it yourself ↓"],
   inst_source: ["소스 코드 보기 (GitHub) ↗", "View source on GitHub ↗"],
 } as const;
 

@@ -54,6 +54,7 @@ function CopyButton({ text }: { text: string }) {
 export default function InstallGuide({ onClose }: { onClose: () => void }) {
   const { t } = useLang();
   const [os, setOs] = useState<OS>(detectOS);
+  const aiPrompt = t("inst_ai_prompt").replace("{repo}", REPO_URL);
 
   return (
     <div className="inst-overlay" onClick={onClose}>
@@ -70,14 +71,32 @@ export default function InstallGuide({ onClose }: { onClose: () => void }) {
             <span className="inst-badge">🖥 {t("inst_badge_local")}</span>
             <span className="inst-badge">🔒 {t("inst_badge_key")}</span>
           </div>
-          <div className="inst-os seg" role="tablist">
-            <button className={os === "mac" ? "on" : ""} onClick={() => setOs("mac")}>
-              {t("inst_os_mac")}
-            </button>
-            <button className={os === "win" ? "on" : ""} onClick={() => setOs("win")}>
-              {t("inst_os_win")}
-            </button>
+        </div>
+
+        {/* Shortcut for people who already run an AI coding CLI: one prompt and
+            the agent installs prerequisites + runs it. Presented as the primary
+            (recommended) path; the manual OS steps are the fallback below. */}
+        <div className="inst-ai">
+          <div className="inst-ai-head">
+            <span>{t("inst_ai_head")}</span>
+            <span className="inst-ai-rec">{t("inst_ai_rec")}</span>
           </div>
+          <p className="inst-ai-sub">{t("inst_ai_sub")}</p>
+          <div className="inst-prompt-box">
+            <p className="inst-prompt-text">{aiPrompt}</p>
+            <CopyButton text={aiPrompt} />
+          </div>
+        </div>
+
+        <div className="inst-or">{t("inst_or")}</div>
+
+        <div className="inst-os seg" role="tablist">
+          <button className={os === "mac" ? "on" : ""} onClick={() => setOs("mac")}>
+            {t("inst_os_mac")}
+          </button>
+          <button className={os === "win" ? "on" : ""} onClick={() => setOs("win")}>
+            {t("inst_os_win")}
+          </button>
         </div>
 
         <ol className="inst-steps">
