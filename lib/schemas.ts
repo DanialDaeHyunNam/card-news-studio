@@ -19,6 +19,7 @@ const textElement = {
     lineHeight: { type: "number" },
     fontFamily: { type: "string" },
     letterSpacing: { type: "number" },
+    opacity: { type: "number" },
   },
 };
 
@@ -34,6 +35,7 @@ const shapeElement = {
     h: { type: "number" },
     color: { type: "string" },
     radius: { type: "number" },
+    opacity: { type: "number" },
   },
 };
 
@@ -51,6 +53,8 @@ const imageElement = {
     h: { type: "number" },
     fit: { type: "string", enum: ["cover", "contain"] },
     radius: { type: "number" },
+    dim: { type: "number" },
+    opacity: { type: "number" },
   },
 };
 
@@ -103,6 +107,8 @@ const patchSchema = {
     h: { type: "number" },
     radius: { type: "number" },
     fit: { type: "string", enum: ["cover", "contain"] },
+    dim: { type: "number" },
+    opacity: { type: "number" },
     background: { type: "string" },
     textColor: { type: "string" },
     accent: { type: "string" },
@@ -121,6 +127,7 @@ const operationSchema = {
         "update_element",
         "add_element",
         "remove_element",
+        "reorder_element",
         "update_card",
         "add_card",
         "remove_card",

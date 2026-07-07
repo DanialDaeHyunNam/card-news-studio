@@ -37,6 +37,7 @@ export function normalizeElement(
       lineHeight: num(raw.lineHeight, 1.35, 0.8, 2.5),
       fontFamily: typeof raw.fontFamily === "string" && raw.fontFamily ? raw.fontFamily : undefined,
       letterSpacing: raw.letterSpacing !== undefined ? num(raw.letterSpacing, 0, -0.2, 1) : undefined,
+      opacity: raw.opacity !== undefined ? num(raw.opacity, 1, 0, 1) : undefined,
     };
   }
   if (type === "shape") {
@@ -49,6 +50,7 @@ export function normalizeElement(
       h: num(raw.h, 1, 0.2, 200),
       color: str(raw.color, theme.accent),
       radius: num(raw.radius, 0, 0, 500),
+      opacity: raw.opacity !== undefined ? num(raw.opacity, 1, 0, 1) : undefined,
     };
   }
   if (type === "image") {
@@ -67,6 +69,8 @@ export function normalizeElement(
       src,
       fit: raw.fit === "contain" ? "contain" : "cover",
       radius: num(raw.radius, 0, 0, 500),
+      dim: raw.dim !== undefined ? num(raw.dim, 0, 0, 1) : undefined,
+      opacity: raw.opacity !== undefined ? num(raw.opacity, 1, 0, 1) : undefined,
     };
   }
   return null;
@@ -83,9 +87,9 @@ export function normalizeCard(
   return { id: newId(), background: str(raw.background, theme.background), elements };
 }
 
-const TEXT_PATCH_KEYS = ["text", "fontSize", "fontWeight", "color", "align", "lineHeight", "fontFamily", "letterSpacing", "x", "y", "w"] as const;
-const SHAPE_PATCH_KEYS = ["color", "radius", "x", "y", "w", "h"] as const;
-const IMAGE_PATCH_KEYS = ["fit", "radius", "x", "y", "w", "h"] as const;
+const TEXT_PATCH_KEYS = ["text", "fontSize", "fontWeight", "color", "align", "lineHeight", "fontFamily", "letterSpacing", "opacity", "x", "y", "w"] as const;
+const SHAPE_PATCH_KEYS = ["color", "radius", "opacity", "x", "y", "w", "h"] as const;
+const IMAGE_PATCH_KEYS = ["fit", "radius", "dim", "opacity", "x", "y", "w", "h"] as const;
 
 function patchElement(el: CardElement, patch: Record<string, unknown>) {
   const keys: readonly string[] =
@@ -134,11 +138,27 @@ export function applyOperations(project: Project, ops: Operation[], attachments?
       case "add_element": {
         if (!card || !o.element) break;
         const el = normalizeElement(o.element, p.theme, attachments);
-        if (el) card.elements.push(el);
+        // Stacking = array order (index 0 = back). `index` lets the AI drop a
+        // background image behind everything instead of on top.
+        if (el) {
+          const at =
+            o.index !== undefined ? Math.min(Math.max(0, o.index), card.elements.length) : card.elements.length;
+          card.elements.splice(at, 0, el);
+        }
         break;
       }
       case "remove_element": {
         if (card) card.elements = card.elements.filter((e) => e.id !== o.elementId);
+        break;
+      }
+      case "reorder_element": {
+        if (!card) break;
+        const from = card.elements.findIndex((e) => e.id === o.elementId);
+        if (from < 0) break;
+        const [el] = card.elements.splice(from, 1);
+        const to =
+          o.index !== undefined ? Math.min(Math.max(0, o.index), card.elements.length) : card.elements.length;
+        card.elements.splice(to, 0, el);
         break;
       }
       case "add_card": {

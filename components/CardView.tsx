@@ -64,6 +64,7 @@ export default function CardView({
           left: `${el.x}%`,
           top: `${el.y}%`,
           width: `${el.w}%`,
+          opacity: el.opacity,
           cursor: interactive ? "move" : undefined,
           outline: selected ? "1.5px solid #3b82f6" : undefined,
           outlineOffset: 2,
@@ -131,6 +132,16 @@ export default function CardView({
                 draggable={false}
                 style={{ width: "100%", height: "100%", objectFit: el.fit, pointerEvents: "none" }}
               />
+              {el.dim ? (
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    background: `rgba(0,0,0,${el.dim})`,
+                    pointerEvents: "none",
+                  }}
+                />
+              ) : null}
               {selected && <ResizeHandle onPointerDown={(e) => onResizeStart?.(e, el)} />}
             </div>
           );

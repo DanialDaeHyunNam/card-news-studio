@@ -2,8 +2,10 @@
 
 AI card news maker: topic → Claude drafts a themed card set → user refines on a
 canvas (drag + smart guides + AI chat) → PNG export. Built 2026-07-06. This file
-is the working context; README.md is the public-facing doc. **This repo is open
-source (MIT)** — keep README/docs in English, no secrets in code, `.env.local` only.
+is the agent working context; the public-facing docs are `README.md` (overview +
+quickstart), `ARCHITECTURE.md` (deep technical), and `CONTRIBUTING.md` (how to
+extend). **This repo is open source (MIT)** — keep README/docs in English, no
+secrets in code, `.env.local` only.
 
 ## Commands
 
@@ -95,6 +97,15 @@ pill-shaped topic bar.
   ops.ts (normalize/patch) + CardView render together.
 - Model choice is deliberate (`claude-opus-4-8`); don't downgrade for cost without
   the owner's say-so.
+- **Hosted vs local mode**: the tool only runs locally (keys in `.env.local`,
+  projects in localStorage), so a public deploy can't run it. `app/layout.tsx`
+  stamps `<html data-hosted>` when `process.env.VERCEL` (or `HOSTED_DEMO=1`);
+  `useHosted()` (`lib/hooks.ts`) reads it. When hosted, `Home.tsx` shows a
+  "runs locally" banner and routes every real action (generate / template /
+  blank / open) to `components/InstallGuide.tsx` (bilingual macOS/Windows guide,
+  mirrors all-libertas). `/` is statically prerendered → the flag bakes at BUILD
+  time, which is correct on Vercel (VERCEL=1 during build). Preview locally with
+  `HOSTED_DEMO=1 bun dev`. **Deploy from `card-news/` only**, never a parent dir.
 
 ## Status / TODO ideas
 

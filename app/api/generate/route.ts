@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { structuredRequest, errorMessage } from "@/lib/ai";
+import { streamResponse } from "@/lib/ai";
 import { generateSystem } from "@/lib/prompts";
 import { generateSchema } from "@/lib/schemas";
 import { FORMATS, type Format, type Theme } from "@/lib/types";
@@ -12,6 +12,7 @@ interface GenerateBody {
   cardCount?: number;
   model?: string;
   lang?: "ko" | "en";
+  accent?: string; // fixed brand point color (hex)
   reference?: { theme: Theme; sampleTexts: string[] };
   source?: { type: "youtube"; url: string; title: string; author: string; transcript: string };
 }
@@ -44,17 +45,19 @@ export async function POST(req: Request) {
         `이전 카피 예시:\n${body.reference.sampleTexts.slice(0, 12).join("\n")}`,
     );
   }
-
-  try {
-    const { data, usage } = await structuredRequest<{ theme: unknown; cards: unknown[] }>({
-      system: generateSystem(body.format, body.lang),
-      content: parts.join("\n\n"),
-      schema: generateSchema,
-      model: body.model,
-    });
-    return NextResponse.json({ ...data, usage });
-  } catch (e) {
-    console.error("[generate]", e);
-    return NextResponse.json({ error: errorMessage(e) }, { status: 500 });
+  if (body.accent && /^#[0-9a-fA-F]{3,8}$/.test(body.accent)) {
+    parts.push(
+      `## 브랜드 포인트 색 (반드시 지킬 것)\n` +
+        `theme.accent = "${body.accent}" 로 고정. 이 색을 세트 전체의 포인트 색(오버라인/번호/강조/CTA/얇은 바 등)으로 일관되게 사용.\n` +
+        `이 포인트 색이 잘 살도록 배경·딤을 정할 것: 포인트 색과 대비되는 어둡고 차분한 배경을 고르고, 사진 배경이면 딤을 충분히(0.4~0.65) 올려 포인트 색 요소가 또렷하게 튀도록. 배경이나 큰 텍스트를 포인트 색과 비슷하게 칠해 묻히게 하지 말 것.`,
+    );
   }
+
+  // Streams `{theme, cards}` as SSE — the client renders each card as it lands.
+  return streamResponse({
+    system: generateSystem(body.format, body.lang),
+    content: parts.join("\n\n"),
+    schema: generateSchema,
+    model: body.model,
+  });
 }

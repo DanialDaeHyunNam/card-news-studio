@@ -16,7 +16,24 @@ interface InspectorProps {
   onPatchCard: (patch: Partial<Card>) => void;
   onPatchTheme: (patch: Partial<Theme>) => void;
   onRemoveElement: () => void;
+  onReorderElement: (id: string, dir: "back" | "backward" | "forward" | "front") => void;
+  onSelectElement: (id: string) => void;
   onAddElement: (el: CardElement) => void;
+}
+
+// A shape/image that spans (nearly) the whole card is acting as a background.
+function isFullCover(el: { x: number; y: number; w: number; h: number }): boolean {
+  return el.x <= 5 && el.y <= 5 && el.w >= 90 && el.h >= 90;
+}
+
+// One-line label for a layer row.
+function layerLabel(
+  el: CardElement,
+  labels: { shape: string; image: string; dim: string; bgImage: string },
+): string {
+  if (el.type === "shape") return isFullCover(el) ? labels.dim : labels.shape;
+  if (el.type === "image") return isFullCover(el) ? labels.bgImage : labels.image;
+  return el.text.trim().replace(/\s+/g, " ").slice(0, 22) || labels.shape;
 }
 
 export default function Inspector({
@@ -28,6 +45,8 @@ export default function Inspector({
   onPatchCard,
   onPatchTheme,
   onRemoveElement,
+  onReorderElement,
+  onSelectElement,
   onAddElement,
 }: InspectorProps) {
   const { t } = useLang();
@@ -109,6 +128,56 @@ export default function Inspector({
           }}
         />
       </div>
+
+      {card.elements.length > 0 && (
+        <div className="layers">
+          <div className="panel-subtitle">{t("insp_layers")}</div>
+          <div className="layer-list">
+            {card.elements
+              .slice()
+              .reverse()
+              .map((el) => (
+                <div
+                  key={el.id}
+                  className={`layer-row ${el.id === element?.id ? "sel" : ""}`}
+                  onClick={() => onSelectElement(el.id)}
+                >
+                  <span className={`layer-ic ${el.type}`}>
+                    {el.type === "text" ? "T" : el.type === "shape" ? "▭" : "▧"}
+                  </span>
+                  <span className="layer-name">
+                    {layerLabel(el, {
+                      shape: t("sel_shape"),
+                      image: t("sel_image"),
+                      dim: t("layer_dim"),
+                      bgImage: t("layer_bg_image"),
+                    })}
+                  </span>
+                  <span className="layer-ord">
+                    <button
+                      title={t("lyr_forward")}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onReorderElement(el.id, "forward");
+                      }}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      title={t("lyr_backward")}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onReorderElement(el.id, "backward");
+                      }}
+                    >
+                      ↓
+                    </button>
+                  </span>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
 
       {element ? (
         <>
@@ -214,24 +283,40 @@ export default function Inspector({
           )}
 
           {element.type === "image" && (
-            <div className="field-row">
+            <>
+              <div className="field-row">
+                <label className="field">
+                  <span>{t("insp_fit")}</span>
+                  <select value={element.fit} onChange={(e) => onPatchElement({ fit: e.target.value }, true)}>
+                    <option value="cover">{t("insp_fit_cover")}</option>
+                    <option value="contain">{t("insp_fit_contain")}</option>
+                  </select>
+                </label>
+                <label className="field">
+                  <span>{t("insp_radius")}</span>
+                  <input
+                    type="number"
+                    value={element.radius}
+                    onFocus={beginEdit}
+                    onChange={(e) => onPatchElement({ radius: Number(e.target.value) || 0 })}
+                  />
+                </label>
+              </div>
               <label className="field">
-                <span>{t("insp_fit")}</span>
-                <select value={element.fit} onChange={(e) => onPatchElement({ fit: e.target.value }, true)}>
-                  <option value="cover">{t("insp_fit_cover")}</option>
-                  <option value="contain">{t("insp_fit_contain")}</option>
-                </select>
-              </label>
-              <label className="field">
-                <span>{t("insp_radius")}</span>
+                <span>
+                  {t("insp_dim")} · {Math.round((element.dim ?? 0) * 100)}%
+                </span>
                 <input
-                  type="number"
-                  value={element.radius}
-                  onFocus={beginEdit}
-                  onChange={(e) => onPatchElement({ radius: Number(e.target.value) || 0 })}
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={element.dim ?? 0}
+                  onPointerDown={beginEdit}
+                  onChange={(e) => onPatchElement({ dim: Number(e.target.value) })}
                 />
               </label>
-            </div>
+            </>
           )}
 
           <div className="field-row">
@@ -264,6 +349,39 @@ export default function Inspector({
             </label>
           </div>
 
+          <label className="field">
+            <span>
+              {t("insp_opacity")} · {Math.round((element.opacity ?? 1) * 100)}%
+            </span>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={element.opacity ?? 1}
+              onPointerDown={beginEdit}
+              onChange={(e) => onPatchElement({ opacity: Number(e.target.value) })}
+            />
+          </label>
+
+          <label className="field">
+            <span>{t("insp_layer")}</span>
+            <div className="segmented layer-btns">
+              <button title={t("lyr_back")} onClick={() => onReorderElement(element.id, "back")}>
+                {t("lyr_back")}
+              </button>
+              <button title={t("lyr_backward")} onClick={() => onReorderElement(element.id, "backward")}>
+                {t("lyr_backward")}
+              </button>
+              <button title={t("lyr_forward")} onClick={() => onReorderElement(element.id, "forward")}>
+                {t("lyr_forward")}
+              </button>
+              <button title={t("lyr_front")} onClick={() => onReorderElement(element.id, "front")}>
+                {t("lyr_front")}
+              </button>
+            </div>
+          </label>
+
           <button className="btn danger" onClick={onRemoveElement}>
             {t("insp_delete")}
           </button>
@@ -288,7 +406,7 @@ export default function Inspector({
           />
 
           <div className="panel-subtitle">{t("insp_theme")}</div>
-          <div className="field-row">
+          <div className="theme-colors">
             <ColorField label={t("insp_theme_bg")} value={project.theme.background} onBegin={beginEdit} onChange={(v) => onPatchTheme({ background: v })} />
             <ColorField label={t("insp_theme_text")} value={project.theme.textColor} onBegin={beginEdit} onChange={(v) => onPatchTheme({ textColor: v })} />
             <ColorField label={t("insp_theme_accent")} value={project.theme.accent} onBegin={beginEdit} onChange={(v) => onPatchTheme({ accent: v })} />

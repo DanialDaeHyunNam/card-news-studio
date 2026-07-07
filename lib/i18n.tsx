@@ -29,7 +29,20 @@ const D = {
   fmt_916: ["풀스크린 · 스토리/릴스", "Full screen · Stories/Reels"],
   model_soon: ["준비 중", "soon"],
   ref_none: ["스타일 참고 없음", "No style reference"],
+  accent_label: ["포인트", "Accent"],
+  accent_auto: ["자동", "Auto"],
+  brand_label: ["브랜드", "Brand"],
+  brand_ignore: ["무시", "Ignore"],
+  brand_title: [
+    "브랜드 포인트 색 — 바꾸면 이 색을 쓰던 요소가 전부 자동으로 바뀝니다. '무시'를 켜면 이 세트만 브랜드에서 분리됩니다.",
+    "Brand point color — changing it recolors every element using it. Turn on 'Ignore' to detach just this set from the brand.",
+  ],
+  accent_title: [
+    "브랜드 포인트 색 — 항상 이 색으로 강조하고 저장됩니다. '자동'이면 AI가 고릅니다.",
+    "Brand accent — always used as the point color and saved. 'Auto' lets the AI pick.",
+  ],
   blank_start: ["또는 빈 캔버스에서 시작 →", "Or start from a blank canvas →"],
+  blank_card: ["빈 캔버스로 시작", "Blank canvas"],
   banner_none: ["연결된 API 키가 없어요 — ", "No API key connected — "],
   banner_none_cta: ["원하는 키 연결하기", "connect one"],
   banner_need_mid: ["모델은", "needs an"],
@@ -95,8 +108,8 @@ const D = {
     "Set env vars on your deployment platform. (In-app save works in local dev only)",
   ],
   keys_hint: [
-    ".env.local에 저장 · 즉시 적용 · 값은 서버에만 남습니다. OpenAI/Gemini는 키 보관만 — 어댑터 준비 중.",
-    "Saved to .env.local · applied instantly · never leaves the server. OpenAI/Gemini keys are stored only — adapters coming.",
+    ".env.local에 저장 · 즉시 적용 · 값은 서버에만 남습니다. 키를 연결하면 해당 프로바이더 모델이 바로 열립니다.",
+    "Saved to .env.local · applied instantly · never leaves the server. Connect a key and that provider's models unlock immediately.",
   ],
 
   // editor
@@ -106,6 +119,7 @@ const D = {
   ed_export_all: ["전체 내보내기", "Export all"],
   ed_exporting: ["내보내는 중…", "Exporting…"],
   ed_add_card: ["+ 카드 추가", "+ Add card"],
+  ed_slideshow: ["▶ 슬라이드쇼", "▶ Slideshow"],
   ed_export_fail: ["PNG 내보내기에 실패했습니다.", "PNG export failed."],
   ed_model_title: ["AI 모델", "AI model"],
   ed_key_missing: ["KEY 없음", "no key"],
@@ -153,7 +167,17 @@ const D = {
   insp_fit_cover: ["꽉 채움 (cover)", "Fill (cover)"],
   insp_fit_contain: ["원본 비율 (contain)", "Fit (contain)"],
   insp_radius: ["둥글기", "Radius"],
+  insp_dim: ["딤 (어둡게)", "Dim"],
   insp_delete: ["요소 삭제", "Delete element"],
+  insp_opacity: ["투명도 (알파)", "Opacity"],
+  insp_layers: ["레이어", "Layers"],
+  insp_layer: ["레이어 순서", "Layer order"],
+  layer_dim: ["딤 배경", "Dim overlay"],
+  layer_bg_image: ["배경 이미지", "Background image"],
+  lyr_back: ["맨뒤", "Back"],
+  lyr_backward: ["뒤로", "Down"],
+  lyr_forward: ["앞으로", "Up"],
+  lyr_front: ["맨앞", "Front"],
   insp_card_bg: ["카드 배경", "Card background"],
   insp_bg_css: ["배경 (색상/그라디언트 CSS)", "Background (color/gradient CSS)"],
   insp_bg_pick: ["배경 색상 선택", "Pick a background color"],
@@ -182,6 +206,69 @@ const D = {
   chat_q4: ["어울리는 배경 사진 깔아줘", "Add fitting photo backgrounds"],
   chat_img_fail: ["이미지를 읽을 수 없습니다.", "Couldn't read that image."],
   chat_req_fail: ["요청에 실패했습니다.", "Request failed."],
+  chat_applied: ["개 반영됨", " changes applied"],
+  chat_no_change: ["완료 · 변경 없음", "Done · no change"],
+  chat_tpl: ["템플릿 참조", "Reference template"],
+  chat_tpl_pick: ["참조할 템플릿 선택", "Pick a template to reference"],
+  chat_tpl_active: ["스타일 참조 중", "referenced as style"],
+
+  // model picker
+  mp_more: ["모든 모델 보기", "All models"],
+  mp_less: ["주력만 보기", "Recommended only"],
+  mp_connect: ["키 연결", "Connect key"],
+  mp_speed: ["속도", "Speed"],
+
+  // generation (home → editor streaming)
+  gen_designing: ["카드 설계 중…", "Designing cards…"],
+
+  // hosted deploy — "this is a preview, run it locally" banner + install guide
+  hosted_banner: [
+    "미리보기예요 — Card News Studio는 내 컴퓨터에서 실행됩니다.",
+    "This is a preview — Card News Studio runs on your own computer.",
+  ],
+  hosted_banner_cta: ["설치 방법 보기", "How to install"],
+  hosted_nav_install: ["로컬 설치", "Install locally"],
+  inst_title: ["내 컴퓨터에서 실행하기", "Run it on your computer"],
+  inst_lede: [
+    "Card News Studio는 여러분의 컴퓨터에서 직접 돌아갑니다. 이 페이지는 미리보기예요 — 실제로 카드를 만들려면 아래 3단계로 설치하세요. 처음 한 번만 설정하면 됩니다.",
+    "Card News Studio runs entirely on your own computer. This page is a preview — to actually make cards, install it with the three steps below. You only set it up once.",
+  ],
+  inst_badge_free: ["무료 · 오픈소스 (MIT)", "Free · open source (MIT)"],
+  inst_badge_local: ["100% 로컬 실행", "Runs 100% locally"],
+  inst_badge_key: ["데이터·API 키가 이 컴퓨터를 안 떠남", "Data & keys never leave your machine"],
+  inst_os_mac: ["macOS", "macOS"],
+  inst_os_win: ["Windows", "Windows"],
+  inst_s1_t: ["준비물 설치하기", "Install the essentials"],
+  inst_s1_mac: [
+    "Node.js와 Git이 필요합니다. 아래 버튼으로 각각 설치하세요. Homebrew를 쓴다면 터미널에 아래 한 줄이면 끝납니다.",
+    "You need Node.js and Git. Install each with the buttons below — or, if you use Homebrew, one line does it:",
+  ],
+  inst_s1_win: [
+    "Node.js와 Git이 필요합니다. 아래 버튼으로 설치 파일을 받아 '다음'만 눌러 설치하세요. Node.js에는 npm이 함께 들어 있습니다.",
+    "You need Node.js and Git. Download each installer below and click through the prompts. Node.js includes npm.",
+  ],
+  inst_get_node: ["Node.js 받기 ↗", "Get Node.js ↗"],
+  inst_get_git: ["Git 받기 ↗", "Get Git ↗"],
+  inst_s2_t: ["코드 받아서 실행하기", "Download it and start"],
+  inst_s2_desc: [
+    "터미널(Windows는 PowerShell)을 열고 아래 명령을 한 줄씩 붙여넣으세요.",
+    "Open Terminal (PowerShell on Windows) and paste these commands one line at a time.",
+  ],
+  inst_s2_note: [
+    "마지막 줄(npm run dev)은 켜 둔 채로 두세요 — 이 창을 닫으면 앱도 멈춥니다.",
+    "Leave the last line (npm run dev) running — closing that window stops the app.",
+  ],
+  inst_s3_t: ["열고, 키 연결하기", "Open it and connect a key"],
+  inst_s3_desc: [
+    "브라우저에서 localhost:3000을 여세요. 오른쪽 위 🔑 API 키를 눌러 Anthropic(Claude) 또는 OpenAI 키를 붙여넣으면 바로 카드 생성이 열립니다. 키는 이 컴퓨터의 .env.local 파일에만 저장됩니다.",
+    "Open localhost:3000 in your browser. Click 🔑 API Keys (top right) and paste an Anthropic (Claude) or OpenAI key — generation unlocks instantly. The key is saved only to .env.local on your computer.",
+  ],
+  inst_s3_key_a: ["Anthropic 키 발급 ↗", "Get an Anthropic key ↗"],
+  inst_s3_key_o: ["OpenAI 키 발급 ↗", "Get an OpenAI key ↗"],
+  inst_copy: ["복사", "Copy"],
+  inst_copied: ["복사됨 ✓", "Copied ✓"],
+  inst_browser_hint: ["여기서 카드 생성·편집·PNG 내보내기를 합니다.", "Generate, edit, and export PNGs right here."],
+  inst_source: ["소스 코드 보기 (GitHub) ↗", "View source on GitHub ↗"],
 } as const;
 
 export type DictKey = keyof typeof D;

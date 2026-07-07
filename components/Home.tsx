@@ -1,23 +1,27 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { Format, Project } from "@/lib/types";
+import type { Format, GenConfig, Project } from "@/lib/types";
 import { FORMATS, defaultTheme } from "@/lib/types";
-import { newId, normalizeCard } from "@/lib/ops";
+import { newId } from "@/lib/ops";
 import { getTemplates, instantiateTemplate } from "@/lib/templates";
 import { GITHUB_URL } from "@/lib/site";
-import { DEFAULT_MODEL, MODELS, PROVIDER_LABELS } from "@/lib/models";
-import { addUsage } from "@/lib/usage";
+import { MODELS, PROVIDER_LABELS, pickDefaultModel } from "@/lib/models";
 import CardView from "./CardView";
 import HowItWorks from "./HowItWorks";
 import Footer from "./Footer";
 import LogoMark from "./LogoMark";
 import KeyPanel from "./KeyPanel";
 import LangSwitch from "./LangSwitch";
+import ModelPicker from "./ModelPicker";
+import InstallGuide from "./InstallGuide";
+import { useHosted } from "@/lib/hooks";
 import { useLang, type DictKey } from "@/lib/i18n";
 
 interface HomeProps {
   projects: Project[];
+  error?: string | null;
+  onGenerate: (cfg: GenConfig) => void;
   onOpen: (id: string) => void;
   onCreate: (p: Project) => void;
   onDelete: (id: string) => void;
@@ -25,24 +29,32 @@ interface HomeProps {
 
 const YT_RE = /(youtube\.com\/(watch|shorts|live|embed)|youtu\.be\/)/;
 
-function mmss(t: number): string {
-  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
-}
-
-export default function Home({ projects, onOpen, onCreate, onDelete }: HomeProps) {
+export default function Home({ projects, error, onGenerate, onOpen, onCreate, onDelete }: HomeProps) {
   const { lang, t } = useLang();
+  // On a public deploy the tool can't run (no local keys / localStorage), so
+  // every "real action" opens the install guide instead of doing the action.
+  const hosted = useHosted();
+  const [showInstall, setShowInstall] = useState(false);
   const [topic, setTopic] = useState("");
   const [format, setFormat] = useState<Format>("4:5");
   const [cardCount, setCardCount] = useState(6);
   const [referenceId, setReferenceId] = useState("");
-  const [model, setModel] = useState(DEFAULT_MODEL);
-  const [busy, setBusy] = useState(false);
-  const [status, setStatus] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [model, setModel] = useState(() => pickDefaultModel(null));
   const [showKeys, setShowKeys] = useState(false);
   const [keys, setKeys] = useState<Record<string, boolean> | null>(null);
   const [writable, setWritable] = useState(true);
+  // Brand point color: persists across projects; null = let the AI choose.
+  const [accent, setAccentState] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return window.localStorage.getItem("cardnews.accent");
+  });
   const isYoutube = YT_RE.test(topic);
+
+  function setAccent(v: string | null) {
+    setAccentState(v);
+    if (v) window.localStorage.setItem("cardnews.accent", v);
+    else window.localStorage.removeItem("cardnews.accent");
+  }
 
   const templatePreviews = useMemo(
     () =>
@@ -60,11 +72,11 @@ export default function Home({ projects, onOpen, onCreate, onDelete }: HomeProps
         const k: Record<string, boolean> = d.keys ?? {};
         setKeys(k);
         setWritable(Boolean(d.writable));
-        // Prefer a model whose key is actually connected.
+        // Prefer a value model whose key is actually connected.
         setModel((cur) => {
           const info = MODELS.find((m) => m.id === cur);
           if (info && k[info.envVar]) return cur;
-          return MODELS.find((m) => m.implemented && k[m.envVar])?.id ?? cur;
+          return pickDefaultModel(k);
         });
       })
       .catch(() => setKeys({}));
@@ -72,6 +84,7 @@ export default function Home({ projects, onOpen, onCreate, onDelete }: HomeProps
 
   function emptyProject(): Project {
     const theme = defaultTheme();
+    if (accent) theme.accent = accent;
     return {
       id: newId(),
       name: topic.trim().slice(0, 24) || t("new_project_name"),
@@ -104,89 +117,41 @@ export default function Home({ projects, onOpen, onCreate, onDelete }: HomeProps
     };
   }
 
-  async function generate() {
-    if (!topic.trim() || busy) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const ref = projects.find((p) => p.id === referenceId);
-      const reference = ref
-        ? {
-            theme: ref.theme,
-            sampleTexts: ref.cards.flatMap((c) =>
-              c.elements.filter((e) => e.type === "text").map((e) => (e.type === "text" ? e.text : "")),
-            ),
-          }
-        : undefined;
-
-      // YouTube URL → fetch the transcript first, then generate from it.
-      let requestTopic = topic.trim();
-      let projectName = requestTopic.slice(0, 24);
-      let source: Record<string, unknown> | undefined;
-      if (isYoutube) {
-        setStatus(t("st_yt"));
-        const ytRes = await fetch("/api/youtube", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: requestTopic }),
-        });
-        const yt = await ytRes.json();
-        if (!ytRes.ok) throw new Error(yt.error || "자막을 가져오지 못했습니다.");
-        const transcript = (yt.lines as { t: number; text: string }[])
-          .map((l) => `[${mmss(l.t)}] ${l.text}`)
-          .join("\n");
-        source = { type: "youtube", url: requestTopic, title: yt.title, author: yt.author, transcript };
-        projectName = (yt.title || t("yt_fallback_name")).slice(0, 24);
-        requestTopic =
-          lang === "ko"
-            ? `아래 유튜브 영상의 자막으로 카드뉴스를 만들어줘: ${yt.title}`
-            : `Create a card set from this YouTube video’s captions: ${yt.title}`;
-      }
-
-      setStatus(t("st_design"));
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: requestTopic, format, cardCount, model, reference, source, lang }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || `생성 실패 (${res.status})`);
-      const theme = { ...defaultTheme(), ...data.theme };
-      const project: Project = {
-        id: newId(),
-        name: projectName,
-        format,
-        theme,
-        cards: (data.cards as { background?: string; elements?: Record<string, unknown>[] }[]).map((c) =>
-          normalizeCard(c, theme),
-        ),
-        chat: [],
-        model,
-        usage: addUsage(undefined, data.usage),
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      };
-      if (project.cards.length === 0) throw new Error("생성된 카드가 없습니다. 다시 시도해 주세요.");
-      onCreate(project);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "생성에 실패했습니다.");
-    } finally {
-      setBusy(false);
-      setStatus("");
+  function startGenerate() {
+    if (hosted) return setShowInstall(true);
+    if (!topic.trim()) return;
+    const selected = MODELS.find((m) => m.id === model);
+    // Don't flash into the editor only to fail — nudge the key modal first.
+    if (selected && keys && !keys[selected.envVar]) {
+      setShowKeys(true);
+      return;
     }
+    onGenerate({ topic, format, cardCount, model, referenceId: referenceId || undefined, accent: accent ?? undefined });
   }
 
   return (
     <div className="home">
+      {hosted && (
+        <button className="hosted-banner" onClick={() => setShowInstall(true)}>
+          <span>🖥 {t("hosted_banner")}</span>
+          <b>{t("hosted_banner_cta")} →</b>
+        </button>
+      )}
       <header className="home-nav">
         <div className="logo">
           <LogoMark size={22} /> Card News Studio
         </div>
         <div className="nav-actions">
           <LangSwitch />
-          <button className="btn ghost" onClick={() => setShowKeys((v) => !v)}>
-            🔑 {t("nav_keys")}
-          </button>
+          {hosted ? (
+            <button className="btn ghost" onClick={() => setShowInstall(true)}>
+              🖥 {t("hosted_nav_install")}
+            </button>
+          ) : (
+            <button className="btn ghost" onClick={() => setShowKeys((v) => !v)}>
+              🔑 {t("nav_keys")}
+            </button>
+          )}
           {GITHUB_URL && (
             <a className="btn ghost" href={GITHUB_URL} target="_blank" rel="noreferrer">
               GitHub ⭐
@@ -198,7 +163,7 @@ export default function Home({ projects, onOpen, onCreate, onDelete }: HomeProps
       <section className="hero">
         <div className="overline">{t("hero_overline")}</div>
         <h1>
-          {t("hero_h1_1")} <br className="mobile-only" />
+          {t("hero_h1_1")} <br />
           {t("hero_h1_2")}
         </h1>
         <p className="hero-sub">{t("hero_sub")}</p>
@@ -210,11 +175,11 @@ export default function Home({ projects, onOpen, onCreate, onDelete }: HomeProps
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.nativeEvent.isComposing) void generate();
+              if (e.key === "Enter" && !e.nativeEvent.isComposing) startGenerate();
             }}
           />
-          <button className="btn pill-white" disabled={busy || !topic.trim()} onClick={() => void generate()}>
-            {busy ? status || t("gen_busy") : isYoutube ? t("gen_btn_yt") : t("gen_btn")}
+          <button className="btn pill-white" disabled={!hosted && !topic.trim()} onClick={startGenerate}>
+            {isYoutube ? t("gen_btn_yt") : t("gen_btn")}
           </button>
         </div>
 
@@ -239,14 +204,23 @@ export default function Home({ projects, onOpen, onCreate, onDelete }: HomeProps
               </option>
             ))}
           </select>
-          <select className="ctl" value={model} onChange={(e) => setModel(e.target.value)}>
-            {MODELS.map((m) => (
-              <option key={m.id} value={m.id} disabled={!m.implemented}>
-                {m.short}
-                {!m.implemented && ` · ${t("model_soon")}`}
-              </option>
-            ))}
-          </select>
+          <ModelPicker value={model} onChange={setModel} keys={keys} onConnectKey={() => setShowKeys(true)} />
+          <div className="accent-ctl" title={t("accent_title")}>
+            <span className="accent-label">{t("brand_label")}</span>
+            <span className="accent-swatch" style={{ opacity: accent ? 1 : 0.4 }}>
+              <input
+                type="color"
+                value={accent ?? "#3b82f6"}
+                onChange={(e) => setAccent(e.target.value)}
+              />
+            </span>
+            <button
+              className={`accent-auto ${accent === null ? "on" : ""}`}
+              onClick={() => setAccent(accent === null ? "#3b82f6" : null)}
+            >
+              {t("accent_auto")}
+            </button>
+          </div>
           {projects.length > 0 && (
             <select className="ctl" value={referenceId} onChange={(e) => setReferenceId(e.target.value)}>
               <option value="">{t("ref_none")}</option>
@@ -259,14 +233,18 @@ export default function Home({ projects, onOpen, onCreate, onDelete }: HomeProps
           )}
         </div>
 
-        <button className="link-ghost" onClick={() => onCreate(emptyProject())}>
-          {t("blank_start")}
-        </button>
+        {GITHUB_URL && (
+          <div className="star-cta-wrap">
+            <a className="star-cta" href={GITHUB_URL} target="_blank" rel="noreferrer">
+              <span className="star">★</span> Star on GitHub
+            </a>
+          </div>
+        )}
 
         {error && <div className="hero-error">{error}</div>}
 
         {(() => {
-          if (!keys) return null;
+          if (hosted || !keys) return null;
           const selected = MODELS.find((m) => m.id === model)!;
           if (keys[selected.envVar]) return null;
           const hasAnyKey = Object.values(keys).some(Boolean);
@@ -311,7 +289,11 @@ export default function Home({ projects, onOpen, onCreate, onDelete }: HomeProps
               .slice()
               .sort((a, b) => b.updatedAt - a.updatedAt)
               .map((p) => (
-                <div key={p.id} className="project-card" onClick={() => onOpen(p.id)}>
+                <div
+                  key={p.id}
+                  className="project-card"
+                  onClick={() => (hosted ? setShowInstall(true) : onOpen(p.id))}
+                >
                   <div className="project-preview">
                     <CardView card={p.cards[0]} theme={p.theme} format={p.format} width={200} />
                   </div>
@@ -345,8 +327,21 @@ export default function Home({ projects, onOpen, onCreate, onDelete }: HomeProps
         <h2>{t("tpl_title")}</h2>
         <p className="section-sub">{t("tpl_sub")}</p>
         <div className="tpl-grid">
+          <button
+            className="tpl-blank"
+            onClick={() => (hosted ? setShowInstall(true) : onCreate(emptyProject()))}
+          >
+            <span className="tpl-blank-inner">
+              <span className="tpl-blank-plus">+</span>
+              <span className="tpl-blank-label">{t("blank_card")}</span>
+            </span>
+          </button>
           {templatePreviews.map(({ tpl, firstCard, theme }) => (
-            <div key={tpl.id} className="tpl-card" onClick={() => onCreate(instantiateTemplate(tpl))}>
+            <div
+              key={tpl.id}
+              className="tpl-card"
+              onClick={() => (hosted ? setShowInstall(true) : onCreate(instantiateTemplate(tpl)))}
+            >
               <div className="tpl-preview">
                 <CardView card={firstCard} theme={theme} format={tpl.format} width={188} />
               </div>
@@ -367,7 +362,8 @@ export default function Home({ projects, onOpen, onCreate, onDelete }: HomeProps
 
       <HowItWorks />
       <Footer />
+
+      {showInstall && <InstallGuide onClose={() => setShowInstall(false)} />}
     </div>
   );
 }
-
