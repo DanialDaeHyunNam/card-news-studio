@@ -9,7 +9,7 @@ import { collectTargets, snapPosition } from "@/lib/snap";
 import { DEFAULT_MODEL, MODELS, pickDefaultModel } from "@/lib/models";
 import { addUsage, emptyUsage, fmtCost, fmtTokens, type UsageEvent, type UsageTotals } from "@/lib/usage";
 import { useLang } from "@/lib/i18n";
-import { useClickOutside } from "@/lib/hooks";
+import { useClickOutside, useHosted } from "@/lib/hooks";
 import LangSwitch from "./LangSwitch";
 import CardView, { cardHeight } from "./CardView";
 import Inspector from "./Inspector";
@@ -17,6 +17,7 @@ import ChatPanel from "./ChatPanel";
 import ModelPicker from "./ModelPicker";
 import KeyPanel from "./KeyPanel";
 import Slideshow from "./Slideshow";
+import InstallGuide from "./InstallGuide";
 
 const SNAP_PX = 6;
 
@@ -59,6 +60,11 @@ export default function Editor({ project, onChange, onClose, generating }: Edito
   const [keyWritable, setKeyWritable] = useState(true);
   const [showKeys, setShowKeys] = useState(false);
   const [showSlideshow, setShowSlideshow] = useState(false);
+  // Hosted deploy: the canvas is fully explorable, but anything needing a local
+  // key (AI chat, connecting a key) routes to the install guide instead.
+  const hosted = useHosted();
+  const [showInstall, setShowInstall] = useState(false);
+  const needInstall = () => setShowInstall(true);
   // Brand point color (global, persisted). Changing it recolors every element
   // that used the old accent — the accent behaves like a variable/token.
   const [brandColor, setBrandColor] = useState<string>(() => {
@@ -434,7 +440,7 @@ export default function Editor({ project, onChange, onClose, generating }: Edito
           value={project.model ?? DEFAULT_MODEL}
           onChange={(id) => mutate((p) => void (p.model = id), true)}
           keys={keyStatus}
-          onConnectKey={() => setShowKeys(true)}
+          onConnectKey={() => (hosted ? needInstall() : setShowKeys(true))}
           disabled={gen}
         />
         <div className="accent-ctl" title={t("brand_title")}>
@@ -630,6 +636,7 @@ export default function Editor({ project, onChange, onClose, generating }: Edito
                   ? `${t("sel_card")} ${safeCardIdx + 1} · ${selectedEl.type === "text" ? t("sel_text") : selectedEl.type === "shape" ? t("sel_shape") : t("sel_image")}`
                   : `${t("sel_card")} ${safeCardIdx + 1}`
               }
+              onBlocked={hosted ? needInstall : undefined}
               onApply={applyChat}
             />
           </>
@@ -665,6 +672,8 @@ export default function Editor({ project, onChange, onClose, generating }: Edito
           </div>
         </div>
       )}
+
+      {showInstall && <InstallGuide onClose={() => setShowInstall(false)} />}
     </div>
   );
 }

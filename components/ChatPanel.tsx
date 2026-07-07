@@ -15,6 +15,9 @@ interface ChatPanelProps {
   selection: { cardId?: string; elementId?: string };
   selectionLabel: string;
   disabled?: boolean;
+  // When set (hosted deploy), sending intercepts to this instead of hitting the
+  // server — the AI edit needs a local key, so it routes to the install guide.
+  onBlocked?: () => void;
   onApply: (args: {
     userText: string;
     userThumbs: string[];
@@ -27,7 +30,7 @@ interface ChatPanelProps {
 
 const QUICK_PROMPTS: DictKey[] = ["chat_q1", "chat_q2", "chat_q3", "chat_q4"];
 
-export default function ChatPanel({ project, selection, selectionLabel, disabled, onApply }: ChatPanelProps) {
+export default function ChatPanel({ project, selection, selectionLabel, disabled, onBlocked, onApply }: ChatPanelProps) {
   const { lang, t } = useLang();
   const [input, setInput] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -83,6 +86,9 @@ export default function ChatPanel({ project, selection, selectionLabel, disabled
   }
 
   async function send(text?: string) {
+    // Hosted deploy: no local key, so the AI edit can't run — show how to run
+    // it locally instead of failing.
+    if (onBlocked) return onBlocked();
     const message = (text ?? input).trim();
     if (!message || busy || disabled) return;
     setBusy(true);

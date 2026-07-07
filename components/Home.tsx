@@ -143,15 +143,12 @@ export default function Home({ projects, error, onGenerate, onOpen, onCreate, on
         </div>
         <div className="nav-actions">
           <LangSwitch />
-          {hosted ? (
-            <button className="btn ghost" onClick={() => setShowInstall(true)}>
-              🖥 {t("hosted_nav_install")}
-            </button>
-          ) : (
-            <button className="btn ghost" onClick={() => setShowKeys((v) => !v)}>
-              🔑 {t("nav_keys")}
-            </button>
-          )}
+          <button
+            className="btn ghost"
+            onClick={() => (hosted ? setShowInstall(true) : setShowKeys((v) => !v))}
+          >
+            🔑 {t("nav_keys")}
+          </button>
           {GITHUB_URL && (
             <a className="btn ghost" href={GITHUB_URL} target="_blank" rel="noreferrer">
               GitHub ⭐
@@ -204,7 +201,12 @@ export default function Home({ projects, error, onGenerate, onOpen, onCreate, on
               </option>
             ))}
           </select>
-          <ModelPicker value={model} onChange={setModel} keys={keys} onConnectKey={() => setShowKeys(true)} />
+          <ModelPicker
+            value={model}
+            onChange={setModel}
+            keys={keys}
+            onConnectKey={() => (hosted ? setShowInstall(true) : setShowKeys(true))}
+          />
           <div className="accent-ctl" title={t("accent_title")}>
             <span className="accent-label">{t("brand_label")}</span>
             <span className="accent-swatch" style={{ opacity: accent ? 1 : 0.4 }}>
@@ -289,11 +291,7 @@ export default function Home({ projects, error, onGenerate, onOpen, onCreate, on
               .slice()
               .sort((a, b) => b.updatedAt - a.updatedAt)
               .map((p) => (
-                <div
-                  key={p.id}
-                  className="project-card"
-                  onClick={() => (hosted ? setShowInstall(true) : onOpen(p.id))}
-                >
+                <div key={p.id} className="project-card" onClick={() => onOpen(p.id)}>
                   <div className="project-preview">
                     <CardView card={p.cards[0]} theme={p.theme} format={p.format} width={200} />
                   </div>
@@ -327,21 +325,14 @@ export default function Home({ projects, error, onGenerate, onOpen, onCreate, on
         <h2>{t("tpl_title")}</h2>
         <p className="section-sub">{t("tpl_sub")}</p>
         <div className="tpl-grid">
-          <button
-            className="tpl-blank"
-            onClick={() => (hosted ? setShowInstall(true) : onCreate(emptyProject()))}
-          >
+          <button className="tpl-blank" onClick={() => onCreate(emptyProject())}>
             <span className="tpl-blank-inner">
               <span className="tpl-blank-plus">+</span>
               <span className="tpl-blank-label">{t("blank_card")}</span>
             </span>
           </button>
           {templatePreviews.map(({ tpl, firstCard, theme }) => (
-            <div
-              key={tpl.id}
-              className="tpl-card"
-              onClick={() => (hosted ? setShowInstall(true) : onCreate(instantiateTemplate(tpl)))}
-            >
+            <div key={tpl.id} className="tpl-card" onClick={() => onCreate(instantiateTemplate(tpl))}>
               <div className="tpl-preview">
                 <CardView card={firstCard} theme={theme} format={tpl.format} width={188} />
               </div>
