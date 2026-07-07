@@ -101,6 +101,10 @@ release must bump the version, write notes, tag, and redeploy:
    gh release create vX.Y.Z --title "vX.Y.Z" --notes-file <(sed -n '/## X.Y.Z/,/## /p' CHANGELOG.md)
    ```
 5. **Redeploy** so the canonical `/api/version` returns the new version.
+6. **Restart your local dev server.** `next.config.ts` inlines the version at
+   startup, so a server that was already running keeps reporting the *old*
+   version and will show a false "update available" against the new deploy.
+   A restart (`Ctrl+C`, then `bun dev`) makes it read the bumped version.
 
 Preview the "update available" state locally without deploying anything:
 `NEXT_PUBLIC_APP_VERSION=0.0.1 npm run dev`.
