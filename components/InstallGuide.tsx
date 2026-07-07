@@ -24,8 +24,6 @@ const RUN_COMMANDS = [
 
 const NODE_URL = "https://nodejs.org/en/download";
 const GIT_URL = "https://git-scm.com/downloads";
-const ANTHROPIC_KEY_URL = "https://platform.claude.com/settings/keys";
-const OPENAI_KEY_URL = "https://platform.openai.com/api-keys";
 
 function detectOS(): OS {
   if (typeof navigator === "undefined") return "mac";
@@ -83,7 +81,8 @@ export default function InstallGuide({ onClose }: { onClose: () => void }) {
         </div>
 
         <ol className="inst-steps">
-          {/* Step 1 — prerequisites */}
+          {/* Step 1 — prerequisites. Installer downloads are the primary path
+              (not everyone has Homebrew); brew is an optional shortcut. */}
           <li>
             <h3>{t("inst_s1_t")}</h3>
             <p>{os === "mac" ? t("inst_s1_mac") : t("inst_s1_win")}</p>
@@ -96,36 +95,43 @@ export default function InstallGuide({ onClose }: { onClose: () => void }) {
               </a>
             </div>
             {os === "mac" && (
-              <div className="inst-term compact">
-                <div className="inst-term-bar">
-                  <i /> <i /> <i />
-                  <span className="inst-term-title">Terminal — Homebrew</span>
-                </div>
-                <div className="inst-term-body">
-                  <pre>
-                    <code>brew install node git</code>
-                  </pre>
-                  <CopyButton text="brew install node git" />
+              <div className="inst-optional">
+                <span className="inst-optional-label">{t("inst_s1_brew")}</span>
+                <div className="inst-term compact">
+                  <div className="inst-term-bar">
+                    <i /> <i /> <i />
+                    <span className="inst-term-title">Terminal — Homebrew</span>
+                  </div>
+                  <div className="inst-term-body">
+                    <pre>
+                      <code>
+                        <span className="inst-prompt">$</span> brew install node git
+                      </code>
+                    </pre>
+                    <CopyButton text="brew install node git" />
+                  </div>
                 </div>
               </div>
             )}
           </li>
 
-          {/* Step 2 — clone, install, run */}
+          {/* Step 2 — clone, install, run. On Windows these run in Git Bash
+              (bundled with Git), not PowerShell — so the prompt is always `$`. */}
           <li>
             <h3>{t("inst_s2_t")}</h3>
             <p>{t("inst_s2_desc")}</p>
+            {os === "win" && <p className="inst-note">⚠ {t("inst_s2_win_note")}</p>}
             <div className="inst-term">
               <div className="inst-term-bar">
                 <i /> <i /> <i />
-                <span className="inst-term-title">{os === "win" ? "Windows PowerShell" : "Terminal"}</span>
+                <span className="inst-term-title">{os === "win" ? "Git Bash" : "Terminal"}</span>
               </div>
               <div className="inst-term-body">
                 <pre>
                   <code>
                     {RUN_COMMANDS.map((c) => (
                       <span key={c} className="inst-line">
-                        <span className="inst-prompt">{os === "win" ? "PS>" : "$"}</span> {c}
+                        <span className="inst-prompt">$</span> {c}
                       </span>
                     ))}
                   </code>
@@ -154,14 +160,6 @@ export default function InstallGuide({ onClose }: { onClose: () => void }) {
                 </span>
                 <span className="inst-browser-hint">{t("inst_browser_hint")}</span>
               </div>
-            </div>
-            <div className="inst-btn-row">
-              <a className="btn ghost" href={ANTHROPIC_KEY_URL} target="_blank" rel="noreferrer">
-                {t("inst_s3_key_a")}
-              </a>
-              <a className="btn ghost" href={OPENAI_KEY_URL} target="_blank" rel="noreferrer">
-                {t("inst_s3_key_o")}
-              </a>
             </div>
           </li>
         </ol>

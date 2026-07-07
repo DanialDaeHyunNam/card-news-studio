@@ -2482,6 +2482,19 @@ input[type="range"]::-webkit-slider-thumb {
   margin-bottom: 6px;
 }
 
+/* optional / secondary path (e.g. Homebrew) — visually de-emphasized so the
+   installer-download buttons above read as the primary route */
+.inst-optional {
+  margin-top: 14px;
+  opacity: 0.72;
+}
+.inst-optional-label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 7px;
+}
+
 /* terminal + browser window mocks */
 .inst-term,
 .inst-browser {
