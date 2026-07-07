@@ -81,7 +81,7 @@ auto-selects a model whose key is connected.
 
 ## UI / design
 
-opus.pro-inspired: black bg (`#050505`), pill buttons (white primary), bold tight
+Dark, bold aesthetic: black bg (`#050505`), pill buttons (white primary), bold tight
 headings, dark panels. All styles in `app/globals.css` (no Tailwind). Editor layout:
 card strip (left) / canvas / inspector / AI chat (right). Home = hero with the
 pill-shaped topic bar.
@@ -123,7 +123,7 @@ pill-shaped topic bar.
   center/cover` as the card background string. Photos in `public/templates/` from
   Lorem Picsum / Unsplash license — free to use, bundled deliberately for offline use),
   pure-CSS "how it works" demo loop (`components/HowItWorks.tsx`, 10s keyframes in
-  globals.css), OpusClip-style footer (`components/Footer.tsx`),
+  globals.css), marketing-style footer (`components/Footer.tsx`),
   AI photo backgrounds — chat "어울리는 배경 사진 깔아줘" (quick chip `chat_q4`) or
   generate-time request picks from the curated free library (`lib/photos.ts` +
   `/api/photo` proxy), always with a theme-tinted scrim over the photo.

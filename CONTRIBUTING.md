@@ -31,7 +31,7 @@ To exercise the AI paths you need at least one provider key — paste it in the
 - **TypeScript, strict.** No `any` sneaking through; model the data in `types.ts`.
 - **No Tailwind.** All styles live in `app/globals.css`, using the CSS variables
   at the top (`--bg`, `--panel`, `--border`, `--accent`, …). Match the existing
-  opus.pro-inspired dark, pill-shaped look.
+  dark, pill-shaped, bold-typography look.
 - **Bilingual or it's a regression.** Every user-facing string goes through
   `useLang()`'s `t()` with a `[ko, en]` entry in `lib/i18n.tsx`. Two languages
   only — don't add a third.
