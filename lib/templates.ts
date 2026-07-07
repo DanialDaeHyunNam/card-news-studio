@@ -30,10 +30,6 @@ export interface Template {
 const text = (p: RawElement): RawElement => ({ type: "text", x: 8, w: 84, align: "left", fontWeight: 700, lineHeight: 1.35, color: "#ffffff", ...p });
 const bar = (p: RawElement): RawElement => ({ type: "shape", x: 8, w: 12, h: 0.5, radius: 4, ...p });
 
-// Dotted divider — shape backgrounds accept any CSS background value.
-const DOTTED =
-  "repeating-linear-gradient(90deg, rgba(94,234,212,0.55) 0px, rgba(94,234,212,0.55) 5px, transparent 5px, transparent 13px)";
-
 // Photo + vertical dim: darker at top and bottom where the text sits.
 const photo = (file: string, rgb: string, top: number, mid: number, bottom: number) =>
   `linear-gradient(180deg, rgba(${rgb},${top}) 0%, rgba(${rgb},${mid}) 50%, rgba(${rgb},${bottom}) 100%), url(/templates/${file}) center/cover no-repeat`;
@@ -275,51 +271,6 @@ export function getTemplates(lang: Lang): Template[] {
             text({ y: 14, text: T("처음 반년은 주문이 없었다.\n대신 매일 한 개씩 만들어 올렸다.\n서툰 날은 서툰 대로 기록했다.\n\n그러던 어느 밤, 첫 주문 알림이 울렸다.", "For six months, nothing sold.\nSo I made one piece a day and posted it,\nclumsy days included.\n\nThen one night, the first order came in."), fontSize: 38, fontWeight: 400, lineHeight: 1.75 }),
             text({ y: 62, text: T("속도는 느려도,\n방향이 맞으면 도착한다.", "Slow is fine —\nif the direction is right, you arrive."), fontSize: 44, fontWeight: 800, lineHeight: 1.6 }),
             text({ y: 90, text: T("다음 이야기 → 팔로우", "Next story → follow"), fontSize: 27, fontWeight: 400, color: "#d98a6a" }),
-          ],
-        },
-      ],
-    },
-    {
-      id: "eng-word",
-      name: T("영어 한 표현", "One Expression"),
-      description: T("딥틸 + 민트, 표현·예문·구조 정리", "Deep teal + mint, phrase · examples · patterns"),
-      format: "1:1",
-      theme: { background: "#0e1f1d", textColor: "#edf5f3", accent: "#5eead4" },
-      cards: [
-        {
-          elements: [
-            text({ y: 22, x: 10, w: 80, text: T("“눈치 좀 챙겨.”", "“I'm very tired.”"), fontSize: 58, fontWeight: 700, color: "#5eead4", lineHeight: 1.4, letterSpacing: -0.01 }),
-            bar({ y: 36, x: 10, w: 17, h: 9, radius: 8, color: "#5eead4" }),
-            text({ y: 37.6, x: 10, w: 17, text: T("눈치", "very"), fontSize: 66, fontWeight: 900, color: "#0e1f1d", align: "center", lineHeight: 1, letterSpacing: -0.01 }),
-            text({ y: 52, x: 10, w: 80, text: T("영어로?", "Say it better:"), fontSize: 58, fontWeight: 800, letterSpacing: -0.02 }),
-            text({ y: 63, x: 10, w: 80, text: T("notice 아님!!", "exhausted!"), fontSize: 70, fontWeight: 800, color: "#5eead4", letterSpacing: -0.02 }),
-          ],
-        },
-        {
-          elements: [
-            text({ y: 17, x: 10, w: 80, text: T("직역하면 어색해지는\n대표적인 한국어 표현이죠", "One strong word beats\ntwo weak ones every time"), fontSize: 33, fontWeight: 400, color: "rgba(237,245,243,0.85)", lineHeight: 1.6, letterSpacing: -0.01 }),
-            bar({ y: 29.5, x: 10, w: 80, h: 0.35, color: DOTTED }),
-            text({ y: 35, x: 10, w: 80, text: T("read the room", "exhausted"), fontSize: 92, fontWeight: 800, color: "#5eead4", lineHeight: 1.05, letterSpacing: -0.03 }),
-            text({ y: 47, x: 10, w: 80, text: T(": 분위기를 읽다, 눈치껏 행동하다", ": completely drained, worn out"), fontSize: 36, fontWeight: 700, color: "#5eead4", letterSpacing: -0.01 }),
-            bar({ y: 57, x: 10, w: 80, h: 0.35, color: DOTTED }),
-            text({ y: 63, x: 10, w: 80, text: T("sense the mood도 틀리진 않지만,\n원어민 입에서 나오는 건 이쪽이에요!", "“Wiped out” and “beat” work too —\nbut this one fits almost anywhere!"), fontSize: 33, fontWeight: 400, lineHeight: 1.7, letterSpacing: -0.01 }),
-          ],
-        },
-        {
-          elements: [
-            text({ y: 13, x: 10, w: 80, text: T("이렇게 씁니다", "In real sentences"), fontSize: 28, fontWeight: 800, color: "#5eead4", letterSpacing: 0.02 }),
-            text({ y: 21, x: 10, w: 80, text: T("Dude, read the room.", "I'm absolutely exhausted."), fontSize: 40, fontWeight: 700, lineHeight: 1.45, letterSpacing: -0.01 }),
-            text({ y: 27.5, x: 10, w: 80, text: T("야, 분위기 파악 좀 해.", "after the move, the deadline, the gym…"), fontSize: 28, fontWeight: 400, color: "rgba(237,245,243,0.6)", lineHeight: 1.5 }),
-            text({ y: 36.5, x: 10, w: 80, text: T("He never reads the room.", "That flight left me exhausted."), fontSize: 40, fontWeight: 700, lineHeight: 1.45, letterSpacing: -0.01 }),
-            text({ y: 43, x: 10, w: 80, text: T("걔는 눈치가 정말 없어.", "stronger than “the flight made me tired”"), fontSize: 28, fontWeight: 400, color: "rgba(237,245,243,0.6)", lineHeight: 1.5 }),
-            bar({ y: 53, x: 10, w: 80, h: 0.35, color: DOTTED }),
-            text({ y: 59, x: 10, w: 80, text: T("① Read the room. — 한마디 경고\n② 사람 + can't/never read(s) the room", "① be + absolutely/utterly + exhausted\n② thing + left me exhausted"), fontSize: 34, fontWeight: 700, lineHeight: 1.9, letterSpacing: -0.01 }),
-          ],
-        },
-        {
-          elements: [
-            text({ y: 37, x: 10, w: 80, text: T("매일 한 표현씩", "One expression a day"), fontSize: 29, fontWeight: 700, color: "#5eead4", letterSpacing: 0.06 }),
-            text({ y: 45, x: 10, w: 80, text: T("팔로우하고\n진짜 쓰는 영어만", "Follow for English\npeople actually use"), fontSize: 64, fontWeight: 800, lineHeight: 1.45, letterSpacing: -0.02 }),
           ],
         },
       ],
