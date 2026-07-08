@@ -22,6 +22,7 @@ import { useLang, type DictKey } from "@/lib/i18n";
 interface HomeProps {
   projects: Project[];
   error?: string | null;
+  busy?: boolean; // YouTube pre-flight (fetching captions / analyzing frames)
   onGenerate: (cfg: GenConfig) => void;
   onOpen: (id: string) => void;
   onCreate: (p: Project) => void;
@@ -30,7 +31,7 @@ interface HomeProps {
 
 const YT_RE = /(youtube\.com\/(watch|shorts|live|embed)|youtu\.be\/)/;
 
-export default function Home({ projects, error, onGenerate, onOpen, onCreate, onDelete }: HomeProps) {
+export default function Home({ projects, error, busy, onGenerate, onOpen, onCreate, onDelete }: HomeProps) {
   const { lang, t } = useLang();
   // On a public deploy the tool can't run (no local keys / localStorage), so
   // every "real action" opens the install guide instead of doing the action.
@@ -219,8 +220,12 @@ export default function Home({ projects, error, onGenerate, onOpen, onCreate, on
               if (e.key === "Enter" && !e.nativeEvent.isComposing) startGenerate();
             }}
           />
-          <button className="btn pill-white" disabled={!hosted && !topic.trim()} onClick={startGenerate}>
-            {isYoutube ? t("gen_btn_yt") : t("gen_btn")}
+          <button
+            className="btn pill-white"
+            disabled={busy || (!hosted && !topic.trim())}
+            onClick={startGenerate}
+          >
+            {busy ? t("gen_busy") : isYoutube ? t("gen_btn_yt") : t("gen_btn")}
           </button>
         </div>
 

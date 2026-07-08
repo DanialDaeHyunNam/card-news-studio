@@ -12,6 +12,7 @@ import { readSSE, extractCards, parseStructured } from "@/lib/stream";
 import { LangProvider, useLang } from "@/lib/i18n";
 import Home from "@/components/Home";
 import Editor from "@/components/Editor";
+import SegmentPicker from "@/components/SegmentPicker";
 
 export default function App() {
   return (
@@ -23,6 +24,17 @@ export default function App() {
 
 const YT_RE = /(youtube\.com\/(watch|shorts|live|embed)|youtu\.be\/)/;
 const mmss = (t: number) => `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
+// Above this length we ask which segment to use — otherwise the transcript is
+// truncated to ~16k chars server-side and the tail is silently dropped.
+const LONG_SECONDS = 20 * 60;
+
+interface YtResult {
+  videoId: string;
+  title: string;
+  author: string;
+  duration: number;
+  lines: { t: number; text: string }[];
+}
 
 function Root() {
   const { lang, t } = useLang();
@@ -32,6 +44,10 @@ function Root() {
   const [draft, setDraft] = useState<Project | null>(null);
   const [genProgress, setGenProgress] = useState<GenProgress | null>(null);
   const [genError, setGenError] = useState<string | null>(null);
+  // YouTube pre-flight: fetching captions / analyzing frames before the editor
+  // opens, plus the segment picker for long videos.
+  const [ytBusy, setYtBusy] = useState(false);
+  const [ytPending, setYtPending] = useState<{ cfg: GenConfig; yt: YtResult } | null>(null);
   const projectsRef = useRef<Project[]>([]);
 
   useEffect(() => {
@@ -48,14 +64,98 @@ function Root() {
     saveProjects(next);
   };
 
-  // Kicks off generation: opens the Editor on an empty draft immediately, then
-  // streams cards into it one at a time (request: instant transition + build).
-  async function startGenerate(cfg: GenConfig) {
+  // Non-YouTube generates straight away; YouTube pre-fetches captions first (and
+  // asks for a segment on long videos) before generating.
+  function startGenerate(cfg: GenConfig) {
+    if (YT_RE.test(cfg.topic)) {
+      void beginYoutube(cfg);
+    } else {
+      const topic = cfg.topic.trim();
+      void runGenerate(cfg, { requestTopic: topic, projectName: topic.slice(0, 24) || t("new_project_name") });
+    }
+  }
+
+  async function beginYoutube(cfg: GenConfig) {
+    setGenError(null);
+    setYtBusy(true);
+    try {
+      const ytRes = await fetch("/api/youtube", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: cfg.topic.trim() }),
+      });
+      const yt = (await ytRes.json()) as YtResult & { error?: string };
+      if (!ytRes.ok) throw new Error(yt.error || "자막을 가져오지 못했습니다.");
+      setYtBusy(false);
+      if ((yt.duration || 0) >= LONG_SECONDS) {
+        setYtPending({ cfg, yt }); // long → ask which segment
+      } else {
+        void runYoutube(cfg, yt, 0, yt.duration || Number.MAX_SAFE_INTEGER);
+      }
+    } catch (e) {
+      setYtBusy(false);
+      setGenError(e instanceof Error ? e.message : "자막을 가져오지 못했습니다.");
+    }
+  }
+
+  async function runYoutube(cfg: GenConfig, yt: YtResult, startSec: number, endSec: number) {
+    setYtPending(null);
+    let lines = yt.lines.filter((l) => l.t >= startSec && l.t < endSec);
+    if (lines.length === 0) lines = yt.lines; // no captions in range → use all
+    const transcript = lines.map((l) => `[${mmss(l.t)}] ${l.text}`).join("\n");
+    const projectName = (yt.title || t("yt_fallback_name")).slice(0, 24);
+    const requestTopic =
+      lang === "ko"
+        ? `아래 유튜브 영상의 자막으로 카드뉴스를 만들어줘: ${yt.title}`
+        : `Create a card set from this YouTube video's captions: ${yt.title}`;
+    const source = { type: "youtube", url: cfg.topic.trim(), title: yt.title, author: yt.author, transcript };
+
+    // Vision-pick a video frame for the background + a matching accent. Best
+    // effort — any failure just generates without a video background.
+    let bgFrame: string | undefined;
+    let accent = cfg.accent;
+    setYtBusy(true);
+    try {
+      const pick = await pickVideoBg(yt.videoId, cfg.model);
+      if (pick && pick.frame >= 0) bgFrame = `/api/frame?v=${yt.videoId}&n=${pick.frame}`;
+      if (pick && !accent && /^#[0-9a-fA-F]{6}$/.test(pick.accent ?? "")) accent = pick.accent;
+    } catch {
+      /* no frame — plain generation */
+    }
+    setYtBusy(false);
+    void runGenerate({ ...cfg, accent }, { requestTopic, projectName, source, bgFrame });
+  }
+
+  async function pickVideoBg(videoId: string, model: string): Promise<{ frame: number; accent: string } | null> {
+    const res = await fetch("/api/video-bg", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ videoId, model, lang }),
+    });
+    if (!res.headers.get("content-type")?.includes("event-stream")) return null;
+    let acc = "";
+    let doneText = "";
+    for await (const ev of readSSE(res)) {
+      if (ev.type === "delta") acc += ev.text ?? "";
+      else if (ev.type === "done") doneText = ev.text || acc;
+      else if (ev.type === "error") return null;
+    }
+    try {
+      return parseStructured<{ frame: number; accent: string }>(doneText || acc);
+    } catch {
+      return null;
+    }
+  }
+
+  // Opens the Editor on an empty draft immediately, then streams cards into it.
+  async function runGenerate(
+    cfg: GenConfig,
+    req: { requestTopic: string; projectName: string; source?: Record<string, unknown>; bgFrame?: string },
+  ) {
     const id = newId();
-    const isYt = YT_RE.test(cfg.topic);
     const base: Project = {
       id,
-      name: cfg.topic.trim().slice(0, 24) || t("new_project_name"),
+      name: req.projectName || t("new_project_name"),
       format: cfg.format,
       theme: cfg.accent ? { ...defaultTheme(), accent: cfg.accent } : defaultTheme(),
       cards: [],
@@ -79,40 +179,17 @@ function Root() {
           }
         : undefined;
 
-      let requestTopic = cfg.topic.trim();
-      let projectName = requestTopic.slice(0, 24);
-      let source: Record<string, unknown> | undefined;
-      if (isYt) {
-        const ytRes = await fetch("/api/youtube", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: requestTopic }),
-        });
-        const yt = await ytRes.json();
-        if (!ytRes.ok) throw new Error(yt.error || "자막을 가져오지 못했습니다.");
-        const transcript = (yt.lines as { t: number; text: string }[])
-          .map((l) => `[${mmss(l.t)}] ${l.text}`)
-          .join("\n");
-        source = { type: "youtube", url: requestTopic, title: yt.title, author: yt.author, transcript };
-        projectName = (yt.title || t("yt_fallback_name")).slice(0, 24);
-        requestTopic =
-          lang === "ko"
-            ? `아래 유튜브 영상의 자막으로 카드뉴스를 만들어줘: ${yt.title}`
-            : `Create a card set from this YouTube video's captions: ${yt.title}`;
-        setDraft((d) => (d && d.id === id ? { ...d, name: projectName } : d));
-      }
-
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          topic: requestTopic,
+          topic: req.requestTopic,
           format: cfg.format,
           cardCount: cfg.cardCount,
           model: cfg.model,
           accent: cfg.accent,
           reference,
-          source,
+          source: req.source,
           lang,
         }),
       });
@@ -139,9 +216,7 @@ function Root() {
             if (partial.cards.length <= d.cards.length) {
               return theme ? { ...d, theme: nextTheme } : d;
             }
-            const added = partial.cards
-              .slice(d.cards.length)
-              .map((c) => normalizeCard(c as RawCard, nextTheme));
+            const added = partial.cards.slice(d.cards.length).map((c) => normalizeCard(c as RawCard, nextTheme));
             return { ...d, theme: nextTheme, cards: [...d.cards, ...added] };
           });
           setGenProgress((g) => (g ? { total: g.total, done: partial.cards.length, phase: "cards" } : g));
@@ -153,17 +228,23 @@ function Root() {
         }
       }
 
-      const final = parseStructured<{
-        theme?: Record<string, unknown>;
-        cards?: Record<string, unknown>[];
-      }>(doneText || acc);
+      const final = parseStructured<{ theme?: Record<string, unknown>; cards?: Record<string, unknown>[] }>(
+        doneText || acc,
+      );
       const finalTheme = { ...defaultTheme(), ...(final.theme ?? {}) } as Theme;
       if (cfg.accent) finalTheme.accent = cfg.accent;
       const cards = (final.cards ?? []).map((c) => normalizeCard(c as RawCard, finalTheme));
       if (cards.length === 0) throw new Error("생성된 카드가 없습니다. 다시 시도해 주세요.");
+      // Video frame → hook card background (heavy dark dim keeps light text legible).
+      if (req.bgFrame) {
+        cards[0] = {
+          ...cards[0],
+          background: `linear-gradient(180deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.4) 45%, rgba(0,0,0,0.72) 100%), url(${req.bgFrame}) center/cover no-repeat`,
+        };
+      }
       const project: Project = {
         ...base,
-        name: projectName || base.name,
+        name: req.projectName || base.name,
         theme: finalTheme,
         cards,
         usage: addUsage(undefined, usage),
@@ -206,16 +287,27 @@ function Root() {
   }
 
   return (
-    <Home
-      projects={projects}
-      error={genError}
-      onGenerate={startGenerate}
-      onOpen={setOpenId}
-      onCreate={(p) => {
-        persist([...projects, p]);
-        setOpenId(p.id);
-      }}
-      onDelete={(id) => persist(projects.filter((p) => p.id !== id))}
-    />
+    <>
+      <Home
+        projects={projects}
+        error={genError}
+        busy={ytBusy}
+        onGenerate={startGenerate}
+        onOpen={setOpenId}
+        onCreate={(p) => {
+          persist([...projects, p]);
+          setOpenId(p.id);
+        }}
+        onDelete={(id) => persist(projects.filter((p) => p.id !== id))}
+      />
+      {ytPending && (
+        <SegmentPicker
+          title={ytPending.yt.title || t("yt_fallback_name")}
+          durationSec={ytPending.yt.duration}
+          onConfirm={(s, e) => void runYoutube(ytPending.cfg, ytPending.yt, s, e)}
+          onClose={() => setYtPending(null)}
+        />
+      )}
+    </>
   );
 }

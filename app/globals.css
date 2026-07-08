@@ -2477,6 +2477,70 @@ input[type="range"]::-webkit-slider-thumb {
   border-color: #34d399;
 }
 
+/* long-video segment picker */
+.seg-card {
+  width: min(440px, 100%);
+}
+.seg-sub {
+  color: var(--text-dim);
+  font-size: 13.5px;
+  line-height: 1.6;
+  margin: 0 0 18px;
+}
+.seg-sub b {
+  color: var(--text);
+}
+.seg-range {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.seg-badge {
+  font-family: var(--mono, ui-monospace, "SF Mono", Menlo, Consolas, monospace);
+  font-size: 15px;
+  font-weight: 700;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px 12px;
+}
+.seg-badge.new {
+  color: #8ab4ff;
+  border-color: rgba(59, 130, 246, 0.4);
+  background: rgba(59, 130, 246, 0.08);
+}
+.seg-arrow {
+  color: var(--text-dim);
+}
+.seg-dur {
+  color: var(--text-dim);
+  font-size: 13px;
+  margin-left: auto;
+}
+.seg-label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-dim);
+  margin: 16px 0 8px;
+}
+.seg-slider {
+  width: 100%;
+  accent-color: var(--accent);
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+.seg-lens {
+  display: flex;
+  gap: 8px;
+}
+.seg-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+}
+
 .inst-overlay {
   position: fixed;
   inset: 0;

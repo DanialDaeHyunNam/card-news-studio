@@ -111,6 +111,7 @@ export async function POST(req: Request) {
       videoId: id,
       title: player?.videoDetails?.title ?? "",
       author: player?.videoDetails?.author ?? "",
+      duration: Number(player?.videoDetails?.lengthSeconds) || 0, // seconds; 0 if unknown
       language: track.languageCode,
       auto: track.kind === "asr",
       lines,

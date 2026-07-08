@@ -24,6 +24,17 @@ const D = {
   gen_busy: ["생성 중…", "Generating…"],
   st_yt: ["유튜브 자막 가져오는 중…", "Fetching captions…"],
   st_design: ["카드 설계 중…", "Designing cards…"],
+  // long-video segment picker
+  seg_title: ["긴 영상이에요 — 어느 구간을 만들까요?", "Long video — which part should we use?"],
+  seg_total: ["전체 길이", "Total"],
+  seg_hint: [
+    "긴 영상은 자막이 앞부분만 반영돼요. 카드로 만들 구간을 골라주세요.",
+    "Long videos only use the start of the transcript — pick the window to turn into cards.",
+  ],
+  seg_start: ["시작 위치", "Start"],
+  seg_len: ["길이", "Length"],
+  seg_confirm: ["이 구간으로 생성", "Use this segment"],
+  seg_full: ["전체(앞부분)로", "Whole video (front)"],
   fmt_11: ["정사각형 · 인스타 피드", "Square · IG feed"],
   fmt_45: ["세로 · 피드 점유율 최대", "Portrait · max feed presence"],
   fmt_916: ["풀스크린 · 스토리/릴스", "Full screen · Stories/Reels"],
