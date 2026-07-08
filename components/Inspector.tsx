@@ -251,6 +251,7 @@ export default function Inspector({
                   )}
                 </div>
               </label>
+              {element.role && <p className="override-hint">↳ {t("insp_override_hint")}</p>}
               <div className="field-row">
                 <label className="field">
                   <span>{t("insp_size")}</span>

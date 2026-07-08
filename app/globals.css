@@ -2655,6 +2655,63 @@ input[type="range"]::-webkit-slider-thumb {
   color: #8ab4ff;
 }
 
+/* "editing overrides just this card" hint under a role dropdown */
+.override-hint {
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: #8ab4ff;
+  background: rgba(59, 130, 246, 0.08);
+  border-radius: 8px;
+  padding: 7px 10px;
+  margin: 8px 0 2px;
+}
+
+/* clickable "N changes applied" → expandable change list */
+.chat-done-btn {
+  color: inherit;
+  background: none;
+  border: none;
+  font: inherit;
+  padding: 0;
+  cursor: default;
+}
+.chat-done-btn.clickable {
+  cursor: pointer;
+}
+.chat-done-btn.clickable:hover {
+  filter: brightness(1.2);
+}
+.chat-done-caret {
+  color: var(--text-dim);
+  margin-left: 5px;
+  font-size: 9px;
+}
+.chat-ops {
+  margin: 6px 0 0;
+  padding: 8px 11px;
+  list-style: none;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.chat-ops li {
+  font-size: 11.5px;
+  color: var(--text-dim);
+  font-family: var(--mono, ui-monospace, "SF Mono", Menlo, Consolas, monospace);
+  padding: 1.5px 0;
+}
+
+/* persistent in-progress status above the chat input */
+.chat-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-dim);
+  padding: 4px 2px 8px;
+}
+
 .inst-overlay {
   position: fixed;
   inset: 0;

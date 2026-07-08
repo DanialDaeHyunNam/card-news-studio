@@ -213,6 +213,41 @@ export function roleSharedStyle(project: Project, role: string): RoleStyle {
   return { ...canonicalRoleStyle(project, role), ...(project.styles?.[role] ?? {}) };
 }
 
+// Short English lines describing what a chat operation batch changed — shown when
+// the user clicks the "N changes applied" marker. `project` is the pre-apply
+// state, since ops reference its card ids.
+export function summarizeOps(project: Project, ops: Operation[]): string[] {
+  const cardNum = (id?: string) => {
+    const i = project.cards.findIndex((c) => c.id === id);
+    return i >= 0 ? `Card ${i + 1}` : "Card";
+  };
+  const keys = (patch?: Record<string, unknown>) => (patch ? Object.keys(patch).join(", ") : "");
+  return ops.map((o) => {
+    switch (o.op) {
+      case "update_element":
+        return `${cardNum(o.cardId)}: ${keys(o.patch) || "element"}`;
+      case "add_element":
+        return `${cardNum(o.cardId)}: + ${(o.element?.type as string) ?? "element"}`;
+      case "remove_element":
+        return `${cardNum(o.cardId)}: − element`;
+      case "reorder_element":
+        return `${cardNum(o.cardId)}: reorder`;
+      case "update_card":
+        return `${cardNum(o.cardId)}: background`;
+      case "add_card":
+        return `+ card`;
+      case "remove_card":
+        return `${cardNum(o.cardId)}: − card`;
+      case "update_theme":
+        return `Theme: ${keys(o.patch)}`;
+      case "update_style":
+        return `Style [${o.role ?? "?"}]: ${keys(o.patch)}`;
+      default:
+        return String(o.op);
+    }
+  });
+}
+
 // Force every same-role text element to the role's shared style — used after
 // generation and by an explicit "unify" action so cards can't drift apart.
 // Establishes project.styles[role] (existing shared value wins, else the mode).

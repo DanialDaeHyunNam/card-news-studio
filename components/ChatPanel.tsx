@@ -41,6 +41,7 @@ export default function ChatPanel({ project, selection, selectionLabel, disabled
   const [error, setError] = useState<string | null>(null);
   const [tplRef, setTplRef] = useState<Template | null>(null);
   const [tplOpen, setTplOpen] = useState(false);
+  const [openOps, setOpenOps] = useState<number | null>(null); // expanded change list
   // Transient turn shown while streaming, before it lands in project.chat.
   const [streamUser, setStreamUser] = useState<{ text: string; thumbs: string[] } | null>(null);
   const [streamReply, setStreamReply] = useState("");
@@ -198,7 +199,20 @@ export default function ChatPanel({ project, selection, selectionLabel, disabled
             <div className="chat-bubble">{m.text}</div>
             {m.role === "assistant" && m.ops !== undefined && (
               <div className="chat-done">
-                ✓ {m.ops > 0 ? `${m.ops}${t("chat_applied")}` : t("chat_no_change")}
+                <button
+                  className={`chat-done-btn ${m.opsSummary ? "clickable" : ""}`}
+                  onClick={() => m.opsSummary && setOpenOps(openOps === i ? null : i)}
+                >
+                  ✓ {m.ops > 0 ? `${m.ops}${t("chat_applied")}` : t("chat_no_change")}
+                  {m.opsSummary && <span className="chat-done-caret">{openOps === i ? "▲" : "▾"}</span>}
+                </button>
+                {openOps === i && m.opsSummary && (
+                  <ul className="chat-ops">
+                    {m.opsSummary.split("\n").map((line, j) => (
+                      <li key={j}>{line}</li>
+                    ))}
+                  </ul>
+                )}
               </div>
             )}
           </div>
@@ -270,6 +284,12 @@ export default function ChatPanel({ project, selection, selectionLabel, disabled
               <button onClick={() => setAttachments((prev) => prev.filter((x) => x.id !== a.id))}>✕</button>
             </div>
           ))}
+        </div>
+      )}
+
+      {busy && (
+        <div className="chat-status">
+          <span className="btn-spinner dark" /> {t("chat_working")}
         </div>
       )}
 

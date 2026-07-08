@@ -102,6 +102,7 @@ export interface ChatMessage {
   text: string;
   images?: string[]; // small thumbnails for display only
   ops?: number; // operations applied (assistant turns) — drives the "done" marker
+  opsSummary?: string; // short English lines of what changed (shown on click)
 }
 
 export interface Project {

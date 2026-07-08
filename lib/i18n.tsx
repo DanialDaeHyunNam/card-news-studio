@@ -165,6 +165,10 @@ const D = {
   insp_add_role: ["+ 역할", "+ Role"],
   insp_add_role_prompt: ["새 역할 이름 (예: quote, stat)", "New role name (e.g. quote, stat)"],
   insp_ref: ["채팅에서 참조", "Reference in chat"],
+  insp_override_hint: [
+    "아래 값을 바꾸면 이 카드만 달라집니다 (다른 카드는 공통 스타일 유지). 되돌리려면 ↺.",
+    "Editing the values below overrides just this card (others keep the shared style). ↺ to reset.",
+  ],
   insp_unify_title: [
     "모든 카드의 같은 역할 텍스트를 공통 스타일로 통일합니다.",
     "Snap every card's same-role text to the shared style.",
@@ -229,6 +233,7 @@ const D = {
     "Edit the selected card or element in plain language. Paste or drop images and ask to place them on a card.",
   ],
   chat_thinking: ["생각 중…", "Thinking…"],
+  chat_working: ["진행 중…", "Working…"],
   chat_ph: ["수정 요청을 입력하세요… (이미지 붙여넣기 가능)", "Ask for changes… (you can paste images)"],
   chat_send: ["보내기", "Send"],
   chat_attach: ["이미지 첨부", "Attach image"],
