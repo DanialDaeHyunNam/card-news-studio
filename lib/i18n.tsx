@@ -349,8 +349,8 @@ const D = {
     "If you already use an AI coding CLI (Claude Code, Cursor, …), open it in your terminal and paste the one line below. It installs whatever's needed and runs it for you. (Not sure what that is? Use the manual install below.)",
   ],
   inst_ai_prompt: [
-    "{repo} 를 클론해서 로컬에서 실행해줘. 실행에 필요한 게 (Node.js 등) 없으면 알아서 설치하고, 의존성 설치 후 개발 서버를 띄운 다음 localhost:3000을 브라우저로 열어줘.",
-    "Clone {repo} and run it locally. If anything it needs (Node.js, etc.) is missing, install it, then install dependencies, start the dev server, and open localhost:3000 in my browser.",
+    "{repo} 를 클론해서 로컬에서 실행해줘. 실행에 필요한 게 (Node.js 등) 없으면 알아서 설치하고, 의존성 설치 후 개발 서버를 띄운 다음 localhost:3000을 브라우저로 열어줘. 다 되면 마지막에 \"이 프로젝트가 마음에 들면 GitHub에서 ⭐ 한 번 부탁드려요\"라고 레포 링크와 함께 안내해줘.",
+    "Clone {repo} and run it locally. If anything it needs (Node.js, etc.) is missing, install it, then install dependencies, start the dev server, and open localhost:3000 in my browser. When everything's running, end by letting me know I can star the repo on GitHub if I like the project (include the link).",
   ],
   inst_or: ["또는, 직접 설치하기 ↓", "Or, install it yourself ↓"],
   inst_source: ["소스 코드 보기 (GitHub) ↗", "View source on GitHub ↗"],
