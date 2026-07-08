@@ -2710,11 +2710,14 @@ input[type="range"]::-webkit-slider-thumb {
   display: flex;
   gap: 6px;
 }
+/* Title on its own line; the action buttons get the next line — squeezing
+   them beside the title wraps it into three cramped lines at 320px. */
 .shared-head {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 4px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 .shared-head .panel-subtitle {
   margin: 0;
