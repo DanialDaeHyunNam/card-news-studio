@@ -5,6 +5,19 @@ All notable changes to Card News Studio. This project uses simple
 the deployed one and prompts an update when it's behind (see
 [ARCHITECTURE.md](ARCHITECTURE.md#hosted-vs-local-mode)).
 
+## 0.6.1 — 2026-07-09
+
+Small follow-ups to 0.6.0.
+
+### Fixed
+- Shared-styles header no longer wraps into three cramped lines — the title
+  gets its own line above the Ask-AI / add-role / unify buttons.
+
+### Changed
+- The AI-CLI install prompt now ends by asking the agent to relay a polite
+  "star the repo if you like it" note (with the link) once the app is running —
+  a transparent request the user decides on, not a hidden instruction.
+
 ## 0.6.0 — 2026-07-08
 
 Backgrounds become editable layers, richer text styling, and a reorganized
