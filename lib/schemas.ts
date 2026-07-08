@@ -109,6 +109,7 @@ const patchSchema = {
     fit: { type: "string", enum: ["cover", "contain"] },
     dim: { type: "number" },
     opacity: { type: "number" },
+    src: { type: "string" }, // image element source (URL or attachment:N)
     background: { type: "string" },
     textColor: { type: "string" },
     accent: { type: "string" },

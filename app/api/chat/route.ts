@@ -33,9 +33,13 @@ function parseDataUrl(dataUrl: string): { mediaType: ImageMediaType; data: strin
   return { mediaType: m[1] as ImageMediaType, data: m[2] };
 }
 
-// Image srcs are large data URLs the model doesn't need — strip before sending.
-// `n` is the 1-based card number the user sees on the thumbnail, so references
-// like "1,2번 카드" / "3~5번" map unambiguously to the right cards.
+// Only huge inline data URLs are stripped — short same-origin URLs (/uploads,
+// /api/photo, /templates) are KEPT so the model can see which image is where and
+// reuse/copy it across cards or into a background. `n` is the 1-based card number
+// the user sees, so "1,2번 카드" / "3~5번" map unambiguously to the right cards.
+const omitData = (s: string) =>
+  s.includes("data:") ? s.replace(/data:[^)'"\s]+/g, "[image-data omitted]") : s;
+
 function sanitizeProject(project: Project) {
   return {
     id: project.id,
@@ -45,8 +49,9 @@ function sanitizeProject(project: Project) {
     cards: project.cards.map((c, i) => ({
       n: i + 1,
       ...c,
+      background: omitData(c.background),
       elements: c.elements.map((el) =>
-        el.type === "image" ? { ...el, src: "[image-data omitted]" } : el,
+        el.type === "image" && el.src.startsWith("data:") ? { ...el, src: "[image-data omitted]" } : el,
       ),
     })),
   };

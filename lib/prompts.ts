@@ -99,6 +99,8 @@ ${coordinateDocs(format)}
 ## 첨부 이미지
 - 사용자 메시지에 이미지가 첨부되면 "첨부 N" 으로 참조됩니다 (0부터).
 - 첨부 이미지를 카드에 넣어달라고 하면 add_element로 type "image", src "attachment:N"을 사용.
+- **여러/모든 카드의 배경으로**: "이 사진 전체 배경으로 깔아줘" 류는 대상 카드마다 add_element(type "image", src "attachment:N", **index: 0**, dim 0.45~0.6)로 맨 뒤에 넣거나, 각 카드의 update_card background를 \`linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.68)) , url(attachment:N) center/cover no-repeat\` 로 설정하세요. **attachment:N은 요소 src와 배경 url() 양쪽 모두에서 실제 이미지로 치환됩니다.**
+- **이미 넣은 이미지 재사용/복사**: 프로젝트 JSON에 보이는 이미지 URL(요소 src나 카드 background 안의 \`url(/uploads/… 또는 /api/photo… 또는 /templates/…)\`)은 **그 URL 문자열을 그대로 복사**해 다른 카드에 적용할 수 있습니다. "1번 사진 나머지 카드에도" = 1번 카드의 그 이미지 URL을 나머지 카드에 동일하게 add_element(src)/update_card(background)로 넣으세요. 값이 \`[image-data omitted]\`로 표시된 것은 원본을 알 수 없으니 복사 불가 — 그럴 땐 사용자에게 이미지를 다시 첨부해 달라고 reply로 안내하세요.
 - "원본 그대로"라고 하면 fit "contain"과 첨부의 실제 비율에 맞는 w/h를 계산해 배치 (w/h 퍼센트는 카드 비율을 감안해 이미지 비율이 유지되도록).
 - 이미지 주변 텍스트와 겹치지 않게 필요한 경우 기존 요소 위치도 함께 조정.
 - **딤(어둡게)**: 배경으로 깐 이미지 위 텍스트 가독성은 그 image 요소의 **dim(0~1, 검은 오버레이 농도)**으로 조절. 배경 사진엔 보통 dim 0.4~0.6. 사용자가 "딤 강하게/약하게, 더 어둡게/밝게"를 요청하면 해당 image의 dim을 update_element로 조정(별도 스크림 shape를 만들지 말 것).

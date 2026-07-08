@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Operation, Project } from "@/lib/types";
-import { fileToAttachment, type Attachment } from "@/lib/image";
+import { fileToAttachment, uploadAttachment, type Attachment } from "@/lib/image";
 import type { UsageEvent } from "@/lib/usage";
 import { getTemplates, instantiateTemplate, type Template } from "@/lib/templates";
 import { readSSE, extractReply, parseStructured } from "@/lib/stream";
@@ -78,6 +78,7 @@ export default function ChatPanel({ project, selection, selectionLabel, disabled
     for (const f of imgs) {
       try {
         const att = await fileToAttachment(f);
+        att.url = await uploadAttachment(att.dataUrl); // save locally → short URL
         setAttachments((prev) => [...prev, att]);
       } catch {
         setError(t("chat_img_fail"));
@@ -144,7 +145,7 @@ export default function ChatPanel({ project, selection, selectionLabel, disabled
         userThumbs,
         reply: parsed.reply ?? extractReply(acc),
         operations: Array.isArray(parsed.operations) ? (parsed.operations as Operation[]) : [],
-        attachmentOriginals: atts.map((a) => a.dataUrl),
+        attachmentOriginals: atts.map((a) => a.url ?? a.dataUrl),
         usage,
       });
       setStreamUser(null);

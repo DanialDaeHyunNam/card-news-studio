@@ -7,6 +7,27 @@ export interface Attachment {
   thumb: string; // tiny copy persisted in chat history
   width: number;
   height: number;
+  url?: string; // same-origin /uploads URL once saved to the local store
+}
+
+// Persist the full image to the local store (dev only) and return its /uploads
+// URL, which is what gets referenced in cards. Falls back to the inline data URL
+// if the server can't write (e.g., hosted) — still works, just not AI-reusable.
+export async function uploadAttachment(dataUrl: string): Promise<string> {
+  try {
+    const res = await fetch("/api/asset", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dataUrl }),
+    });
+    if (res.ok) {
+      const d = await res.json();
+      if (typeof d.url === "string") return d.url;
+    }
+  } catch {
+    /* fall through to the data URL */
+  }
+  return dataUrl;
 }
 
 function scaleToDataUrl(img: HTMLImageElement, maxDim: number): string {

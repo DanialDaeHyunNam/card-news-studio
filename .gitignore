@@ -10,6 +10,9 @@ out/
 .env.local
 .env*.local
 
+# user-uploaded chat images (served locally at /uploads, never committed)
+public/uploads/
+
 # misc
 .DS_Store
 *.pem

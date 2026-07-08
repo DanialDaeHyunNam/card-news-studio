@@ -10,6 +10,13 @@ function str(v: unknown, fallback: string): string {
   return typeof v === "string" && v.length > 0 ? v : fallback;
 }
 
+// Replace attachment:N placeholders — bare ("attachment:0") or inside a CSS
+// url() in a card background — with the real src/URL from this turn's uploads.
+function subst(s: string, attachments?: string[]): string {
+  if (!attachments) return s;
+  return s.replace(/attachment:(\d+)/g, (whole, n) => attachments[parseInt(n, 10)] ?? whole);
+}
+
 export function newId(): string {
   return crypto.randomUUID();
 }
@@ -84,7 +91,7 @@ export function normalizeCard(
   const elements = (raw.elements ?? [])
     .map((e) => normalizeElement(e, theme, attachments))
     .filter((e): e is CardElement => e !== null);
-  return { id: newId(), background: str(raw.background, theme.background), elements };
+  return { id: newId(), background: subst(str(raw.background, theme.background), attachments), elements };
 }
 
 const TEXT_PATCH_KEYS = ["text", "fontSize", "fontWeight", "color", "align", "lineHeight", "fontFamily", "letterSpacing", "opacity", "x", "y", "w"] as const;
@@ -122,17 +129,26 @@ export function applyOperations(project: Project, ops: Operation[], attachments?
       case "update_theme": {
         if (!o.patch) break;
         for (const key of ["background", "textColor", "accent", "fontFamily"] as const) {
-          if (typeof o.patch[key] === "string") p.theme[key] = o.patch[key] as string;
+          if (typeof o.patch[key] === "string") {
+            p.theme[key] = key === "background" ? subst(o.patch[key] as string, attachments) : (o.patch[key] as string);
+          }
         }
         break;
       }
       case "update_card": {
-        if (card && typeof o.patch?.background === "string") card.background = o.patch.background;
+        if (card && typeof o.patch?.background === "string") card.background = subst(o.patch.background, attachments);
         break;
       }
       case "update_element": {
         const el = card?.elements.find((e) => e.id === o.elementId);
-        if (el && o.patch) patchElement(el, o.patch);
+        if (el && o.patch) {
+          // Swapping an image's source: substitute attachment tokens + validate.
+          if (el.type === "image" && typeof o.patch.src === "string") {
+            const s = subst(o.patch.src, attachments);
+            if (s.startsWith("data:") || s.startsWith("/")) el.src = s;
+          }
+          patchElement(el, o.patch);
+        }
         break;
       }
       case "add_element": {
