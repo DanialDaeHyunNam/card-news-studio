@@ -36,6 +36,7 @@ ${coordinateDocs(format)}
 - "body": 제목을 받쳐주는 설명/본문 문장. 예: "어디서도 못 느끼는 경험일수록 가격은 더 올라간다". → 중간 크기(30~40), 얇게(400~500).
 - "caption": 아주 작은 부가/출처/핸들. 예: "@handle", "3분 읽기". → 가장 작게(22~26), 흐린 색.
 - **위계(크기): mega > title > overline ≈ body > caption.** 커버(1장)=overline+mega+간단한 부제(body). 본문 카드=overline+title+body. 두 헤드라인 역할(mega/title)을 한 카드에 같이 쓰지 말 것.
+- **letterSpacing(자간, em)은 선택 — 확신 없으면 아예 생략할 것.** 한글은 자간을 벌리면 어색해짐: mega/title/body는 -0.04~0만 허용, overline·caption 같은 짧은 라벨만 0.05~0.2로 넓힐 수 있음. 0.2 초과 절대 금지.
 - 위 역할로 부족하면 새 역할 이름을 자유롭게 만들어도 됨(예: "quote", "stat"). 단 새 역할도 **모든 카드에서 같은 스타일**로 쓸 것.
 - **하나가 없는 카드는 그 role을 그냥 생략**(빈 요소 만들지 말 것). 4번 카드 body만 크기가 달라지는 식의 불일치는 절대 금지 — 같은 role은 값까지 똑같이.
 
@@ -81,7 +82,8 @@ ${coordinateDocs(format)}
 - **카드 번호 = 배열 순서 = 썸네일에 보이는 숫자.** cards[0]=1번, cards[2]=3번. 사용자가 "3번 카드", "1,2번처럼 3~5번도", "마지막 장" 이라고 하면 이 n으로 정확히 찾을 것.
 - "A,B번 (포맷/레이아웃)처럼 C,D,E번도 맞춰줘": A,B번 카드의 텍스트 위치(x/y)·크기·간격·정렬을 기준으로, C,D,E번 각 요소를 update_element로 그 기준에 맞춤(내용은 유지). 참조 카드는 건드리지 말 것.
 - element: text { text, fontSize, fontWeight, color, align, lineHeight, x, y, w,
-  fontFamily? (명조 등 폰트 교체), letterSpacing? (em 단위 자간 — 큰 제목 -0.02~-0.04, 오버라인 0.08~0.14) }
+  fontFamily? (명조 등 폰트 교체), letterSpacing? (em 단위 자간 — 헤드라인/본문(한글)은 -0.04~0만,
+  오버라인·캡션 같은 짧은 라벨만 0.05~0.2. 넓은 자간은 작은 라벨에서만 디자인으로 보이므로 그 외 값 금지) }
            shape { color, radius, x, y, w, h } / image { src, fit, radius, x, y, w, h, dim? (0~1 검은 스크림) }
 - **모든 요소 공통**: opacity? (0~1, 요소 전체 알파/투명도, 기본 1). "흐리게/반투명/투명도" 요청은 opacity로.
   반투명 색 오버레이가 필요하면 shape에 opacity를 낮춰서 쓰세요.
@@ -121,7 +123,7 @@ ${coordinateDocs(format)}
 - 첨부 이미지를 카드에 넣어달라고 하면 add_element로 type "image", src "attachment:N"을 사용.
 - **여러/모든 카드의 배경으로**: "이 사진 전체 배경으로 깔아줘" 류는 대상 카드마다 add_element(type "image", src "attachment:N", **index: 0**, dim 0.45~0.6)로 맨 뒤에 넣거나, 각 카드의 update_card background를 \`linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.68)) , url(attachment:N) center/cover no-repeat\` 로 설정하세요. **attachment:N은 요소 src와 배경 url() 양쪽 모두에서 실제 이미지로 치환됩니다.**
 - **이미 넣은 이미지 재사용/복사**: 프로젝트 JSON에 보이는 이미지 URL(요소 src나 카드 background 안의 \`url(/uploads/… 또는 /api/photo… 또는 /templates/…)\`)은 **그 URL 문자열을 그대로 복사**해 다른 카드에 적용할 수 있습니다. "1번 사진 나머지 카드에도" = 1번 카드의 그 이미지 URL을 나머지 카드에 동일하게 add_element(src)/update_card(background)로 넣으세요. 값이 \`[image-data omitted]\`로 표시된 것은 원본을 알 수 없으니 복사 불가 — 그럴 땐 사용자에게 이미지를 다시 첨부해 달라고 reply로 안내하세요.
-- "원본 그대로"라고 하면 fit "contain"과 첨부의 실제 비율에 맞는 w/h를 계산해 배치 (w/h 퍼센트는 카드 비율을 감안해 이미지 비율이 유지되도록).
+- **배경 분리(인물만 작게/구석으로)**: 첨부 정보에 "단색 배경 — 인물 분리 배치 가능"과 배경색(hex)이 표시된 사진은, 누끼 없이도 인물을 자유롭게 옮길 수 있습니다. 방법: (1) 그 카드의 배경을 그 hex 색으로 칠하고(update_card background 또는 update_theme background), (2) 이미지를 add_element(또는 update_element)로 **작게·원하는 위치**(예: 우하단 x 52·y 46·w 42, fit "cover", dim 0)로 배치. 이미지의 사각형 배경이 카드 배경과 같은 색이라 인물만 떠 보입니다. "인물 작게/우하단으로/구석에/배경색으로 깔아줘" 류 요청에 이 방식을 쓰세요. 텍스트는 인물 반대쪽(예: 좌상단)에 배치해 겹치지 않게.
 - 이미지 주변 텍스트와 겹치지 않게 필요한 경우 기존 요소 위치도 함께 조정.
 - **딤(어둡게)**: 배경으로 깐 이미지 위 텍스트 가독성은 그 image 요소의 **dim(0~1, 검은 오버레이 농도)**으로 조절. 배경 사진엔 보통 dim 0.4~0.6. 사용자가 "딤 강하게/약하게, 더 어둡게/밝게"를 요청하면 해당 image의 dim을 update_element로 조정(별도 스크림 shape를 만들지 말 것).
 

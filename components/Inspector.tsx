@@ -1,10 +1,11 @@
 "use client";
 
 import { useRef } from "react";
-import type { Card, CardElement, Project, Theme } from "@/lib/types";
+import type { Card, CardElement, ImageElement, Project, Theme } from "@/lib/types";
 import { DEFAULT_FONT, DEFAULT_ROLES, SERIF_FONT } from "@/lib/types";
 import { newId, roleSharedStyle } from "@/lib/ops";
-import { fileToAttachment } from "@/lib/image";
+import { fileToAttachment, uploadAttachment } from "@/lib/image";
+import { sampleImageColors } from "@/lib/color";
 import { useLang } from "@/lib/i18n";
 
 interface InspectorProps {
@@ -23,6 +24,9 @@ interface InspectorProps {
   onEnforceRoles: () => void;
   onReference: (token: string) => void; // drop a reference into the chat input
   onAddRole: (name: string) => void;
+  // Paint the card background + move/resize the selected image in ONE mutation
+  // (two separate patch calls would race on the stale project ref).
+  onSeparateSubject: (bg: string, patch: Record<string, unknown>) => void;
 }
 
 // A shape/image that spans (nearly) the whole card is acting as a background.
@@ -56,9 +60,25 @@ export default function Inspector({
   onEnforceRoles,
   onReference,
   onAddRole,
+  onSeparateSubject,
 }: InspectorProps) {
   const { t } = useLang();
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Read the photo's backdrop color and drop it onto the card background so a
+  // shrunk copy of the image blends in — no cutout needed.
+  async function extractBgToCard(el: ImageElement) {
+    const colors = await sampleImageColors(el.src);
+    if (colors) onPatchCard({ background: colors.bg });
+  }
+  // Same, then tuck the subject into the bottom-right, small, so only it floats.
+  async function separateSubject(el: ImageElement) {
+    const colors = await sampleImageColors(el.src);
+    if (!colors) return;
+    const w = 42;
+    const h = Math.max(8, Math.min(90, (el.h * w) / el.w));
+    onSeparateSubject(colors.bg, { x: 52, y: Math.max(6, 96 - h), w, h, dim: 0, fit: "cover" });
+  }
 
   const cardNum = project.cards.findIndex((c) => c.id === card.id) + 1;
   const layerLabels = {
@@ -85,6 +105,10 @@ export default function Inspector({
 
   async function addImage(file: File) {
     const att = await fileToAttachment(file);
+    // Save to public/uploads → short same-origin URL, so the project stays out of
+    // the ~5MB localStorage budget (a data URL here would blow it fast). Falls
+    // back to the data URL only when the store can't write (hosted).
+    const src = await uploadAttachment(att.dataUrl);
     // Fit the image into ~60% of the card width, preserving aspect ratio.
     const cardRatio = project.format === "1:1" ? 1 : project.format === "4:5" ? 1350 / 1080 : 1920 / 1080;
     const w = 60;
@@ -96,7 +120,7 @@ export default function Inspector({
       y: 20,
       w,
       h: Math.min(h, 70),
-      src: att.dataUrl,
+      src,
       fit: "cover",
       radius: 0,
     });
@@ -376,6 +400,15 @@ export default function Inspector({
                   onChange={(e) => onPatchElement({ dim: Number(e.target.value) })}
                 />
               </label>
+              <div className="subject-tools">
+                <button className="btn small" onClick={() => void separateSubject(element)}>
+                  {t("insp_subject_sep")}
+                </button>
+                <button className="btn small ghost" onClick={() => void extractBgToCard(element)}>
+                  {t("insp_bg_extract")}
+                </button>
+              </div>
+              <p className="hint">{t("insp_subject_hint")}</p>
             </>
           )}
 

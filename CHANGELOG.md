@@ -5,6 +5,43 @@ All notable changes to Card News Studio. This project uses simple
 the deployed one and prompts an update when it's behind (see
 [ARCHITECTURE.md](ARCHITECTURE.md#hosted-vs-local-mode)).
 
+## 0.5.0 — 2026-07-08
+
+Card reordering by drag, subject-on-solid-backdrop separation, role-typed
+templates, true-WYSIWYG previews, and lighter local storage.
+
+### Fixed
+- **Previews now wrap text exactly like the canvas** — thumbnails, the canvas,
+  and the exported PNG all lay text out at the same 1080px reference width and
+  are shrunk visually with a CSS transform, so a title can no longer break into
+  three lines in the strip but two on the canvas. Inline text editing uses the
+  same trick, so line breaks don't shift while editing.
+- **Letter-spacing guardrails** — the model occasionally emitted absurd tracking
+  on Korean headlines. Spacing is now clamped relative to font size (bigger type
+  → tighter cap) on every AI path — generation, element patches, and role-style
+  updates — and both prompts state the numeric rule.
+
+### Added
+- **Drag-to-reorder cards** — grab a card in the strip and drop it anywhere;
+  the ↑↓ buttons still work for one-step nudges.
+- **Separate the subject (no cutout)** — for a photo shot on a solid backdrop
+  (e.g. a person on flat orange), the app reads the backdrop color by clustering
+  the image corners, paints the card that color, and shrinks/moves the image so
+  only the subject appears to float. One click in the inspector ("Shrink subject"
+  / "Backdrop → card"), or ask in chat — the detected color is sent to the model.
+- **Role-typed starter templates** — every built-in template now assigns a role
+  to each text element and ships a shared per-role style, so opening one shows
+  the consistency system live. Also fixes invisible headlines on the One-Pager
+  (white text on a light card).
+
+### Changed
+- **Templates open as a preview** — picking a template or a blank card no longer
+  saves it immediately; it joins your project list only once you actually edit
+  it. Browsing templates no longer clutters the list.
+- **Inspector-added images go to disk** — the inspector's "+ Image" now writes to
+  `public/uploads` (like chat attachments) instead of embedding a data URL, so
+  projects stay well under the ~5MB localStorage budget.
+
 ## 0.4.0 — 2026-07-08
 
 Reusable chat images and a text-role consistency system.

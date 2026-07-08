@@ -1050,6 +1050,20 @@ select:focus {
 .thumb.active {
   border-color: #fff;
 }
+.thumb.dragging {
+  opacity: 0.4;
+}
+/* Insertion cue: highlight the slot the dragged card would drop into. */
+.thumb.drag-over {
+  border-color: var(--accent, #3b82f6);
+  box-shadow: 0 0 0 2px var(--accent, #3b82f6);
+}
+.thumb[draggable="true"] {
+  cursor: grab;
+}
+.thumb.dragging[draggable="true"] {
+  cursor: grabbing;
+}
 .thumb-preview * {
   pointer-events: none;
 }
@@ -1117,15 +1131,17 @@ select:focus {
   pointer-events: none;
 }
 
+/* Lives inside CardView's scaled node — sizes multiply by --ui (1/scale) so the
+   handle keeps a constant on-screen size at any zoom. */
 .resize-handle {
   position: absolute;
-  right: -7px;
-  bottom: -7px;
-  width: 12px;
-  height: 12px;
+  right: calc(-7px * var(--ui, 1));
+  bottom: calc(-7px * var(--ui, 1));
+  width: calc(12px * var(--ui, 1));
+  height: calc(12px * var(--ui, 1));
   background: #fff;
-  border: 2px solid var(--accent);
-  border-radius: 3px;
+  border: calc(2px * var(--ui, 1)) solid var(--accent);
+  border-radius: calc(3px * var(--ui, 1));
   cursor: nwse-resize;
   z-index: 30;
 }
@@ -1188,6 +1204,14 @@ select:focus {
 }
 .add-buttons {
   margin-bottom: 14px;
+}
+.subject-tools {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+.subject-tools .btn {
+  flex: 1;
 }
 .segmented {
   display: flex;

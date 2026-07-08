@@ -19,6 +19,14 @@ function str(v: unknown, fallback: string): string {
   return typeof v === "string" && v.length > 0 ? v : fallback;
 }
 
+// Letter-spacing (em) the model is allowed to set, by font size. Wide tracking
+// reads as a design choice only on small label text (overline/caption); on a
+// Korean headline it reads as a rendering bug — clamp harder as type gets bigger.
+export function clampTracking(v: number, fontSize: number): number {
+  const max = fontSize >= 48 ? 0.06 : fontSize >= 34 ? 0.15 : 0.35;
+  return Math.min(max, Math.max(-0.1, v));
+}
+
 // Replace attachment:N placeholders — bare ("attachment:0") or inside a CSS
 // url() in a card background — with the real src/URL from this turn's uploads.
 function subst(s: string, attachments?: string[]): string {
@@ -39,6 +47,7 @@ export function normalizeElement(
 ): CardElement | null {
   const type = raw.type;
   if (type === "text") {
+    const fontSize = num(raw.fontSize, 48, 8, 400);
     return {
       id: str(raw.id, newId()),
       type: "text",
@@ -47,13 +56,14 @@ export function normalizeElement(
       y: num(raw.y, 10, -50, 150),
       w: num(raw.w, 84, 2, 200),
       text: str(raw.text, "텍스트"),
-      fontSize: num(raw.fontSize, 48, 8, 400),
+      fontSize,
       fontWeight: num(raw.fontWeight, 700, 100, 900),
       color: str(raw.color, theme.textColor),
       align: raw.align === "left" || raw.align === "right" ? raw.align : "center",
       lineHeight: num(raw.lineHeight, 1.35, 0.8, 2.5),
       fontFamily: typeof raw.fontFamily === "string" && raw.fontFamily ? raw.fontFamily : undefined,
-      letterSpacing: raw.letterSpacing !== undefined ? num(raw.letterSpacing, 0, -0.2, 1) : undefined,
+      letterSpacing:
+        raw.letterSpacing !== undefined ? clampTracking(num(raw.letterSpacing, 0, -1, 1), fontSize) : undefined,
       opacity: raw.opacity !== undefined ? num(raw.opacity, 1, 0, 1) : undefined,
     };
   }
@@ -119,6 +129,10 @@ function patchElement(el: CardElement, patch: Record<string, unknown>) {
       if (value === "left" || value === "center" || value === "right") target[key] = value;
     } else if (key === "fit") {
       if (value === "cover" || value === "contain") target[key] = value;
+    } else if (key === "letterSpacing" && typeof value === "number") {
+      // fontSize precedes letterSpacing in TEXT_PATCH_KEYS, so a patch that sets
+      // both clamps against the incoming size, not the stale one.
+      target[key] = clampTracking(num(value, 0, -1, 1), typeof target.fontSize === "number" ? target.fontSize : 48);
     } else if (typeof value === "number") {
       const current = target[key];
       target[key] = num(value, typeof current === "number" ? current : 0, -1000, 10000);
@@ -137,7 +151,7 @@ function coerceStyleValue(key: string, v: unknown): unknown {
     fontSize: [8, 400],
     fontWeight: [100, 900],
     lineHeight: [0.8, 2.5],
-    letterSpacing: [-0.2, 1],
+    letterSpacing: [-0.1, 0.35],
   };
   const r = ranges[key];
   if (!r) return undefined;

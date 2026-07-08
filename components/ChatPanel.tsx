@@ -124,7 +124,7 @@ export default function ChatPanel({ project, selection, selectionLabel, disabled
           selection,
           history: project.chat.map((m) => ({ role: m.role, text: m.text })),
           message,
-          attachments: atts.map((a) => ({ apiDataUrl: a.apiDataUrl, width: a.width, height: a.height })),
+          attachments: atts.map((a) => ({ apiDataUrl: a.apiDataUrl, width: a.width, height: a.height, bg: a.bg, bgUniform: a.bgUniform })),
           templateRef: tpl ? { name: tpl.name, theme: tpl.theme, cards: tpl.cards } : undefined,
           lang,
         }),

@@ -42,6 +42,11 @@ function Root() {
   const [openId, setOpenId] = useState<string | null>(null);
   // In-progress generation: a not-yet-persisted project the Editor renders live.
   const [draft, setDraft] = useState<Project | null>(null);
+  // A template/blank opened for preview but NOT yet saved. It only joins the
+  // saved list once its CONTENT changes — merely opening one shouldn't clutter
+  // the project list. unsavedSig is the content fingerprint at open time.
+  const [unsaved, setUnsaved] = useState<Project | null>(null);
+  const unsavedSig = useRef<string | null>(null);
   const [genProgress, setGenProgress] = useState<GenProgress | null>(null);
   const [genError, setGenError] = useState<string | null>(null);
   // YouTube pre-flight: fetching captions / analyzing frames before the editor
@@ -63,6 +68,10 @@ function Root() {
     setProjects(next);
     saveProjects(next);
   };
+
+  // Content fingerprint of a project — deliberately excludes model/usage/updatedAt
+  // so the mount-time model auto-switch doesn't count as a user edit.
+  const contentSig = (p: Project) => JSON.stringify([p.name, p.theme, p.styles ?? null, p.cards, p.chat.length]);
 
   // Non-YouTube generates straight away; YouTube pre-fetches captions first (and
   // asks for a segment on long videos) before generating.
@@ -277,13 +286,33 @@ function Root() {
     );
   }
 
-  const open = openId ? projects.find((p) => p.id === openId) : undefined;
-  if (open) {
+  // Editor target: an unsaved preview (same id as openId) wins over a saved one.
+  const savedOpen = openId ? projects.find((p) => p.id === openId) : undefined;
+  const editing = unsaved && unsaved.id === openId ? unsaved : savedOpen;
+  if (editing) {
+    const isUnsaved = editing === unsaved;
     return (
       <Editor
-        project={open}
-        onChange={(p) => persist(projects.map((x) => (x.id === p.id ? p : x)))}
-        onClose={() => setOpenId(null)}
+        project={editing}
+        onChange={(p) => {
+          if (isUnsaved) {
+            // First real content change promotes the preview into the saved list.
+            if (contentSig(p) !== unsavedSig.current) {
+              unsavedSig.current = null;
+              setUnsaved(null);
+              persist([...projectsRef.current, p]);
+            } else {
+              setUnsaved(p); // keep live (e.g. model auto-switch) without saving
+            }
+          } else {
+            persist(projectsRef.current.map((x) => (x.id === p.id ? p : x)));
+          }
+        }}
+        onClose={() => {
+          setUnsaved(null);
+          unsavedSig.current = null;
+          setOpenId(null);
+        }}
       />
     );
   }
@@ -297,7 +326,9 @@ function Root() {
         onGenerate={startGenerate}
         onOpen={setOpenId}
         onCreate={(p) => {
-          persist([...projects, p]);
+          // Open for preview only — saved on first content edit (see editing branch).
+          setUnsaved(p);
+          unsavedSig.current = contentSig(p);
           setOpenId(p.id);
         }}
         onDelete={(id) => persist(projects.filter((p) => p.id !== id))}

@@ -29,6 +29,12 @@ auto-selects a model whose key is connected.
   Coordinates are **percent of the card**; `fontSize`/`radius` are **px at 1080-wide
   export scale**. One renderer (`components/CardView.tsx`) serves canvas, thumbnails,
   and the off-screen 1080px export node — keep it the single source of truth.
+  CardView always LAYS OUT at 1080px and shrinks with a CSS `transform: scale()` —
+  never multiply font sizes by a scale factor: glyph advances don't scale linearly,
+  so numerically-scaled text wraps differently per view (thumbnail ≠ canvas ≠ PNG).
+  Selection chrome inside the scaled node (outline/resize handle/guides) multiplies
+  by `--ui` (= 1/scale) to keep constant on-screen size. The inline text editor
+  (`Editor.tsx` InlineTextEditor) uses the same trick.
 - **AI routes** (`app/api/*`): model registry in `lib/models.ts` — Claude (Opus 4.8 /
   Sonnet 4.6 / Haiku 4.5) AND OpenAI (GPT-5.5 / 5.4 / 5.4-mini / 5.4-nano, pricing
   verified 2026-07 from the OpenAI pricing page) implemented; Gemini is a key-slot
@@ -66,6 +72,10 @@ auto-selects a model whose key is connected.
 - **Operations** are the edit language the AI speaks (`update_element`, `add_element`,
   `remove_element`, `update_card`, `add_card`, `remove_card`, `update_theme`).
   Applied client-side in `lib/ops.ts` — pure, clamps numbers, skips unknown ids.
+  `letterSpacing` is clamped font-size-aware (`clampTracking`: bigger type → tighter
+  cap; wide tracking only survives on small labels) on every AI path — generation,
+  `update_element`, `update_style` — because models occasionally emit absurd 자간 on
+  Korean headlines. Prompts (`lib/prompts.ts`) state the same rule; keep both in sync.
 - **Attachment protocol**: chat images go to the model resized (≤1200px); the AI
   inserts them via `src: "attachment:N"`, and `lib/ops.ts` substitutes the original
   data URL kept client-side. Chat history persists only tiny thumbnails
