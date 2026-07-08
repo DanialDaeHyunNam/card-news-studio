@@ -2628,6 +2628,29 @@ input[type="range"]::-webkit-slider-thumb {
   min-width: 56px;
 }
 
+.shared-head-btns {
+  display: flex;
+  gap: 6px;
+}
+/* role name doubles as an @-reference button (looks like text) */
+.ref-name {
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+.ref-name:hover {
+  color: #8ab4ff;
+}
+.layer-at {
+  color: var(--text-dim);
+  font-weight: 700;
+}
+.layer-at:hover {
+  color: #8ab4ff;
+}
+
 .inst-overlay {
   position: fixed;
   inset: 0;

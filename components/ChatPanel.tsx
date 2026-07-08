@@ -18,6 +18,9 @@ interface ChatPanelProps {
   // When set (hosted deploy), sending intercepts to this instead of hitting the
   // server — the AI edit needs a local key, so it routes to the install guide.
   onBlocked?: () => void;
+  // Register a callback so the inspector's @ buttons can drop a reference token
+  // into the chat input.
+  onRegisterInsert?: (fn: (t: string) => void) => void;
   onApply: (args: {
     userText: string;
     userThumbs: string[];
@@ -30,7 +33,7 @@ interface ChatPanelProps {
 
 const QUICK_PROMPTS: DictKey[] = ["chat_q1", "chat_q2", "chat_q3", "chat_q4"];
 
-export default function ChatPanel({ project, selection, selectionLabel, disabled, onBlocked, onApply }: ChatPanelProps) {
+export default function ChatPanel({ project, selection, selectionLabel, disabled, onBlocked, onRegisterInsert, onApply }: ChatPanelProps) {
   const { lang, t } = useLang();
   const [input, setInput] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -43,6 +46,15 @@ export default function ChatPanel({ project, selection, selectionLabel, disabled
   const [streamReply, setStreamReply] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Let the inspector's @ buttons append a reference into the input + focus it.
+  useEffect(() => {
+    onRegisterInsert?.((token) => {
+      setInput((prev) => (prev && !prev.endsWith(" ") ? prev + " " : prev) + token + " ");
+      inputRef.current?.focus();
+    });
+  }, [onRegisterInsert]);
   const tplWrapRef = useRef<HTMLDivElement>(null);
   useClickOutside(tplWrapRef, () => setTplOpen(false), tplOpen);
 
@@ -316,6 +328,7 @@ export default function ChatPanel({ project, selection, selectionLabel, disabled
           }}
         />
         <textarea
+          ref={inputRef}
           rows={3}
           placeholder={t("chat_ph")}
           value={input}

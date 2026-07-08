@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import type { Card, CardElement, GenProgress, Operation, Project, TextElement } from "@/lib/types";
 import { EXPORT_WIDTH, FORMATS } from "@/lib/types";
@@ -65,6 +65,11 @@ export default function Editor({ project, onChange, onClose, generating }: Edito
   const hosted = useHosted();
   const [showInstall, setShowInstall] = useState(false);
   const needInstall = () => setShowInstall(true);
+  // Bridge: the @ reference buttons (Inspector) drop text into the chat input.
+  const chatInsert = useRef<((t: string) => void) | null>(null);
+  const registerChatInsert = useCallback((fn: (t: string) => void) => {
+    chatInsert.current = fn;
+  }, []);
   // Brand point color (global, persisted). Changing it recolors every element
   // that used the old accent — the accent behaves like a variable/token.
   const [brandColor, setBrandColor] = useState<string>(() => {
@@ -634,6 +639,15 @@ export default function Editor({ project, onChange, onClose, generating }: Edito
                 pushHistory();
                 onChange(enforceRoles(projectRef.current));
               }}
+              onReference={(tk) => chatInsert.current?.(tk)}
+              onAddRole={(name) =>
+                mutate((p) => {
+                  p.styles = {
+                    ...(p.styles ?? {}),
+                    [name]: p.styles?.[name] ?? { fontSize: 36, fontWeight: 400, color: p.theme.textColor, lineHeight: 1.4 },
+                  };
+                }, true)
+              }
             />
 
             <ChatPanel
@@ -645,6 +659,7 @@ export default function Editor({ project, onChange, onClose, generating }: Edito
                   : `${t("sel_card")} ${safeCardIdx + 1}`
               }
               onBlocked={hosted ? needInstall : undefined}
+              onRegisterInsert={registerChatInsert}
               onApply={applyChat}
             />
           </>

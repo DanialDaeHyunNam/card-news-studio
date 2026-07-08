@@ -21,6 +21,8 @@ interface InspectorProps {
   onAddElement: (el: CardElement) => void;
   onApplyRoleStyle: (role: string, patch: Record<string, unknown>) => void;
   onEnforceRoles: () => void;
+  onReference: (token: string) => void; // drop a reference into the chat input
+  onAddRole: (name: string) => void;
 }
 
 // A shape/image that spans (nearly) the whole card is acting as a background.
@@ -52,12 +54,22 @@ export default function Inspector({
   onAddElement,
   onApplyRoleStyle,
   onEnforceRoles,
+  onReference,
+  onAddRole,
 }: InspectorProps) {
   const { t } = useLang();
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const cardNum = project.cards.findIndex((c) => c.id === card.id) + 1;
+  const layerLabels = {
+    shape: t("sel_shape"),
+    image: t("sel_image"),
+    dim: t("layer_dim"),
+    bgImage: t("layer_bg_image"),
+  };
   const roleLabel = (r: string) =>
     r === "overline" ? t("role_overline")
+    : r === "mega" ? t("role_mega")
     : r === "title" ? t("role_title")
     : r === "body" ? t("role_body")
     : r === "caption" ? t("role_caption")
@@ -65,6 +77,7 @@ export default function Inspector({
   // Roles actually present in this project (defaults first, then custom).
   const roleSet = new Set<string>();
   project.cards.forEach((c) => c.elements.forEach((e) => { if (e.type === "text" && e.role) roleSet.add(e.role); }));
+  Object.keys(project.styles ?? {}).forEach((r) => roleSet.add(r)); // include added-but-unused roles
   const isDefault = (r: string) => (DEFAULT_ROLES as readonly string[]).includes(r);
   const customRoles = [...roleSet].filter((r) => !isDefault(r));
   const rolesInProject = [...DEFAULT_ROLES.filter((r) => roleSet.has(r)), ...customRoles];
@@ -163,15 +176,18 @@ export default function Inspector({
                   <span className={`layer-ic ${el.type}`}>
                     {el.type === "text" ? "T" : el.type === "shape" ? "▭" : "▧"}
                   </span>
-                  <span className="layer-name">
-                    {layerLabel(el, {
-                      shape: t("sel_shape"),
-                      image: t("sel_image"),
-                      dim: t("layer_dim"),
-                      bgImage: t("layer_bg_image"),
-                    })}
-                  </span>
+                  <span className="layer-name">{layerLabel(el, layerLabels)}</span>
                   <span className="layer-ord">
+                    <button
+                      className="layer-at"
+                      title={t("insp_ref")}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onReference(`${layerLabel(el, layerLabels)} (${t("sel_card")} ${cardNum})`);
+                      }}
+                    >
+                      @
+                    </button>
                     <button
                       title={t("lyr_forward")}
                       onClick={(e) => {
@@ -435,15 +451,32 @@ export default function Inspector({
             <div className="shared-styles">
               <div className="shared-head">
                 <span className="panel-subtitle">{t("insp_shared")}</span>
-                <button className="btn small ghost" title={t("insp_unify_title")} onClick={onEnforceRoles}>
-                  {t("insp_unify")}
-                </button>
+                <div className="shared-head-btns">
+                  <button
+                    className="btn small ghost"
+                    onClick={() => {
+                      const name = window.prompt(t("insp_add_role_prompt"));
+                      if (name?.trim()) onAddRole(name.trim());
+                    }}
+                  >
+                    {t("insp_add_role")}
+                  </button>
+                  <button className="btn small ghost" title={t("insp_unify_title")} onClick={onEnforceRoles}>
+                    {t("insp_unify")}
+                  </button>
+                </div>
               </div>
               {rolesInProject.map((r) => {
                 const s = roleSharedStyle(project, r);
                 return (
                   <div key={r} className="shared-role">
-                    <span className="shared-role-name">{roleLabel(r)}</span>
+                    <button
+                      className="shared-role-name ref-name"
+                      title={t("insp_ref")}
+                      onClick={() => onReference(roleLabel(r))}
+                    >
+                      @ {roleLabel(r)}
+                    </button>
                     <input
                       type="number"
                       className="shared-size"

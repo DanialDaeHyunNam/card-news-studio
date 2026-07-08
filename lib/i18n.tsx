@@ -162,6 +162,9 @@ const D = {
   insp_role_reset: ["공통값으로 ↺", "Reset to shared ↺"],
   insp_shared: ["공통 스타일 (역할별)", "Shared styles (by role)"],
   insp_unify: ["일관성 정리", "Unify"],
+  insp_add_role: ["+ 역할", "+ Role"],
+  insp_add_role_prompt: ["새 역할 이름 (예: quote, stat)", "New role name (e.g. quote, stat)"],
+  insp_ref: ["채팅에서 참조", "Reference in chat"],
   insp_unify_title: [
     "모든 카드의 같은 역할 텍스트를 공통 스타일로 통일합니다.",
     "Snap every card's same-role text to the shared style.",
@@ -171,6 +174,7 @@ const D = {
     "Changing these updates every card of that role. Edit an element directly to override just that card.",
   ],
   role_overline: ["오버라인", "Overline"],
+  role_mega: ["메가타이틀", "Mega title"],
   role_title: ["타이틀", "Title"],
   role_body: ["본문", "Body"],
   role_caption: ["캡션", "Caption"],

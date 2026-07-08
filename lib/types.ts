@@ -15,7 +15,7 @@ export const FORMATS: Record<Format, { w: number; h: number; label: string; hint
 // Text roles — a soft, extensible convention. These four are the default set;
 // the AI or user can introduce more (role is a free string). Same-role text
 // across cards shares one style (project.styles[role]) so it stays consistent.
-export const DEFAULT_ROLES = ["overline", "title", "body", "caption"] as const;
+export const DEFAULT_ROLES = ["overline", "mega", "title", "body", "caption"] as const;
 
 // The shared typography for a role. A text element's own value overrides it.
 export interface RoleStyle {

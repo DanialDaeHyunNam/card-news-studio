@@ -31,10 +31,12 @@ ${coordinateDocs(format)}
 ## 텍스트 역할(role) — 모든 text 요소에 반드시 지정
 각 text 요소에 role을 붙입니다. **같은 role은 세트 전체에서 같은 스타일(fontSize·fontWeight·color·fontFamily·lineHeight·letterSpacing·align)로 통일**되어야 합니다. 기본 역할(어떤 표현이 어디인지):
 - "overline": 카드 맨 위 작은 라벨/번호/카테고리. 예: "03 감정", "STEP 1", "DAILY BRIEFING". → 작게(26~32), accent 색, 자간 살짝 넓게.
-- "title": 그 카드의 큰 핵심 제목(헤드라인). 예: "남다른 감정을 사게 만든다". → 가장 크고 굵게(72~110 훅 / 56~72 본문 카드).
+- "mega": **1장(커버/훅) 전용** 초대형 커버 타이틀. 예: "비싸도 결국 사는 이유". → 가장 큼(88~120, fontWeight 800~900). **1번 카드에만** 쓰고 본문 카드엔 쓰지 말 것(옵션 역할). 커버 카드는 이 mega가 title 역할을 대신함.
+- "title": 본문 카드들의 핵심 제목(헤드라인). 예: "남다른 감정을 사게 만든다". → 크고 굵게(56~72), mega보다는 작게.
 - "body": 제목을 받쳐주는 설명/본문 문장. 예: "어디서도 못 느끼는 경험일수록 가격은 더 올라간다". → 중간 크기(30~40), 얇게(400~500).
 - "caption": 아주 작은 부가/출처/핸들. 예: "@handle", "3분 읽기". → 가장 작게(22~26), 흐린 색.
-- 4개로 부족하면 새 역할 이름을 자유롭게 만들어도 됨(예: "quote", "stat"). 단 새 역할도 **모든 카드에서 같은 스타일**로 쓸 것.
+- **위계(크기): mega > title > overline ≈ body > caption.** 커버(1장)=overline+mega+간단한 부제(body). 본문 카드=overline+title+body. 두 헤드라인 역할(mega/title)을 한 카드에 같이 쓰지 말 것.
+- 위 역할로 부족하면 새 역할 이름을 자유롭게 만들어도 됨(예: "quote", "stat"). 단 새 역할도 **모든 카드에서 같은 스타일**로 쓸 것.
 - **하나가 없는 카드는 그 role을 그냥 생략**(빈 요소 만들지 말 것). 4번 카드 body만 크기가 달라지는 식의 불일치는 절대 금지 — 같은 role은 값까지 똑같이.
 
 ## 레이아웃 일관성 (세트 전체에서 가장 중요 — 반드시 지킬 것)
@@ -95,7 +97,7 @@ ${coordinateDocs(format)}
 - 질문/의견 요청이면 operations는 빈 배열로 두고 reply로만 답할 것.
 
 ## 텍스트 역할(role) & 공통 스타일 (일관성의 핵심)
-- 각 text 요소는 role을 가집니다(어떤 표현이 어디인지): "overline"(맨 위 작은 라벨/번호, 예 "03 감정"), "title"(큰 핵심 제목), "body"(설명·본문 문장), "caption"(작은 부가/출처/핸들). 4개로 부족하면 새 역할("quote","stat" 등)도 자유롭게 만들 수 있습니다.
+- 각 text 요소는 role을 가집니다(어떤 표현이 어디인지): "overline"(맨 위 작은 라벨/번호, 예 "03 감정"), "mega"(1장 커버 전용 초대형 타이틀, 예 "비싸도 결국 사는 이유"), "title"(본문 카드의 핵심 제목), "body"(설명·본문), "caption"(작은 부가/출처/핸들). 위계(크기): mega > title > overline ≈ body > caption. 이 역할로 부족하면 새 역할("quote","stat" 등)도 자유롭게 만들 수 있습니다.
 - **같은 role은 모든 카드에서 같은 스타일**(fontSize·fontWeight·color·fontFamily·lineHeight·letterSpacing·align)이어야 합니다.
 - **역할 스타일을 통일하거나 바꾸는 요청은 \`update_style\` 하나로** 처리하세요 — 전 카드에 자동 반영됩니다:
   - { "op":"update_style", "role":"body", "patch":{ "fontSize":34 } } → 모든 카드의 body 크기 34로 통일.
