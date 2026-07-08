@@ -8,6 +8,7 @@ const textElement = {
   required: ["type", "text", "x", "y", "w", "fontSize", "fontWeight", "color", "align", "lineHeight"],
   properties: {
     type: { type: "string", enum: ["text"] },
+    role: { type: "string" }, // overline | title | body | caption (or custom)
     text: { type: "string" },
     x: { type: "number" },
     y: { type: "number" },
@@ -95,6 +96,7 @@ const patchSchema = {
   additionalProperties: false,
   properties: {
     text: { type: "string" },
+    role: { type: "string" },
     fontSize: { type: "number" },
     fontWeight: { type: "number" },
     color: { type: "string" },
@@ -133,10 +135,12 @@ const operationSchema = {
         "add_card",
         "remove_card",
         "update_theme",
+        "update_style",
       ],
     },
     cardId: { type: "string" },
     elementId: { type: "string" },
+    role: { type: "string" }, // for update_style
     index: { type: "number" },
     patch: patchSchema,
     element: anyElement,

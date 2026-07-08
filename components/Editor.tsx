@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import type { Card, CardElement, GenProgress, Operation, Project, TextElement } from "@/lib/types";
 import { EXPORT_WIDTH, FORMATS } from "@/lib/types";
-import { applyOperations, newId } from "@/lib/ops";
+import { applyOperations, applyRoleStyle, newId } from "@/lib/ops";
 import { collectTargets, snapPosition } from "@/lib/snap";
 import { DEFAULT_MODEL, MODELS, pickDefaultModel } from "@/lib/models";
 import { addUsage, emptyUsage, fmtCost, fmtTokens, type UsageEvent, type UsageTotals } from "@/lib/usage";
@@ -626,6 +626,10 @@ export default function Editor({ project, onChange, onClose, generating }: Edito
               onReorderElement={reorderElement}
               onSelectElement={setSelectedElId}
               onAddElement={addElement}
+              onApplyRoleStyle={(role, patch) => {
+                pushHistory();
+                onChange(applyRoleStyle(projectRef.current, role, patch));
+              }}
             />
 
             <ChatPanel

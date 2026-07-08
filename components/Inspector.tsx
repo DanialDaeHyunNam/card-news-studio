@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import type { Card, CardElement, Project, Theme } from "@/lib/types";
-import { DEFAULT_FONT, SERIF_FONT } from "@/lib/types";
+import { DEFAULT_FONT, DEFAULT_ROLES, SERIF_FONT } from "@/lib/types";
 import { newId } from "@/lib/ops";
 import { fileToAttachment } from "@/lib/image";
 import { useLang } from "@/lib/i18n";
@@ -19,6 +19,7 @@ interface InspectorProps {
   onReorderElement: (id: string, dir: "back" | "backward" | "forward" | "front") => void;
   onSelectElement: (id: string) => void;
   onAddElement: (el: CardElement) => void;
+  onApplyRoleStyle: (role: string, patch: Record<string, unknown>) => void;
 }
 
 // A shape/image that spans (nearly) the whole card is acting as a background.
@@ -48,9 +49,24 @@ export default function Inspector({
   onReorderElement,
   onSelectElement,
   onAddElement,
+  onApplyRoleStyle,
 }: InspectorProps) {
   const { t } = useLang();
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const roleLabel = (r: string) =>
+    r === "overline" ? t("role_overline")
+    : r === "title" ? t("role_title")
+    : r === "body" ? t("role_body")
+    : r === "caption" ? t("role_caption")
+    : r;
+  // Roles actually present in this project (defaults first, then custom).
+  const roleSet = new Set<string>();
+  project.cards.forEach((c) => c.elements.forEach((e) => { if (e.type === "text" && e.role) roleSet.add(e.role); }));
+  const isDefault = (r: string) => (DEFAULT_ROLES as readonly string[]).includes(r);
+  const customRoles = [...roleSet].filter((r) => !isDefault(r));
+  const rolesInProject = [...DEFAULT_ROLES.filter((r) => roleSet.has(r)), ...customRoles];
+  const roleOptions = [...DEFAULT_ROLES, ...customRoles];
 
   async function addImage(file: File) {
     const att = await fileToAttachment(file);
@@ -191,6 +207,31 @@ export default function Inspector({
                   onFocus={beginEdit}
                   onChange={(e) => onPatchElement({ text: e.target.value })}
                 />
+              </label>
+              <label className="field">
+                <span>{t("insp_role")}</span>
+                <div className="role-row">
+                  <select
+                    value={element.role ?? ""}
+                    onChange={(e) => onPatchElement({ role: e.target.value }, true)}
+                  >
+                    <option value="">{t("insp_role_none")}</option>
+                    {roleOptions.map((r) => (
+                      <option key={r} value={r}>
+                        {roleLabel(r)}
+                      </option>
+                    ))}
+                  </select>
+                  {element.role && project.styles?.[element.role] && (
+                    <button
+                      className="btn small ghost"
+                      title={t("insp_role_reset")}
+                      onClick={() => onPatchElement({ ...project.styles![element.role!] }, true)}
+                    >
+                      ↺
+                    </button>
+                  )}
+                </div>
               </label>
               <div className="field-row">
                 <label className="field">
@@ -388,6 +429,44 @@ export default function Inspector({
         </>
       ) : (
         <>
+          {rolesInProject.length > 0 && (
+            <div className="shared-styles">
+              <div className="panel-subtitle">{t("insp_shared")}</div>
+              {rolesInProject.map((r) => {
+                const s = project.styles?.[r] ?? {};
+                return (
+                  <div key={r} className="shared-role">
+                    <span className="shared-role-name">{roleLabel(r)}</span>
+                    <input
+                      type="number"
+                      className="shared-size"
+                      title={t("insp_size")}
+                      value={s.fontSize ?? ""}
+                      onChange={(e) => onApplyRoleStyle(r, { fontSize: Number(e.target.value) || undefined })}
+                    />
+                    <select
+                      value={s.fontWeight ?? 400}
+                      title={t("insp_weight")}
+                      onChange={(e) => onApplyRoleStyle(r, { fontWeight: Number(e.target.value) })}
+                    >
+                      <option value={400}>R</option>
+                      <option value={600}>SB</option>
+                      <option value={700}>B</option>
+                      <option value={800}>EB</option>
+                      <option value={900}>Bl</option>
+                    </select>
+                    <input
+                      type="color"
+                      title={t("insp_color")}
+                      value={toHex(s.color ?? "#ffffff")}
+                      onChange={(e) => onApplyRoleStyle(r, { color: e.target.value })}
+                    />
+                  </div>
+                );
+              })}
+              <p className="hint">{t("insp_shared_hint")}</p>
+            </div>
+          )}
           <div className="panel-subtitle">{t("insp_card_bg")}</div>
           <label className="field">
             <span>{t("insp_bg_css")}</span>

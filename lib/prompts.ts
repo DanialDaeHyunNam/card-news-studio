@@ -28,6 +28,15 @@ ${coordinateDocs(format)}
 - 번호 표기(01, 02…)나 accent 색 얇은 shape 바(h 0.5~1)로 시리즈감을 줄 것.
 - 카피는 짧고 구어체로. 한 카드에 텍스트 3~4개 이하.
 
+## 텍스트 역할(role) — 모든 text 요소에 반드시 지정
+각 text 요소에 role을 붙입니다. **같은 role은 세트 전체에서 같은 스타일(fontSize·fontWeight·color·fontFamily·lineHeight·letterSpacing·align)로 통일**되어야 합니다. 기본 역할(어떤 표현이 어디인지):
+- "overline": 카드 맨 위 작은 라벨/번호/카테고리. 예: "03 감정", "STEP 1", "DAILY BRIEFING". → 작게(26~32), accent 색, 자간 살짝 넓게.
+- "title": 그 카드의 큰 핵심 제목(헤드라인). 예: "남다른 감정을 사게 만든다". → 가장 크고 굵게(72~110 훅 / 56~72 본문 카드).
+- "body": 제목을 받쳐주는 설명/본문 문장. 예: "어디서도 못 느끼는 경험일수록 가격은 더 올라간다". → 중간 크기(30~40), 얇게(400~500).
+- "caption": 아주 작은 부가/출처/핸들. 예: "@handle", "3분 읽기". → 가장 작게(22~26), 흐린 색.
+- 4개로 부족하면 새 역할 이름을 자유롭게 만들어도 됨(예: "quote", "stat"). 단 새 역할도 **모든 카드에서 같은 스타일**로 쓸 것.
+- **하나가 없는 카드는 그 role을 그냥 생략**(빈 요소 만들지 말 것). 4번 카드 body만 크기가 달라지는 식의 불일치는 절대 금지 — 같은 role은 값까지 똑같이.
+
 ## 레이아웃 일관성 (세트 전체에서 가장 중요 — 반드시 지킬 것)
 - 한 카드의 텍스트들은 **하나의 블록(덩어리)으로 모아서** 배치한다. 요소를 카드 위–아래로 흩뿌려 space-between처럼 벌리지 말 것 — 이게 가장 흔하고 나쁜 실수. (제목은 위, 본문은 중간, CTA는 맨 아래로 쫙 벌리면 시선이 튐)
 - 요소 간 **세로 간격을 좁고 일정하게**: 앞 요소 아래에 약 3~6%만 띄우고 다음 요소를 둠. 제목과 본문이 서로 붙어 하나의 덩어리로 읽혀야 함.
@@ -84,6 +93,15 @@ ${coordinateDocs(format)}
 - update_card: cardId + patch.background. / add_card: card (+ index) — theme과 기존 카드 스타일을 따를 것.
 - update_theme: patch. "전체 색 바꿔줘" 류 요청이면 theme과 함께 각 카드/요소도 update로 맞춰줄 것.
 - 질문/의견 요청이면 operations는 빈 배열로 두고 reply로만 답할 것.
+
+## 텍스트 역할(role) & 공통 스타일 (일관성의 핵심)
+- 각 text 요소는 role을 가집니다(어떤 표현이 어디인지): "overline"(맨 위 작은 라벨/번호, 예 "03 감정"), "title"(큰 핵심 제목), "body"(설명·본문 문장), "caption"(작은 부가/출처/핸들). 4개로 부족하면 새 역할("quote","stat" 등)도 자유롭게 만들 수 있습니다.
+- **같은 role은 모든 카드에서 같은 스타일**(fontSize·fontWeight·color·fontFamily·lineHeight·letterSpacing·align)이어야 합니다.
+- **역할 스타일을 통일하거나 바꾸는 요청은 \`update_style\` 하나로** 처리하세요 — 전 카드에 자동 반영됩니다:
+  - { "op":"update_style", "role":"body", "patch":{ "fontSize":34 } } → 모든 카드의 body 크기 34로 통일.
+  - "설명(본문) 글씨 다 같게/키워/줄여", "제목 색 전부 바꿔", "오버라인 자간 넓혀" = update_style(role, patch). 카드마다 update_element를 반복하지 마세요.
+- 요소의 역할이 없거나 틀렸으면 update_element로 지정: { "op":"update_element", "cardId":…, "elementId":…, "patch":{ "role":"body" } }.
+- **이 카드만 다르게(override)** 하려면 그 요소 하나만 update_element로 값을 바꾸면 됩니다(그 카드만 공통과 달라짐).
 
 ## 레이어 (쌓임 순서 — 매우 중요)
 - 카드의 elements 배열 **순서 = 쌓임 순서**. **index 0 = 맨 뒤(배경), 뒤로 갈수록 위**에 그려집니다. z-index 없음, 오직 배열 순서.

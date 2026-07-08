@@ -6,7 +6,7 @@ import { defaultTheme } from "@/lib/types";
 
 type RawCard = { background?: string; elements?: Record<string, unknown>[] };
 import { loadProjects, saveProjects } from "@/lib/store";
-import { newId, normalizeCard } from "@/lib/ops";
+import { newId, normalizeCard, enforceRoles } from "@/lib/ops";
 import { addUsage, type UsageEvent } from "@/lib/usage";
 import { readSSE, extractCards, parseStructured } from "@/lib/stream";
 import { LangProvider, useLang } from "@/lib/i18n";
@@ -242,14 +242,16 @@ function Root() {
           background: `linear-gradient(180deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.4) 45%, rgba(0,0,0,0.72) 100%), url(${req.bgFrame}) center/cover no-repeat`,
         };
       }
-      const project: Project = {
+      // enforceRoles unifies same-role text styles + records project.styles, so
+      // the set is consistent even if the model drifted card to card.
+      const project: Project = enforceRoles({
         ...base,
         name: req.projectName || base.name,
         theme: finalTheme,
         cards,
         usage: addUsage(undefined, usage),
         updatedAt: Date.now(),
-      };
+      });
       persist([...projectsRef.current, project]);
       setDraft(null);
       setGenProgress(null);

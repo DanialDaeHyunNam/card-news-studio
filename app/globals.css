@@ -2541,6 +2541,55 @@ input[type="range"]::-webkit-slider-thumb {
   margin-top: 22px;
 }
 
+/* inspector: text role + shared styles */
+.role-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.role-row select {
+  flex: 1;
+}
+.role-row .btn.small {
+  padding: 6px 10px;
+}
+.shared-styles {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 12px 6px;
+  margin-bottom: 16px;
+  background: var(--panel-2);
+}
+.shared-styles .panel-subtitle {
+  margin-top: 0;
+}
+.shared-role {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.shared-role-name {
+  flex: 1;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+.shared-role .shared-size {
+  width: 54px;
+  padding: 6px 8px;
+}
+.shared-role select {
+  width: 52px;
+  padding: 6px 4px;
+}
+.shared-role input[type="color"] {
+  width: 34px;
+  height: 32px;
+  padding: 2px;
+  border-radius: 8px;
+}
+
 .inst-overlay {
   position: fixed;
   inset: 0;

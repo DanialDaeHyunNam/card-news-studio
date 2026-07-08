@@ -12,9 +12,36 @@ export const FORMATS: Record<Format, { w: number; h: number; label: string; hint
   "9:16": { w: 1080, h: 1920, label: "9:16", hint: "풀스크린 · 스토리/릴스" },
 };
 
+// Text roles — a soft, extensible convention. These four are the default set;
+// the AI or user can introduce more (role is a free string). Same-role text
+// across cards shares one style (project.styles[role]) so it stays consistent.
+export const DEFAULT_ROLES = ["overline", "title", "body", "caption"] as const;
+
+// The shared typography for a role. A text element's own value overrides it.
+export interface RoleStyle {
+  fontSize?: number;
+  fontWeight?: number;
+  color?: string;
+  fontFamily?: string;
+  lineHeight?: number;
+  letterSpacing?: number;
+  align?: "left" | "center" | "right";
+}
+// The style fields a role governs — used to sync/compare element vs. shared.
+export const ROLE_STYLE_KEYS = [
+  "fontSize",
+  "fontWeight",
+  "color",
+  "fontFamily",
+  "lineHeight",
+  "letterSpacing",
+  "align",
+] as const;
+
 export interface TextElement {
   id: string;
   type: "text";
+  role?: string; // e.g. "overline" | "title" | "body" | "caption" (or custom)
   x: number;
   y: number;
   w: number;
@@ -84,6 +111,7 @@ export interface Project {
   theme: Theme;
   cards: Card[];
   chat: ChatMessage[];
+  styles?: Record<string, RoleStyle>; // shared typography per text role
   model?: string; // lib/models.ts id; undefined = default
   ignoreBrand?: boolean; // this set uses a custom accent instead of the brand color
   usage?: import("./usage").UsageTotals; // cumulative AI spend for this project
@@ -103,10 +131,12 @@ export interface Operation {
     | "update_card"
     | "add_card"
     | "remove_card"
-    | "update_theme";
+    | "update_theme"
+    | "update_style"; // change a role's shared typography → propagates to all same-role text
   cardId?: string;
   elementId?: string;
   index?: number;
+  role?: string; // for update_style: which role's shared style to change
   patch?: Record<string, unknown>;
   element?: Record<string, unknown>;
   card?: { background?: string; elements?: Record<string, unknown>[] };
