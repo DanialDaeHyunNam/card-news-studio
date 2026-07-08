@@ -5,6 +5,30 @@ All notable changes to Card News Studio. This project uses simple
 the deployed one and prompts an update when it's behind (see
 [ARCHITECTURE.md](ARCHITECTURE.md#hosted-vs-local-mode)).
 
+## 0.4.0 — 2026-07-08
+
+Reusable chat images and a text-role consistency system.
+
+### Added
+- **Reusable chat images** — an attached image is saved to a local file
+  (`public/uploads`, dev-only `/api/asset`) and referenced by a short URL, so the
+  AI can use it as a card background and copy it onto other cards (data URLs
+  couldn't do either). `attachment:N` now substitutes into card backgrounds too.
+- **Text roles + shared styles** — each text is typed by role (overline, mega,
+  title, body, caption — extensible), and each role has one shared style. Same-
+  role text stays consistent across cards; generation enforces it. Fixes the
+  "cards drift to different sizes" problem structurally.
+- **Prompt-level role control** — an `update_style` op lets one chat line unify a
+  role ("make body 34 everywhere"); the system prompt documents each role's
+  meaning and the hierarchy mega > title > overline ≈ body > caption.
+- **Shared-styles inspector panel** — edit a role's size/weight/color and every
+  card follows; per-element edits override just that card (with a reset). Add
+  custom roles with **+ Role**, and **Unify** snaps an inconsistent set together.
+- **@-reference into chat** — @ buttons on layers/roles drop a precise reference
+  (a role = all of them, or one element) into the chat input.
+- **Clickable "what changed"** — expand the "N changes applied" marker to see a
+  brief list, plus a persistent "Working…" status while a request runs.
+
 ## 0.3.0 — 2026-07-08
 
 Better long-video handling and video-frame backgrounds for YouTube.
