@@ -3,7 +3,7 @@
 import { useRef } from "react";
 import type { Card, CardElement, Project, Theme } from "@/lib/types";
 import { DEFAULT_FONT, DEFAULT_ROLES, SERIF_FONT } from "@/lib/types";
-import { newId } from "@/lib/ops";
+import { newId, roleSharedStyle } from "@/lib/ops";
 import { fileToAttachment } from "@/lib/image";
 import { useLang } from "@/lib/i18n";
 
@@ -20,6 +20,7 @@ interface InspectorProps {
   onSelectElement: (id: string) => void;
   onAddElement: (el: CardElement) => void;
   onApplyRoleStyle: (role: string, patch: Record<string, unknown>) => void;
+  onEnforceRoles: () => void;
 }
 
 // A shape/image that spans (nearly) the whole card is acting as a background.
@@ -50,6 +51,7 @@ export default function Inspector({
   onSelectElement,
   onAddElement,
   onApplyRoleStyle,
+  onEnforceRoles,
 }: InspectorProps) {
   const { t } = useLang();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -431,9 +433,14 @@ export default function Inspector({
         <>
           {rolesInProject.length > 0 && (
             <div className="shared-styles">
-              <div className="panel-subtitle">{t("insp_shared")}</div>
+              <div className="shared-head">
+                <span className="panel-subtitle">{t("insp_shared")}</span>
+                <button className="btn small ghost" title={t("insp_unify_title")} onClick={onEnforceRoles}>
+                  {t("insp_unify")}
+                </button>
+              </div>
               {rolesInProject.map((r) => {
-                const s = project.styles?.[r] ?? {};
+                const s = roleSharedStyle(project, r);
                 return (
                   <div key={r} className="shared-role">
                     <span className="shared-role-name">{roleLabel(r)}</span>

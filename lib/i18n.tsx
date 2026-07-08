@@ -161,6 +161,11 @@ const D = {
   insp_role_none: ["없음", "None"],
   insp_role_reset: ["공통값으로 ↺", "Reset to shared ↺"],
   insp_shared: ["공통 스타일 (역할별)", "Shared styles (by role)"],
+  insp_unify: ["일관성 정리", "Unify"],
+  insp_unify_title: [
+    "모든 카드의 같은 역할 텍스트를 공통 스타일로 통일합니다.",
+    "Snap every card's same-role text to the shared style.",
+  ],
   insp_shared_hint: [
     "여기서 바꾸면 그 역할의 모든 카드가 함께 바뀝니다. 특정 카드만 다르게 하려면 그 요소를 직접 편집하세요.",
     "Changing these updates every card of that role. Edit an element directly to override just that card.",

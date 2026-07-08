@@ -208,7 +208,9 @@ export default function ChatPanel({ project, selection, selectionLabel, disabled
                 <span className="stream-caret" />
               </div>
             ) : (
-              <div className="chat-bubble typing">{t("chat_thinking")}</div>
+              <div className="chat-bubble typing">
+                <span className="btn-spinner dark" /> {t("chat_thinking")}
+              </div>
             )}
           </div>
         )}
@@ -333,8 +335,8 @@ export default function ChatPanel({ project, selection, selectionLabel, disabled
             }
           }}
         />
-        <button className="btn primary" disabled={busy || disabled || !input.trim()} onClick={() => void send()}>
-          {busy ? "…" : t("chat_send")}
+        <button className="btn primary chat-send" disabled={busy || disabled || !input.trim()} onClick={() => void send()}>
+          {busy ? <span className="btn-spinner" /> : t("chat_send")}
         </button>
       </div>
     </aside>

@@ -206,6 +206,13 @@ export function applyRoleStyle(project: Project, role: string, patch: Record<str
   return p;
 }
 
+// The style to SHOW for a role: the saved shared style, falling back per field to
+// the current elements' most-common value — so the panel is never blank even
+// before project.styles has been established.
+export function roleSharedStyle(project: Project, role: string): RoleStyle {
+  return { ...canonicalRoleStyle(project, role), ...(project.styles?.[role] ?? {}) };
+}
+
 // Force every same-role text element to the role's shared style — used after
 // generation and by an explicit "unify" action so cards can't drift apart.
 // Establishes project.styles[role] (existing shared value wins, else the mode).
