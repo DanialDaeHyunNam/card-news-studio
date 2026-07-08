@@ -1050,6 +1050,20 @@ select:focus {
 .thumb.active {
   border-color: #fff;
 }
+.thumb.dragging {
+  opacity: 0.4;
+}
+/* Insertion cue: highlight the slot the dragged card would drop into. */
+.thumb.drag-over {
+  border-color: var(--accent, #3b82f6);
+  box-shadow: 0 0 0 2px var(--accent, #3b82f6);
+}
+.thumb[draggable="true"] {
+  cursor: grab;
+}
+.thumb.dragging[draggable="true"] {
+  cursor: grabbing;
+}
 .thumb-preview * {
   pointer-events: none;
 }
@@ -1188,6 +1202,14 @@ select:focus {
 }
 .add-buttons {
   margin-bottom: 14px;
+}
+.subject-tools {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+.subject-tools .btn {
+  flex: 1;
 }
 .segmented {
   display: flex;

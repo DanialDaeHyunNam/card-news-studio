@@ -1,4 +1,5 @@
 // Client-side image helpers for chat attachments.
+import { sampleImageColors } from "./color";
 
 export interface Attachment {
   id: string;
@@ -8,6 +9,8 @@ export interface Attachment {
   width: number;
   height: number;
   url?: string; // same-origin /uploads URL once saved to the local store
+  bg?: string; // detected backdrop color (hex) — for "separate the subject" edits
+  bgUniform?: boolean; // true when the backdrop is a near-solid color
 }
 
 // Persist the full image to the local store (dev only) and return its /uploads
@@ -54,6 +57,7 @@ export async function fileToAttachment(file: File): Promise<Attachment> {
     el.onerror = () => reject(new Error("이미지를 읽을 수 없습니다"));
     el.src = dataUrl;
   });
+  const colors = await sampleImageColors(dataUrl).catch(() => null);
   return {
     id: crypto.randomUUID(),
     dataUrl,
@@ -61,6 +65,8 @@ export async function fileToAttachment(file: File): Promise<Attachment> {
     thumb: scaleToDataUrl(img, 160),
     width: img.naturalWidth,
     height: img.naturalHeight,
+    bg: colors?.bg,
+    bgUniform: colors?.uniform,
   };
 }
 

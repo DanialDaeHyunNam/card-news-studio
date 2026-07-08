@@ -60,6 +60,9 @@ export default function Editor({ project, onChange, onClose, generating }: Edito
   const [keyWritable, setKeyWritable] = useState(true);
   const [showKeys, setShowKeys] = useState(false);
   const [showSlideshow, setShowSlideshow] = useState(false);
+  // Card-strip drag-to-reorder: index being dragged + the slot it's hovering.
+  const [dragCard, setDragCard] = useState<number | null>(null);
+  const [overCard, setOverCard] = useState<number | null>(null);
   // Hosted deploy: the canvas is fully explorable, but anything needing a local
   // key (AI chat, connecting a key) routes to the install guide instead.
   const hosted = useHosted();
@@ -362,6 +365,16 @@ export default function Editor({ project, onChange, onClose, generating }: Edito
     setCardIdx(to);
   }
 
+  // Drag-and-drop reorder: drop the dragged card into `to`'s slot.
+  function moveCardTo(from: number, to: number) {
+    if (from === to || from < 0 || to < 0 || to >= project.cards.length) return;
+    mutate((p) => {
+      const [c] = p.cards.splice(from, 1);
+      p.cards.splice(to, 0, c);
+    }, true);
+    setCardIdx(to);
+  }
+
   // --- AI chat apply --------------------------------------------------------
   function applyChat(args: {
     userText: string;
@@ -562,18 +575,41 @@ export default function Editor({ project, onChange, onClose, generating }: Edito
               {project.cards.map((c, i) => (
                 <div
                   key={c.id}
-                  className={`thumb ${i === safeCardIdx ? "active" : ""}`}
+                  className={`thumb ${i === safeCardIdx ? "active" : ""} ${i === dragCard ? "dragging" : ""} ${
+                    overCard === i && dragCard !== null && dragCard !== i ? "drag-over" : ""
+                  }`}
+                  draggable
                   onClick={() => {
                     setCardIdx(i);
                     setSelectedElId(null);
                     setEditingElId(null);
+                  }}
+                  onDragStart={(e) => {
+                    setDragCard(i);
+                    e.dataTransfer.effectAllowed = "move";
+                    e.dataTransfer.setData("text/plain", String(i)); // Firefox needs data to start a drag
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "move";
+                    if (overCard !== i) setOverCard(i);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (dragCard !== null) moveCardTo(dragCard, i);
+                    setDragCard(null);
+                    setOverCard(null);
+                  }}
+                  onDragEnd={() => {
+                    setDragCard(null);
+                    setOverCard(null);
                   }}
                 >
                   <div className="thumb-preview">
                     <CardView card={c} theme={project.theme} format={project.format} width={112} />
                   </div>
                   <div className="thumb-bar">
-                    <span className="thumb-num">{i + 1}</span>
+                    <span className="thumb-num" title={t("th_drag")}>⠿ {i + 1}</span>
                     <button title={t("th_up")} onClick={(e) => (e.stopPropagation(), moveCard(i, -1))}>↑</button>
                     <button title={t("th_down")} onClick={(e) => (e.stopPropagation(), moveCard(i, 1))}>↓</button>
                     <button title={t("th_dup")} onClick={(e) => (e.stopPropagation(), duplicateCard(i))}>⧉</button>
@@ -644,6 +680,16 @@ export default function Editor({ project, onChange, onClose, generating }: Edito
                 onChange(enforceRoles(projectRef.current));
               }}
               onReference={(tk) => chatInsert.current?.(tk)}
+              onSeparateSubject={(bg, patch) => {
+                if (!selectedEl) return;
+                mutate((p) => {
+                  const c = p.cards.find((x) => x.id === card.id);
+                  if (!c) return;
+                  c.background = bg;
+                  const el = c.elements.find((e) => e.id === selectedEl.id);
+                  if (el) Object.assign(el, patch);
+                }, true);
+              }}
               onAddRole={(name) =>
                 mutate((p) => {
                   p.styles = {

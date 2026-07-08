@@ -20,7 +20,7 @@ interface ChatBody {
   history: ChatMessage[]; // prior turns, oldest first
   message: string; // the new user request
   lang?: "ko" | "en";
-  attachments?: { apiDataUrl: string; width: number; height: number }[];
+  attachments?: { apiDataUrl: string; width: number; height: number; bg?: string; bgUniform?: boolean }[];
   templateRef?: TemplateRef; // optional style/layout reference
 }
 
@@ -77,7 +77,14 @@ export async function POST(req: Request) {
       type: "image",
       source: { type: "base64", media_type: parsed.mediaType, data: parsed.data },
     });
-    attachmentInfo.push(`첨부 ${i}: ${a.width}×${a.height}px → src로 "attachment:${i}" 사용`);
+    // Surface the detected backdrop color so the model can "separate the subject":
+    // set the card background to bg, then shrink/move the image so its edges melt in.
+    const bgNote = a.bg
+      ? a.bgUniform
+        ? ` · 배경색 ${a.bg} (단색 배경 — 인물 분리 배치 가능)`
+        : ` · 대표 배경색 ${a.bg}`
+      : "";
+    attachmentInfo.push(`첨부 ${i}: ${a.width}×${a.height}px → src로 "attachment:${i}" 사용${bgNote}`);
   });
 
   const selIdx = body.selection?.cardId
