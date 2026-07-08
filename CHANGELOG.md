@@ -5,6 +5,24 @@ All notable changes to Card News Studio. This project uses simple
 the deployed one and prompts an update when it's behind (see
 [ARCHITECTURE.md](ARCHITECTURE.md#hosted-vs-local-mode)).
 
+## 0.3.0 — 2026-07-08
+
+Better long-video handling and video-frame backgrounds for YouTube.
+
+### Added
+- **Long-video segment picker** — YouTube videos ≥20 min open a picker (start +
+  length) so you choose which window becomes cards, instead of silently using
+  only the start of the transcript.
+- **AI-picked video-frame backgrounds** — without downloading the video, the free
+  YouTube thumbnail frames (poster + 3 auto-sampled) are shown to the vision
+  model, which picks the best background frame and a matching accent. The chosen
+  frame becomes the hook card's background with a dark scrim. New `/api/frame`
+  (same-origin thumbnail proxy) and `/api/video-bg` (vision pick) routes.
+
+### Changed
+- YouTube generation now pre-fetches captions before opening the editor, so the
+  segment picker and frame analysis can run first.
+
 ## 0.2.0 — 2026-07-07
 
 Deployment, guides, and version awareness on top of the core app.
