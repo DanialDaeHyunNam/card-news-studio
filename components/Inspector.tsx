@@ -1,11 +1,11 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import type { Card, CardElement, ImageElement, Project, Theme } from "@/lib/types";
-import { DEFAULT_FONT, DEFAULT_ROLES, SERIF_FONT } from "@/lib/types";
+import { DEFAULT_FONT, DEFAULT_ROLES, MONO_FONT, SERIF_FONT } from "@/lib/types";
 import { newId, roleSharedStyle } from "@/lib/ops";
 import { fileToAttachment, uploadAttachment } from "@/lib/image";
-import { sampleImageColors } from "@/lib/color";
+import { backgroundImageUrl, backgroundScrimAlpha, sampleImageColors } from "@/lib/color";
 import { useLang } from "@/lib/i18n";
 
 interface InspectorProps {
@@ -18,7 +18,7 @@ interface InspectorProps {
   onPatchTheme: (patch: Partial<Theme>) => void;
   onRemoveElement: () => void;
   onReorderElement: (id: string, dir: "back" | "backward" | "forward" | "front") => void;
-  onSelectElement: (id: string) => void;
+  onSelectElement: (id: string | null) => void;
   onAddElement: (el: CardElement) => void;
   onApplyRoleStyle: (role: string, patch: Record<string, unknown>) => void;
   onEnforceRoles: () => void;
@@ -27,6 +27,9 @@ interface InspectorProps {
   // Paint the card background + move/resize the selected image in ONE mutation
   // (two separate patch calls would race on the stale project ref).
   onSeparateSubject: (bg: string, patch: Record<string, unknown>) => void;
+  // Replace the card background + insert the extracted image element at the
+  // back, in ONE mutation (same stale-ref race as above).
+  onDetachBgImage: (bg: string, el: CardElement) => void;
 }
 
 // A shape/image that spans (nearly) the whole card is acting as a background.
@@ -61,9 +64,32 @@ export default function Inspector({
   onReference,
   onAddRole,
   onSeparateSubject,
+  onDetachBgImage,
 }: InspectorProps) {
   const { t } = useLang();
   const fileRef = useRef<HTMLInputElement>(null);
+  // No-selection panel is split in two: text typography (role styles) vs. the
+  // rest of the design (card background + theme palette).
+  const [tab, setTab] = useState<"text" | "design">("text");
+  // Image buried in the card's CSS background (AI often sets photo backgrounds
+  // this way) — surfaced as a pinned layer row + a "detach to layer" action.
+  const bgUrl = backgroundImageUrl(card.background);
+
+  function detachBgImage() {
+    if (!bgUrl) return;
+    onDetachBgImage(project.theme.background, {
+      id: newId(),
+      type: "image",
+      x: 0,
+      y: 0,
+      w: 100,
+      h: 100,
+      src: bgUrl,
+      fit: "cover",
+      radius: 0,
+      dim: backgroundScrimAlpha(card.background),
+    });
+  }
 
   // Read the photo's backdrop color and drop it onto the card background so a
   // shrunk copy of the image blends in — no cutout needed.
@@ -184,14 +210,13 @@ export default function Inspector({
         />
       </div>
 
-      {card.elements.length > 0 && (
-        <div className="layers">
-          <div className="panel-subtitle">{t("insp_layers")}</div>
-          <div className="layer-list">
-            {card.elements
-              .slice()
-              .reverse()
-              .map((el) => (
+      <div className="layers">
+        <div className="panel-subtitle">{t("insp_layers")}</div>
+        <div className="layer-list">
+          {card.elements
+            .slice()
+            .reverse()
+            .map((el) => (
                 <div
                   key={el.id}
                   className={`layer-row ${el.id === element?.id ? "sel" : ""}`}
@@ -233,9 +258,36 @@ export default function Inspector({
                   </span>
                 </div>
               ))}
+          {/* The card background is not an element, but it IS the bottom of the
+              stack — pin it here so an AI-set background photo has a visible,
+              clickable home (selecting it opens the card-background section). */}
+          <div
+            className={`layer-row bg ${!element && tab === "design" ? "sel" : ""}`}
+            onClick={() => {
+              onSelectElement(null);
+              setTab("design"); // the background lives in the design tab
+            }}
+          >
+            <span className="layer-ic bg" style={{ background: card.background || project.theme.background }} />
+            <span className="layer-name">
+              {t("insp_card_bg")}
+              {bgUrl ? " 🖼" : ""}
+            </span>
+            <span className="layer-ord">
+              <button
+                className="layer-at"
+                title={t("insp_ref")}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onReference(`${t("insp_card_bg")} (${t("sel_card")} ${cardNum})`);
+                }}
+              >
+                @
+              </button>
+            </span>
+          </div>
           </div>
         </div>
-      )}
 
       {element ? (
         <>
@@ -323,17 +375,34 @@ export default function Inspector({
                   />
                 </label>
               </div>
-              <label className="field">
-                <span>{t("insp_font")}</span>
-                <select
-                  value={element.fontFamily ?? ""}
-                  onChange={(e) => onPatchElement({ fontFamily: e.target.value }, true)}
-                >
-                  <option value="">{t("insp_font_theme")}</option>
-                  <option value={DEFAULT_FONT}>{t("insp_font_sans")}</option>
-                  <option value={SERIF_FONT}>{t("insp_font_serif")}</option>
-                </select>
-              </label>
+              <div className="field-row">
+                <label className="field" style={{ flex: 2 }}>
+                  <span>{t("insp_font")}</span>
+                  <FontSelect
+                    value={element.fontFamily ?? ""}
+                    onChange={(v) => onPatchElement({ fontFamily: v }, true)}
+                  />
+                </label>
+                <label className="field">
+                  <span>{t("insp_deco")}</span>
+                  <div className="deco-row">
+                    <button
+                      className={`deco-btn ${element.italic ? "on" : ""}`}
+                      title={t("insp_italic")}
+                      onClick={() => onPatchElement({ italic: !element.italic }, true)}
+                    >
+                      <i>I</i>
+                    </button>
+                    <button
+                      className={`deco-btn ${element.underline ? "on" : ""}`}
+                      title={t("insp_underline")}
+                      onClick={() => onPatchElement({ underline: !element.underline }, true)}
+                    >
+                      <u>U</u>
+                    </button>
+                  </div>
+                </label>
+              </div>
               <label className="field">
                 <span>{t("insp_align")}</span>
                 <div className="segmented">
@@ -481,11 +550,29 @@ export default function Inspector({
         </>
       ) : (
         <>
-          {rolesInProject.length > 0 && (
+          {/* Two clearly-scoped tabs: typography (role styles) vs. everything
+              else about the look (card background + theme palette). */}
+          <div className="segmented insp-tabs">
+            <button className={tab === "text" ? "on" : ""} onClick={() => setTab("text")}>
+              {t("insp_tab_text")}
+            </button>
+            <button className={tab === "design" ? "on" : ""} onClick={() => setTab("design")}>
+              {t("insp_tab_design")}
+            </button>
+          </div>
+          {tab === "text" && rolesInProject.length === 0 && <p className="hint">{t("insp_tab_text_empty")}</p>}
+          {tab === "text" && rolesInProject.length > 0 && (
             <div className="shared-styles">
               <div className="shared-head">
                 <span className="panel-subtitle">{t("insp_shared")}</span>
                 <div className="shared-head-btns">
+                  <button
+                    className="btn small ghost ask-ai"
+                    title={t("insp_ask_ai")}
+                    onClick={() => onReference(t("ask_roles_prefill"))}
+                  >
+                    {t("insp_ask_ai")}
+                  </button>
                   <button
                     className="btn small ghost"
                     onClick={() => {
@@ -503,71 +590,145 @@ export default function Inspector({
               {rolesInProject.map((r) => {
                 const s = roleSharedStyle(project, r);
                 return (
-                  <div key={r} className="shared-role">
-                    <button
-                      className="shared-role-name ref-name"
-                      title={t("insp_ref")}
-                      onClick={() => onReference(roleLabel(r))}
-                    >
-                      @ {roleLabel(r)}
-                    </button>
-                    <input
-                      type="number"
-                      className="shared-size"
-                      title={t("insp_size")}
-                      value={s.fontSize ?? ""}
-                      onChange={(e) => onApplyRoleStyle(r, { fontSize: Number(e.target.value) || undefined })}
-                    />
-                    <select
-                      value={s.fontWeight ?? 400}
-                      title={t("insp_weight")}
-                      onChange={(e) => onApplyRoleStyle(r, { fontWeight: Number(e.target.value) })}
-                    >
-                      <option value={400}>R</option>
-                      <option value={600}>SB</option>
-                      <option value={700}>B</option>
-                      <option value={800}>EB</option>
-                      <option value={900}>Bl</option>
-                    </select>
-                    <input
-                      type="color"
-                      title={t("insp_color")}
-                      value={toHex(s.color ?? "#ffffff")}
-                      onChange={(e) => onApplyRoleStyle(r, { color: e.target.value })}
-                    />
+                  <div key={r} className="shared-role-block">
+                    <div className="shared-role">
+                      <button
+                        className="shared-role-name ref-name"
+                        title={t("insp_ref")}
+                        onClick={() => onReference(roleLabel(r))}
+                      >
+                        @ {roleLabel(r)}
+                      </button>
+                      <input
+                        type="number"
+                        className="shared-size"
+                        title={t("insp_size")}
+                        value={s.fontSize ?? ""}
+                        onChange={(e) => onApplyRoleStyle(r, { fontSize: Number(e.target.value) || undefined })}
+                      />
+                      <select
+                        value={s.fontWeight ?? 400}
+                        title={t("insp_weight")}
+                        onChange={(e) => onApplyRoleStyle(r, { fontWeight: Number(e.target.value) })}
+                      >
+                        <option value={400}>R</option>
+                        <option value={600}>SB</option>
+                        <option value={700}>B</option>
+                        <option value={800}>EB</option>
+                        <option value={900}>Bl</option>
+                      </select>
+                      <input
+                        type="color"
+                        title={t("insp_color")}
+                        value={toHex(s.color ?? "#ffffff")}
+                        onChange={(e) => onApplyRoleStyle(r, { color: e.target.value })}
+                      />
+                    </div>
+                    <div className="shared-role-2">
+                      <FontSelect
+                        value={s.fontFamily ?? ""}
+                        onChange={(v) => onApplyRoleStyle(r, { fontFamily: v })}
+                      />
+                      <button
+                        className={`deco-btn ${s.italic ? "on" : ""}`}
+                        title={t("insp_italic")}
+                        onClick={() => onApplyRoleStyle(r, { italic: !s.italic })}
+                      >
+                        <i>I</i>
+                      </button>
+                      <button
+                        className={`deco-btn ${s.underline ? "on" : ""}`}
+                        title={t("insp_underline")}
+                        onClick={() => onApplyRoleStyle(r, { underline: !s.underline })}
+                      >
+                        <u>U</u>
+                      </button>
+                    </div>
                   </div>
                 );
               })}
               <p className="hint">{t("insp_shared_hint")}</p>
             </div>
           )}
-          <div className="panel-subtitle">{t("insp_card_bg")}</div>
-          <label className="field">
-            <span>{t("insp_bg_css")}</span>
-            <input
-              type="text"
-              value={card.background}
-              onFocus={beginEdit}
-              onChange={(e) => onPatchCard({ background: e.target.value })}
-            />
-          </label>
-          <ColorField
-            label={t("insp_bg_pick")}
-            value={/^#([0-9a-f]{3}){1,2}$/i.test(card.background) ? card.background : "#ffffff"}
-            onBegin={beginEdit}
-            onChange={(v) => onPatchCard({ background: v })}
-          />
+          {tab === "design" && (
+            <>
+              <div className="subtitle-row">
+                <div className="panel-subtitle">{t("insp_card_bg")}</div>
+                <button
+                  className="btn small ghost ask-ai"
+                  title={t("insp_ask_ai")}
+                  onClick={() => onReference(t("ask_bg_prefill").replace("{n}", String(cardNum)))}
+                >
+                  {t("insp_ask_ai")}
+                </button>
+              </div>
+              {bgUrl && (
+                <>
+                  <div className="bg-img-row">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img className="bg-img-thumb" src={bgUrl} alt="" />
+                    <button className="btn small" onClick={detachBgImage}>
+                      {t("insp_bg_to_layer")}
+                    </button>
+                  </div>
+                  <p className="hint">{t("insp_bg_to_layer_hint")}</p>
+                </>
+              )}
+              <label className="field">
+                <span>{t("insp_bg_css")}</span>
+                <input
+                  type="text"
+                  value={card.background}
+                  onFocus={beginEdit}
+                  onChange={(e) => onPatchCard({ background: e.target.value })}
+                />
+              </label>
+              <ColorField
+                label={t("insp_bg_pick")}
+                value={/^#([0-9a-f]{3}){1,2}$/i.test(card.background) ? card.background : "#ffffff"}
+                onBegin={beginEdit}
+                onChange={(v) => onPatchCard({ background: v })}
+              />
 
-          <div className="panel-subtitle">{t("insp_theme")}</div>
-          <div className="theme-colors">
-            <ColorField label={t("insp_theme_bg")} value={project.theme.background} onBegin={beginEdit} onChange={(v) => onPatchTheme({ background: v })} />
-            <ColorField label={t("insp_theme_text")} value={project.theme.textColor} onBegin={beginEdit} onChange={(v) => onPatchTheme({ textColor: v })} />
-            <ColorField label={t("insp_theme_accent")} value={project.theme.accent} onBegin={beginEdit} onChange={(v) => onPatchTheme({ accent: v })} />
-          </div>
+              <div className="subtitle-row">
+                <div className="panel-subtitle">{t("insp_theme")}</div>
+                <button
+                  className="btn small ghost ask-ai"
+                  title={t("insp_ask_ai")}
+                  onClick={() => onReference(t("ask_theme_prefill"))}
+                >
+                  {t("insp_ask_ai")}
+                </button>
+              </div>
+              <div className="theme-colors">
+                <ColorField label={t("insp_theme_bg")} value={project.theme.background} onBegin={beginEdit} onChange={(v) => onPatchTheme({ background: v })} />
+                <ColorField label={t("insp_theme_text")} value={project.theme.textColor} onBegin={beginEdit} onChange={(v) => onPatchTheme({ textColor: v })} />
+                <ColorField label={t("insp_theme_accent")} value={project.theme.accent} onBegin={beginEdit} onChange={(v) => onPatchTheme({ accent: v })} />
+              </div>
+              <p className="hint">{t("insp_theme_hint")}</p>
+            </>
+          )}
           <p className="hint">{t("insp_hint")}</p>
         </>
       )}
     </aside>
+  );
+}
+
+// Shared font-family picker (element inspector + role shared styles). System
+// stacks only — PNG export runs with skipFonts, so webfonts wouldn't survive it.
+// An AI-set stack outside the list shows up as "custom" instead of lying.
+function FontSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { t } = useLang();
+  const known = ["", DEFAULT_FONT, SERIF_FONT, MONO_FONT];
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)}>
+      <option value="">{t("insp_font_theme")}</option>
+      <option value={DEFAULT_FONT}>{t("insp_font_sans")}</option>
+      <option value={SERIF_FONT}>{t("insp_font_serif")}</option>
+      <option value={MONO_FONT}>{t("insp_font_mono")}</option>
+      {!known.includes(value) && <option value={value}>{t("insp_font_custom")}</option>}
+    </select>
   );
 }
 

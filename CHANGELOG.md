@@ -5,6 +5,37 @@ All notable changes to Card News Studio. This project uses simple
 the deployed one and prompts an update when it's behind (see
 [ARCHITECTURE.md](ARCHITECTURE.md#hosted-vs-local-mode)).
 
+## 0.6.0 — 2026-07-08
+
+Backgrounds become editable layers, richer text styling, and a reorganized
+inspector that hands off to the AI.
+
+### Added
+- **Card background as a layer** — the Layers panel pins a "Card background"
+  row (live swatch, 🖼 badge when a photo is set, @-reference into chat). When
+  the AI sets a photo via the card's CSS background, **"Detach image to a
+  layer"** converts it into a regular full-bleed image element — the scrim
+  becomes `dim` — so it can be selected, moved, dimmed, or deleted.
+- **Italic & underline** — toggles on text elements and in role shared styles,
+  plus AI support (`update_element` / `update_style` understand both).
+- **Font family in shared styles** — each role row now edits its font (with a
+  new mono stack); AI-set stacks outside the list show as "custom".
+- **Inspector tabs** — the no-selection panel splits into **Text styles**
+  (per-role typography) and **Design** (card background + theme palette);
+  clicking the background layer row jumps to Design.
+- **Theme colors that do something** — accent edits behave exactly like the
+  brand swatch (recolor cascade + brand sync); background/text edits recolor
+  cards and text still using the old default (individually edited elements
+  keep their values).
+- **"Ask AI" buttons** — inspector sections (shared styles, card background,
+  theme) drop a ready-made request stub into the chat input.
+
+### Changed
+- Chat prompt now prefers element-based photo backgrounds (`add_element` at
+  index 0) so new AI-set backgrounds arrive as editable layers by default.
+- Custom select chevrons with breathing room, wider gaps between inspector
+  sections, and a contained background-image preview.
+
 ## 0.5.0 — 2026-07-08
 
 Card reordering by drag, subject-on-solid-backdrop separation, role-typed

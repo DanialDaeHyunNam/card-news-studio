@@ -98,6 +98,8 @@ export default function CardView({
                   lineHeight: el.lineHeight,
                   fontFamily: el.fontFamily || undefined,
                   letterSpacing: el.letterSpacing !== undefined ? `${el.letterSpacing}em` : undefined,
+                  fontStyle: el.italic ? "italic" : undefined,
+                  textDecoration: el.underline ? "underline" : undefined,
                   whiteSpace: "pre-wrap",
                   wordBreak: "keep-all",
                   visibility: el.id === editingElementId ? "hidden" : undefined,

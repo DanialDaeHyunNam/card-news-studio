@@ -64,6 +64,8 @@ export function normalizeElement(
       fontFamily: typeof raw.fontFamily === "string" && raw.fontFamily ? raw.fontFamily : undefined,
       letterSpacing:
         raw.letterSpacing !== undefined ? clampTracking(num(raw.letterSpacing, 0, -1, 1), fontSize) : undefined,
+      italic: raw.italic === true ? true : undefined,
+      underline: raw.underline === true ? true : undefined,
       opacity: raw.opacity !== undefined ? num(raw.opacity, 1, 0, 1) : undefined,
     };
   }
@@ -114,7 +116,7 @@ export function normalizeCard(
   return { id: newId(), background: subst(str(raw.background, theme.background), attachments), elements };
 }
 
-const TEXT_PATCH_KEYS = ["text", "role", "fontSize", "fontWeight", "color", "align", "lineHeight", "fontFamily", "letterSpacing", "opacity", "x", "y", "w"] as const;
+const TEXT_PATCH_KEYS = ["text", "role", "fontSize", "fontWeight", "color", "align", "lineHeight", "fontFamily", "letterSpacing", "italic", "underline", "opacity", "x", "y", "w"] as const;
 const SHAPE_PATCH_KEYS = ["color", "radius", "opacity", "x", "y", "w", "h"] as const;
 const IMAGE_PATCH_KEYS = ["fit", "radius", "dim", "opacity", "x", "y", "w", "h"] as const;
 
@@ -133,6 +135,8 @@ function patchElement(el: CardElement, patch: Record<string, unknown>) {
       // fontSize precedes letterSpacing in TEXT_PATCH_KEYS, so a patch that sets
       // both clamps against the incoming size, not the stale one.
       target[key] = clampTracking(num(value, 0, -1, 1), typeof target.fontSize === "number" ? target.fontSize : 48);
+    } else if (typeof value === "boolean") {
+      target[key] = value; // italic / underline
     } else if (typeof value === "number") {
       const current = target[key];
       target[key] = num(value, typeof current === "number" ? current : 0, -1000, 10000);
@@ -145,7 +149,11 @@ function patchElement(el: CardElement, patch: Record<string, unknown>) {
 // --- text roles: shared typography per role -------------------------------
 
 function coerceStyleValue(key: string, v: unknown): unknown {
-  if (key === "color" || key === "fontFamily") return typeof v === "string" && v ? v : undefined;
+  if (key === "color") return typeof v === "string" && v ? v : undefined;
+  // "" is a valid fontFamily: it means "back to the theme font" (the renderer
+  // treats a falsy fontFamily as unset), so role-level resets propagate too.
+  if (key === "fontFamily") return typeof v === "string" ? v : undefined;
+  if (key === "italic" || key === "underline") return typeof v === "boolean" ? v : undefined;
   if (key === "align") return v === "left" || v === "center" || v === "right" ? v : undefined;
   const ranges: Record<string, [number, number]> = {
     fontSize: [8, 400],

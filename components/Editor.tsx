@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
-import type { Card, CardElement, GenProgress, Operation, Project, TextElement } from "@/lib/types";
+import type { Card, CardElement, GenProgress, Operation, Project, TextElement, Theme } from "@/lib/types";
 import { EXPORT_WIDTH, FORMATS } from "@/lib/types";
 import { applyOperations, applyRoleStyle, enforceRoles, newId, summarizeOps } from "@/lib/ops";
 import { collectTargets, snapPosition } from "@/lib/snap";
@@ -666,7 +666,17 @@ export default function Editor({ project, onChange, onClose, generating }: Edito
                 selectedEl && patchElement(card.id, selectedEl.id, patch, withHistory)
               }
               onPatchCard={(patch) => mutate((p) => Object.assign(p.cards.find((c) => c.id === card.id)!, patch), true)}
-              onPatchTheme={(patch) => mutate((p) => Object.assign(p.theme, patch), true)}
+              onPatchTheme={(patch) => {
+                // Accent behaves exactly like the topbar brand swatch (recolor
+                // cascade + brand sync); background/textColor cascade by
+                // value-match so the edit is visible, not just a future default.
+                if (patch.accent !== undefined) {
+                  applyAccent(patch.accent);
+                  if (!project.ignoreBrand) setBrand(patch.accent);
+                } else {
+                  mutate((p) => reTheme(p, patch), true);
+                }
+              }}
               onRemoveElement={() => selectedEl && removeElement(selectedEl.id)}
               onReorderElement={reorderElement}
               onSelectElement={setSelectedElId}
@@ -689,6 +699,15 @@ export default function Editor({ project, onChange, onClose, generating }: Edito
                   const el = c.elements.find((e) => e.id === selectedEl.id);
                   if (el) Object.assign(el, patch);
                 }, true);
+              }}
+              onDetachBgImage={(bg, el) => {
+                mutate((p) => {
+                  const c = p.cards.find((x) => x.id === card.id);
+                  if (!c) return;
+                  c.background = bg;
+                  c.elements.unshift(el); // index 0 = back of the stack
+                }, true);
+                setSelectedElId(el.id);
               }}
               onAddRole={(name) =>
                 mutate((p) => {
@@ -759,7 +778,8 @@ function normHex(c: string): string {
 }
 
 // Point color as a token: set theme.accent and recolor every text/shape element
-// that used the previous accent, so one change updates it everywhere.
+// (and role shared style) that used the previous accent, so one change updates
+// it everywhere.
 function reAccent(p: Project, next: string) {
   const prev = normHex(p.theme.accent);
   p.theme.accent = next;
@@ -770,6 +790,36 @@ function reAccent(p: Project, next: string) {
       }
     }
   }
+  for (const s of Object.values(p.styles ?? {})) {
+    if (s.color && normHex(s.color) === prev) s.color = next;
+  }
+}
+
+// Theme background/textColor edits cascade the same way (value-match): cards and
+// text that still used the old default follow the new one; anything customized
+// keeps its own value. Without this the theme panel only affects FUTURE cards,
+// which reads as "does nothing".
+function reTheme(p: Project, patch: Partial<Theme>) {
+  if (patch.background !== undefined) {
+    const prev = p.theme.background;
+    for (const c of p.cards) {
+      if (c.background === prev || normHex(c.background) === normHex(prev)) c.background = patch.background;
+    }
+    p.theme.background = patch.background;
+  }
+  if (patch.textColor !== undefined) {
+    const prev = normHex(p.theme.textColor);
+    for (const c of p.cards) {
+      for (const el of c.elements) {
+        if (el.type === "text" && normHex(el.color) === prev) el.color = patch.textColor;
+      }
+    }
+    for (const s of Object.values(p.styles ?? {})) {
+      if (s.color && normHex(s.color) === prev) s.color = patch.textColor;
+    }
+    p.theme.textColor = patch.textColor;
+  }
+  if (patch.fontFamily !== undefined) p.theme.fontFamily = patch.fontFamily;
 }
 
 function UsageChip({ usage }: { usage?: UsageTotals }) {
@@ -885,6 +935,8 @@ function InlineTextEditor({
           textAlign: el.align,
           lineHeight: el.lineHeight,
           letterSpacing: el.letterSpacing !== undefined ? `${el.letterSpacing}em` : undefined,
+          fontStyle: el.italic ? "italic" : undefined,
+          textDecoration: el.underline ? "underline" : undefined,
           fontFamily,
           pointerEvents: "auto",
         }}

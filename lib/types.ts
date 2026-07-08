@@ -26,6 +26,8 @@ export interface RoleStyle {
   lineHeight?: number;
   letterSpacing?: number;
   align?: "left" | "center" | "right";
+  italic?: boolean;
+  underline?: boolean;
 }
 // The style fields a role governs — used to sync/compare element vs. shared.
 export const ROLE_STYLE_KEYS = [
@@ -36,6 +38,8 @@ export const ROLE_STYLE_KEYS = [
   "lineHeight",
   "letterSpacing",
   "align",
+  "italic",
+  "underline",
 ] as const;
 
 export interface TextElement {
@@ -53,6 +57,8 @@ export interface TextElement {
   lineHeight: number;
   fontFamily?: string; // overrides theme.fontFamily (e.g. serif for story cards)
   letterSpacing?: number; // em units; e.g. -0.03 tight headline, 0.1 spaced overline
+  italic?: boolean;
+  underline?: boolean;
   opacity?: number; // 0–1 element alpha (default 1)
 }
 
@@ -160,6 +166,8 @@ export interface GenProgress {
 
 export const DEFAULT_FONT = `Pretendard, -apple-system, "Noto Sans KR", "Apple SD Gothic Neo", sans-serif`;
 export const SERIF_FONT = `"Nanum Myeongjo", "Noto Serif KR", AppleMyungjo, Batang, Georgia, serif`;
+// System-font stacks only (PNG export runs with skipFonts — no webfont loading).
+export const MONO_FONT = `ui-monospace, "SF Mono", Menlo, Consolas, "Nanum Gothic Coding", monospace`;
 
 export function defaultTheme(): Theme {
   return {

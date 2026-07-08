@@ -46,6 +46,16 @@ select {
   outline: none;
 }
 
+/* Native select arrows hug the right border — draw our own chevron with real
+   breathing room instead. Compact selects re-position it locally. */
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239a9a9a' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+
 input:focus,
 textarea:focus,
 select:focus {
@@ -2005,7 +2015,7 @@ input[type="range"]::-webkit-slider-thumb {
 /* ---------- inspector layers panel ---------- */
 
 .layers {
-  margin-bottom: 4px;
+  margin-bottom: 18px;
 }
 .layer-list {
   display: flex;
@@ -2048,6 +2058,30 @@ input[type="range"]::-webkit-slider-thumb {
 }
 .layer-ic.text {
   color: #cfcfcf;
+}
+/* Pinned card-background row: the icon is a live swatch of the actual CSS
+   background (color, gradient, or photo), so url() previews render too. */
+.layer-ic.bg {
+  background-size: cover;
+  background-position: center;
+  border: 1px solid #333;
+}
+.bg-img-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  margin: 8px 0 2px;
+}
+/* Full panel width like the other fields, contained so it never grows past
+   its box regardless of the photo's aspect ratio. */
+.bg-img-thumb {
+  width: 100%;
+  height: 140px;
+  object-fit: contain;
+  border-radius: 8px;
+  border: 1px solid #333;
+  background: #101010;
 }
 .layer-name {
   flex: 1;
@@ -2565,6 +2599,30 @@ input[type="range"]::-webkit-slider-thumb {
   margin-top: 22px;
 }
 
+/* inspector: no-selection tabs (text styles / design) */
+.insp-tabs {
+  margin-bottom: 14px;
+}
+.insp-tabs button {
+  flex: 1;
+}
+
+/* Section header + "ask AI" prefill button on one line. */
+.subtitle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 18px 0 8px;
+}
+.subtitle-row .panel-subtitle {
+  margin: 0;
+}
+.ask-ai {
+  padding: 4px 9px;
+  font-size: 11px;
+}
+
 /* inspector: text role + shared styles */
 .role-row {
   display: flex;
@@ -2608,14 +2666,49 @@ input[type="range"]::-webkit-slider-thumb {
   padding: 6px 8px;
 }
 .shared-role select {
-  width: 52px;
-  padding: 6px 4px;
+  width: 58px;
+  padding: 6px 20px 6px 8px;
+  background-position: right 6px center;
 }
 .shared-role input[type="color"] {
   width: 34px;
   height: 32px;
   padding: 2px;
   border-radius: 8px;
+}
+/* Second line of a role row: font family + italic/underline toggles. */
+.shared-role-2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: -2px 0 10px;
+}
+.shared-role-2 select {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  padding: 6px 24px 6px 8px;
+  background-position: right 9px center;
+}
+.deco-btn {
+  flex: none;
+  width: 32px;
+  height: 31px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1;
+}
+.deco-btn.on {
+  background: #fff;
+  border-color: #fff;
+  color: #111;
+}
+.deco-row {
+  display: flex;
+  gap: 6px;
 }
 .shared-head {
   display: flex;
@@ -2687,7 +2780,7 @@ input[type="range"]::-webkit-slider-thumb {
   background: rgba(59, 130, 246, 0.08);
   border-radius: 8px;
   padding: 7px 10px;
-  margin: 8px 0 2px;
+  margin: 8px 0 14px;
 }
 
 /* clickable "N changes applied" → expandable change list */

@@ -20,6 +20,8 @@ const textElement = {
     lineHeight: { type: "number" },
     fontFamily: { type: "string" },
     letterSpacing: { type: "number" },
+    italic: { type: "boolean" },
+    underline: { type: "boolean" },
     opacity: { type: "number" },
   },
 };

@@ -29,7 +29,7 @@ ${coordinateDocs(format)}
 - 카피는 짧고 구어체로. 한 카드에 텍스트 3~4개 이하.
 
 ## 텍스트 역할(role) — 모든 text 요소에 반드시 지정
-각 text 요소에 role을 붙입니다. **같은 role은 세트 전체에서 같은 스타일(fontSize·fontWeight·color·fontFamily·lineHeight·letterSpacing·align)로 통일**되어야 합니다. 기본 역할(어떤 표현이 어디인지):
+각 text 요소에 role을 붙입니다. **같은 role은 세트 전체에서 같은 스타일(fontSize·fontWeight·color·fontFamily·lineHeight·letterSpacing·italic·underline·align)로 통일**되어야 합니다. 기본 역할(어떤 표현이 어디인지):
 - "overline": 카드 맨 위 작은 라벨/번호/카테고리. 예: "03 감정", "STEP 1", "DAILY BRIEFING". → 작게(26~32), accent 색, 자간 살짝 넓게.
 - "mega": **1장(커버/훅) 전용** 초대형 커버 타이틀. 예: "비싸도 결국 사는 이유". → 가장 큼(88~120, fontWeight 800~900). **1번 카드에만** 쓰고 본문 카드엔 쓰지 말 것(옵션 역할). 커버 카드는 이 mega가 title 역할을 대신함.
 - "title": 본문 카드들의 핵심 제목(헤드라인). 예: "남다른 감정을 사게 만든다". → 크고 굵게(56~72), mega보다는 작게.
@@ -83,7 +83,8 @@ ${coordinateDocs(format)}
 - "A,B번 (포맷/레이아웃)처럼 C,D,E번도 맞춰줘": A,B번 카드의 텍스트 위치(x/y)·크기·간격·정렬을 기준으로, C,D,E번 각 요소를 update_element로 그 기준에 맞춤(내용은 유지). 참조 카드는 건드리지 말 것.
 - element: text { text, fontSize, fontWeight, color, align, lineHeight, x, y, w,
   fontFamily? (명조 등 폰트 교체), letterSpacing? (em 단위 자간 — 헤드라인/본문(한글)은 -0.04~0만,
-  오버라인·캡션 같은 짧은 라벨만 0.05~0.2. 넓은 자간은 작은 라벨에서만 디자인으로 보이므로 그 외 값 금지) }
+  오버라인·캡션 같은 짧은 라벨만 0.05~0.2. 넓은 자간은 작은 라벨에서만 디자인으로 보이므로 그 외 값 금지),
+  italic? / underline? (불리언 — "기울여줘/밑줄 쳐줘" 요청에 사용) }
            shape { color, radius, x, y, w, h } / image { src, fit, radius, x, y, w, h, dim? (0~1 검은 스크림) }
 - **모든 요소 공통**: opacity? (0~1, 요소 전체 알파/투명도, 기본 1). "흐리게/반투명/투명도" 요청은 opacity로.
   반투명 색 오버레이가 필요하면 shape에 opacity를 낮춰서 쓰세요.
@@ -100,7 +101,7 @@ ${coordinateDocs(format)}
 
 ## 텍스트 역할(role) & 공통 스타일 (일관성의 핵심)
 - 각 text 요소는 role을 가집니다(어떤 표현이 어디인지): "overline"(맨 위 작은 라벨/번호, 예 "03 감정"), "mega"(1장 커버 전용 초대형 타이틀, 예 "비싸도 결국 사는 이유"), "title"(본문 카드의 핵심 제목), "body"(설명·본문), "caption"(작은 부가/출처/핸들). 위계(크기): mega > title > overline ≈ body > caption. 이 역할로 부족하면 새 역할("quote","stat" 등)도 자유롭게 만들 수 있습니다.
-- **같은 role은 모든 카드에서 같은 스타일**(fontSize·fontWeight·color·fontFamily·lineHeight·letterSpacing·align)이어야 합니다.
+- **같은 role은 모든 카드에서 같은 스타일**(fontSize·fontWeight·color·fontFamily·lineHeight·letterSpacing·italic·underline·align)이어야 합니다.
 - **역할 스타일을 통일하거나 바꾸는 요청은 \`update_style\` 하나로** 처리하세요 — 전 카드에 자동 반영됩니다:
   - { "op":"update_style", "role":"body", "patch":{ "fontSize":34 } } → 모든 카드의 body 크기 34로 통일.
   - "설명(본문) 글씨 다 같게/키워/줄여", "제목 색 전부 바꿔", "오버라인 자간 넓혀" = update_style(role, patch). 카드마다 update_element를 반복하지 마세요.
@@ -121,7 +122,7 @@ ${coordinateDocs(format)}
 ## 첨부 이미지
 - 사용자 메시지에 이미지가 첨부되면 "첨부 N" 으로 참조됩니다 (0부터).
 - 첨부 이미지를 카드에 넣어달라고 하면 add_element로 type "image", src "attachment:N"을 사용.
-- **여러/모든 카드의 배경으로**: "이 사진 전체 배경으로 깔아줘" 류는 대상 카드마다 add_element(type "image", src "attachment:N", **index: 0**, dim 0.45~0.6)로 맨 뒤에 넣거나, 각 카드의 update_card background를 \`linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.68)) , url(attachment:N) center/cover no-repeat\` 로 설정하세요. **attachment:N은 요소 src와 배경 url() 양쪽 모두에서 실제 이미지로 치환됩니다.**
+- **여러/모든 카드의 배경으로**: "이 사진 전체 배경으로 깔아줘" 류는 **기본적으로 대상 카드마다 add_element(type "image", src "attachment:N", index: 0, x 0·y 0·w 100·h 100, fit "cover", dim 0.45~0.6)** 로 맨 뒤에 넣으세요 — 요소로 넣어야 레이어 패널에 보여서 사용자가 나중에 선택·이동·딤 조절·삭제할 수 있습니다. 색조(틴트) 그라디언트 스크림이 꼭 필요한 특별한 경우에만 update_card background를 \`linear-gradient(...), url(attachment:N) center/cover no-repeat\` 로 설정하세요. **attachment:N은 요소 src와 배경 url() 양쪽 모두에서 실제 이미지로 치환됩니다.**
 - **이미 넣은 이미지 재사용/복사**: 프로젝트 JSON에 보이는 이미지 URL(요소 src나 카드 background 안의 \`url(/uploads/… 또는 /api/photo… 또는 /templates/…)\`)은 **그 URL 문자열을 그대로 복사**해 다른 카드에 적용할 수 있습니다. "1번 사진 나머지 카드에도" = 1번 카드의 그 이미지 URL을 나머지 카드에 동일하게 add_element(src)/update_card(background)로 넣으세요. 값이 \`[image-data omitted]\`로 표시된 것은 원본을 알 수 없으니 복사 불가 — 그럴 땐 사용자에게 이미지를 다시 첨부해 달라고 reply로 안내하세요.
 - **배경 분리(인물만 작게/구석으로)**: 첨부 정보에 "단색 배경 — 인물 분리 배치 가능"과 배경색(hex)이 표시된 사진은, 누끼 없이도 인물을 자유롭게 옮길 수 있습니다. 방법: (1) 그 카드의 배경을 그 hex 색으로 칠하고(update_card background 또는 update_theme background), (2) 이미지를 add_element(또는 update_element)로 **작게·원하는 위치**(예: 우하단 x 52·y 46·w 42, fit "cover", dim 0)로 배치. 이미지의 사각형 배경이 카드 배경과 같은 색이라 인물만 떠 보입니다. "인물 작게/우하단으로/구석에/배경색으로 깔아줘" 류 요청에 이 방식을 쓰세요. 텍스트는 인물 반대쪽(예: 좌상단)에 배치해 겹치지 않게.
 - 이미지 주변 텍스트와 겹치지 않게 필요한 경우 기존 요소 위치도 함께 조정.

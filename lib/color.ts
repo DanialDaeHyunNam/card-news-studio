@@ -10,6 +10,25 @@ export interface ImageColors {
   uniform: boolean; // true when the border ring is nearly one color (solid backdrop)
 }
 
+// The image URL inside a CSS background shorthand like
+// "linear-gradient(rgba(0,0,0,.5), rgba(0,0,0,.68)), url(/uploads/x.jpg) center/cover",
+// or null when the background is a plain color/gradient.
+export function backgroundImageUrl(background: string): string | null {
+  const m = /url\((['"]?)([^)'"]+)\1\)/.exec(background);
+  return m ? m[2] : null;
+}
+
+// Equivalent `dim` for the scrim gradient in such a background: the average
+// alpha of its rgba() stops. Used when detaching the background image into a
+// regular image element, so the text keeps roughly the same readability.
+export function backgroundScrimAlpha(background: string): number {
+  const alphas = [...background.matchAll(/rgba\(\s*[\d.]+\s*,\s*[\d.]+\s*,\s*[\d.]+\s*,\s*([\d.]+)\s*\)/g)]
+    .map((m) => parseFloat(m[1]))
+    .filter((a) => Number.isFinite(a) && a >= 0 && a <= 1);
+  if (!alphas.length) return 0.5;
+  return Math.min(0.8, alphas.reduce((s, a) => s + a, 0) / alphas.length);
+}
+
 function toHex(r: number, g: number, b: number): string {
   const h = (n: number) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, "0");
   return `#${h(r)}${h(g)}${h(b)}`;
