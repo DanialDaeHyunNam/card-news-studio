@@ -8,7 +8,18 @@ the deployed one and prompts an update when it's behind (see
 ## 0.5.0 — 2026-07-08
 
 Card reordering by drag, subject-on-solid-backdrop separation, role-typed
-templates, and lighter local storage.
+templates, true-WYSIWYG previews, and lighter local storage.
+
+### Fixed
+- **Previews now wrap text exactly like the canvas** — thumbnails, the canvas,
+  and the exported PNG all lay text out at the same 1080px reference width and
+  are shrunk visually with a CSS transform, so a title can no longer break into
+  three lines in the strip but two on the canvas. Inline text editing uses the
+  same trick, so line breaks don't shift while editing.
+- **Letter-spacing guardrails** — the model occasionally emitted absurd tracking
+  on Korean headlines. Spacing is now clamped relative to font size (bigger type
+  → tighter cap) on every AI path — generation, element patches, and role-style
+  updates — and both prompts state the numeric rule.
 
 ### Added
 - **Drag-to-reorder cards** — grab a card in the strip and drop it anywhere;

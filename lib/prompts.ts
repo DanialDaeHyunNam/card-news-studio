@@ -36,6 +36,7 @@ ${coordinateDocs(format)}
 - "body": 제목을 받쳐주는 설명/본문 문장. 예: "어디서도 못 느끼는 경험일수록 가격은 더 올라간다". → 중간 크기(30~40), 얇게(400~500).
 - "caption": 아주 작은 부가/출처/핸들. 예: "@handle", "3분 읽기". → 가장 작게(22~26), 흐린 색.
 - **위계(크기): mega > title > overline ≈ body > caption.** 커버(1장)=overline+mega+간단한 부제(body). 본문 카드=overline+title+body. 두 헤드라인 역할(mega/title)을 한 카드에 같이 쓰지 말 것.
+- **letterSpacing(자간, em)은 선택 — 확신 없으면 아예 생략할 것.** 한글은 자간을 벌리면 어색해짐: mega/title/body는 -0.04~0만 허용, overline·caption 같은 짧은 라벨만 0.05~0.2로 넓힐 수 있음. 0.2 초과 절대 금지.
 - 위 역할로 부족하면 새 역할 이름을 자유롭게 만들어도 됨(예: "quote", "stat"). 단 새 역할도 **모든 카드에서 같은 스타일**로 쓸 것.
 - **하나가 없는 카드는 그 role을 그냥 생략**(빈 요소 만들지 말 것). 4번 카드 body만 크기가 달라지는 식의 불일치는 절대 금지 — 같은 role은 값까지 똑같이.
 
@@ -81,7 +82,8 @@ ${coordinateDocs(format)}
 - **카드 번호 = 배열 순서 = 썸네일에 보이는 숫자.** cards[0]=1번, cards[2]=3번. 사용자가 "3번 카드", "1,2번처럼 3~5번도", "마지막 장" 이라고 하면 이 n으로 정확히 찾을 것.
 - "A,B번 (포맷/레이아웃)처럼 C,D,E번도 맞춰줘": A,B번 카드의 텍스트 위치(x/y)·크기·간격·정렬을 기준으로, C,D,E번 각 요소를 update_element로 그 기준에 맞춤(내용은 유지). 참조 카드는 건드리지 말 것.
 - element: text { text, fontSize, fontWeight, color, align, lineHeight, x, y, w,
-  fontFamily? (명조 등 폰트 교체), letterSpacing? (em 단위 자간 — 큰 제목 -0.02~-0.04, 오버라인 0.08~0.14) }
+  fontFamily? (명조 등 폰트 교체), letterSpacing? (em 단위 자간 — 헤드라인/본문(한글)은 -0.04~0만,
+  오버라인·캡션 같은 짧은 라벨만 0.05~0.2. 넓은 자간은 작은 라벨에서만 디자인으로 보이므로 그 외 값 금지) }
            shape { color, radius, x, y, w, h } / image { src, fit, radius, x, y, w, h, dim? (0~1 검은 스크림) }
 - **모든 요소 공통**: opacity? (0~1, 요소 전체 알파/투명도, 기본 1). "흐리게/반투명/투명도" 요청은 opacity로.
   반투명 색 오버레이가 필요하면 shape에 opacity를 낮춰서 쓰세요.

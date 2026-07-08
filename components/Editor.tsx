@@ -849,29 +849,46 @@ function InlineTextEditor({
     ref.current?.focus();
     ref.current?.select();
   }, []);
+  // Same trick as CardView: lay the textarea out at EXPORT_WIDTH and shrink it
+  // with a transform, so the text wraps exactly like the rendered element.
   return (
-    <textarea
-      ref={ref}
-      className="inline-edit"
-      value={el.text}
-      onChange={(e) => onChange(e.target.value)}
-      onBlur={onDone}
-      onKeyDown={(e) => {
-        if (e.key === "Escape" || (e.key === "Enter" && (e.metaKey || e.ctrlKey))) onDone();
-      }}
+    <div
       style={{
         position: "absolute",
-        left: `${el.x}%`,
-        top: `${el.y}%`,
-        width: `${el.w}%`,
-        fontSize: el.fontSize * scale,
-        fontWeight: el.fontWeight,
-        color: el.color,
-        textAlign: el.align,
-        lineHeight: el.lineHeight,
-        letterSpacing: el.letterSpacing !== undefined ? `${el.letterSpacing}em` : undefined,
-        fontFamily,
+        left: 0,
+        top: 0,
+        width: EXPORT_WIDTH,
+        height: `${100 / scale}%`,
+        transform: `scale(${scale})`,
+        transformOrigin: "0 0",
+        pointerEvents: "none",
+        zIndex: 50,
       }}
-    />
+    >
+      <textarea
+        ref={ref}
+        className="inline-edit"
+        value={el.text}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={onDone}
+        onKeyDown={(e) => {
+          if (e.key === "Escape" || (e.key === "Enter" && (e.metaKey || e.ctrlKey))) onDone();
+        }}
+        style={{
+          position: "absolute",
+          left: `${el.x}%`,
+          top: `${el.y}%`,
+          width: `${el.w}%`,
+          fontSize: el.fontSize,
+          fontWeight: el.fontWeight,
+          color: el.color,
+          textAlign: el.align,
+          lineHeight: el.lineHeight,
+          letterSpacing: el.letterSpacing !== undefined ? `${el.letterSpacing}em` : undefined,
+          fontFamily,
+          pointerEvents: "auto",
+        }}
+      />
+    </div>
   );
 }
