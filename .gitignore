@@ -19,3 +19,6 @@ public/uploads/
 npm-debug.log*
 .gstack/
 .vercel
+
+# user projects — filesystem store written by /api/projects, never committed
+data/

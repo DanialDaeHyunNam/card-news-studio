@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Format, GenConfig, Project } from "@/lib/types";
 import { FORMATS, defaultTheme } from "@/lib/types";
 import { newId } from "@/lib/ops";
 import { getTemplates, instantiateTemplate } from "@/lib/templates";
+import { exportProject, importProjectFile } from "@/lib/transfer";
 import { GITHUB_URL, VERSION } from "@/lib/site";
 import { MODELS, PROVIDER_LABELS, pickDefaultModel } from "@/lib/models";
 import CardView from "./CardView";
@@ -27,11 +28,12 @@ interface HomeProps {
   onOpen: (id: string) => void;
   onCreate: (p: Project) => void;
   onDelete: (id: string) => void;
+  onImport: (p: Project) => void;
 }
 
 const YT_RE = /(youtube\.com\/(watch|shorts|live|embed)|youtu\.be\/)/;
 
-export default function Home({ projects, error, busy, onGenerate, onOpen, onCreate, onDelete }: HomeProps) {
+export default function Home({ projects, error, busy, onGenerate, onOpen, onCreate, onDelete, onImport }: HomeProps) {
   const { lang, t } = useLang();
   // On a public deploy the tool can't run (no local keys / localStorage), so
   // every "real action" opens the install guide instead of doing the action.
@@ -55,6 +57,21 @@ export default function Home({ projects, error, busy, onGenerate, onOpen, onCrea
     return window.localStorage.getItem("cardnews.accent");
   });
   const isYoutube = YT_RE.test(topic);
+  // Project import: a .cardnews.json exported on another machine (images come
+  // inlined; importProjectFile re-files them into public/uploads).
+  const importInput = useRef<HTMLInputElement>(null);
+  async function handleImportFile(file: File) {
+    try {
+      onImport(await importProjectFile(file, t("import_fallback_name")));
+    } catch {
+      alert(t("import_fail"));
+    }
+  }
+  const importButton = (
+    <button className="import-btn" onClick={() => importInput.current?.click()}>
+      ⬆ {t("proj_import")}
+    </button>
+  );
 
   function setAccent(v: string | null) {
     setAccentState(v);
@@ -332,9 +349,24 @@ export default function Home({ projects, error, busy, onGenerate, onOpen, onCrea
         </div>
       )}
 
+      <input
+        ref={importInput}
+        type="file"
+        accept=".json,application/json"
+        style={{ display: "none" }}
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = ""; // allow re-picking the same file
+          if (f) void handleImportFile(f);
+        }}
+      />
+
       {projects.length > 0 && (
         <section className="project-grid">
-          <h2>{t("proj_title")}</h2>
+          <div className="section-head">
+            <h2>{t("proj_title")}</h2>
+            {importButton}
+          </div>
           <div className="grid">
             {projects
               .slice()
@@ -352,6 +384,16 @@ export default function Home({ projects, error, busy, onGenerate, onOpen, onCrea
                       {new Date(p.updatedAt).toLocaleDateString(lang === "ko" ? "ko-KR" : "en-US")}
                     </div>
                   </div>
+                  <button
+                    className="project-export"
+                    title={t("proj_export_title")}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void exportProject(p);
+                    }}
+                  >
+                    ⬇
+                  </button>
                   <button
                     className="project-delete"
                     title="삭제"
@@ -371,7 +413,10 @@ export default function Home({ projects, error, busy, onGenerate, onOpen, onCrea
       )}
 
       <section className="templates">
-        <h2>{t("tpl_title")}</h2>
+        <div className="section-head">
+          <h2>{t("tpl_title")}</h2>
+          {projects.length === 0 && importButton /* fresh machine: import lives here */}
+        </div>
         <p className="section-sub">{t("tpl_sub")}</p>
         <div className="tpl-grid">
           <button className="tpl-blank" onClick={() => onCreate(emptyProject())}>

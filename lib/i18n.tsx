@@ -67,6 +67,13 @@ const D = {
   ],
   proj_title: ["내 프로젝트", "My projects"],
   cards_unit: ["장", " cards"],
+  proj_import: ["가져오기", "Import"],
+  proj_export_title: ["프로젝트 내보내기 (.json)", "Export project (.json)"],
+  import_fail: [
+    "프로젝트 파일을 가져오지 못했습니다. 이 앱에서 내보낸 .cardnews.json 파일인지 확인해 주세요.",
+    "Couldn't import that file. Make sure it's a .cardnews.json exported from this app.",
+  ],
+  import_fallback_name: ["가져온 프로젝트", "Imported project"],
   new_project_name: ["새 카드뉴스", "New card set"],
   empty_title_text: ["타이틀을 입력하세요", "Your title here"],
   yt_fallback_name: ["유튜브 카드뉴스", "YouTube card set"],

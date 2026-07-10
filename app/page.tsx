@@ -56,12 +56,13 @@ function Root() {
   const projectsRef = useRef<Project[]>([]);
 
   useEffect(() => {
-    const loaded = loadProjects();
-    setProjects(loaded);
-    projectsRef.current = loaded;
+    void loadProjects().then((loaded) => {
+      setProjects(loaded);
+      projectsRef.current = loaded;
+    });
   }, []);
 
-  if (!projects) return null; // avoid hydration mismatch with localStorage
+  if (!projects) return null; // avoid hydration mismatch (store loads client-side)
 
   const persist = (next: Project[]) => {
     projectsRef.current = next;
@@ -332,6 +333,10 @@ function Root() {
           setOpenId(p.id);
         }}
         onDelete={(id) => persist(projects.filter((p) => p.id !== id))}
+        onImport={(p) => {
+          persist([...projectsRef.current, p]);
+          setOpenId(p.id);
+        }}
       />
       {ytPending && (
         <SegmentPicker

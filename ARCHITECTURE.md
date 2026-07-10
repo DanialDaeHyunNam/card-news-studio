@@ -7,29 +7,43 @@ extend it, or lift a piece of it into your own project. For the practical
 ## Big picture
 
 Card News Studio is a **single-page client app** with a handful of thin route
-handlers. There is **no server state and no database.**
+handlers. There is **no remote server state and no database** — persistent data
+lives on *your* machine, as plain files.
 
 ```
-Browser (all the real work)                    Server (thin proxies only)
+Browser (all the real work)                    Server (thin proxies + local files)
 ┌──────────────────────────────┐               ┌──────────────────────────────┐
-│ localStorage: projects, keys? │               │ app/api/generate  ─ AI draft │
-│ React state: editor, canvas   │  ── fetch ──▶ │ app/api/chat      ─ AI edits │
-│ lib/ops, lib/stream, CardView │  ◀─ SSE ───   │ app/api/youtube   ─ captions │
-│ html-to-image export          │               │ app/api/photo     ─ img proxy│
+│ React state: editor, canvas   │               │ app/api/generate  ─ AI draft │
+│ lib/ops, lib/stream, CardView │  ── fetch ──▶ │ app/api/chat      ─ AI edits │
+│ html-to-image export          │  ◀─ SSE ───   │ app/api/youtube   ─ captions │
+│                               │               │ app/api/photo     ─ img proxy│
 │                               │               │ app/api/keys      ─ .env r/w │
+│                               │               │ app/api/projects  ─ data/ r/w│
 └──────────────────────────────┘               └──────────────────────────────┘
         no upload of your data                   the API key never reaches client
 ```
 
-The route handlers exist for exactly one reason: **the provider API key must
+The AI route handlers exist for exactly one reason: **the provider API key must
 never reach the browser.** Model calls are proxied server-side; the browser only
-ever receives model *output*. Projects are persisted to `localStorage`
-(`cardnews.projects.v1`); nothing is uploaded anywhere.
+ever receives model *output*. Nothing is uploaded anywhere.
 
-`app/page.tsx` returns `null` on the server and until `localStorage` loads on the
+**Storage** (`lib/store.ts`): on local dev, projects are plain JSON files —
+`data/projects/<id>.json`, written through the dev-only `/api/projects` route
+(deletes are soft: files move to `data/trash/`). That means no localStorage
+quota, no origin/port coupling, and `data/` + `public/uploads/` together are a
+complete backup. Where the dev route can't run (the hosted showcase, a prod
+build), the store transparently falls back to `localStorage`
+(`cardnews.projects.v1`), and a legacy localStorage library is migrated to files
+once, on the first filesystem load. Saves are debounced (300ms) and the route
+rewrites only files whose content changed. For moving work between machines,
+`lib/transfer.ts` exports a project as a self-contained `.cardnews.json`
+(every `/uploads/` image inlined as a data URL) and re-files those images
+through `/api/asset` on import.
+
+`app/page.tsx` returns `null` on the server and until the store loads on the
 client — SSR HTML is intentionally empty. This means the app is effectively fully
 client-rendered, which is why there's no hydration-mismatch risk for UI derived
-from `localStorage` or the `data-hosted` flag.
+from the store or the `data-hosted` flag.
 
 ## Data model (`lib/types.ts`)
 
@@ -121,8 +135,8 @@ malformed op degrades instead of throwing.
 
 **Attachment protocol:** chat images are sent to the model resized (≤1200px). The
 AI inserts one with `src: "attachment:N"`, and `applyOperations` substitutes the
-full-resolution original kept client-side. Chat history persists only tiny
-thumbnails (localStorage ~5MB quota).
+full image, saved to `public/uploads/` via `/api/asset` and referenced by its
+short URL. Chat history persists only tiny display thumbnails.
 
 **Z-order:** `CardView` renders `elements` in array order (last = on top; there's
 no `z-index`). `reorder_element` moves an element by target `index` (0 = back);
@@ -174,8 +188,8 @@ gracefully in production (`writable: false` hides the inputs and shows a hint).
 
 ## Hosted vs. local mode
 
-The tool only works with local keys and localStorage, so a public deployment
-can't actually run it. `app/layout.tsx` (a server component) computes
+The tool only works with local keys and local file storage, so a public
+deployment can't actually run it. `app/layout.tsx` (a server component) computes
 `HOSTED = process.env.VERCEL === "1" || process.env.HOSTED_DEMO === "1"` at
 render time and stamps `<html data-hosted="1">`. Because `/` is statically
 prerendered, this is evaluated **at build time** — which is exactly right on
