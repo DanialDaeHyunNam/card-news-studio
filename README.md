@@ -9,8 +9,8 @@ guides and an AI chat, and export PNGs.
 > 레이아웃을 설계하고, 캔버스에서 자유롭게 다듬은 뒤 PNG로 내보냅니다.
 
 Open source (**MIT**). Runs **entirely on your own computer** — no server, no
-database, no account. Your projects live in your browser's localStorage and your
-API keys never leave your machine.
+database, no account. Your projects are plain JSON files in the app folder
+(`data/projects/`) and your API keys never leave your machine.
 
 - 🧠 **Deep-dive on how it works:** [ARCHITECTURE.md](ARCHITECTURE.md)
 - 🛠️ **Want to hack on it or add a model/template/language:** [CONTRIBUTING.md](CONTRIBUTING.md)
@@ -43,6 +43,8 @@ API keys never leave your machine.
 - **Formats** — 1:1 (1080×1080), 4:5 (1080×1350), 9:16 (1080×1920).
 - **PNG export** — per card or the whole set, at full 1080-wide resolution.
 - **Bilingual** — English / Korean throughout (UI, templates, and AI copy).
+- **Project export / import** — download any project as a self-contained
+  `.cardnews.json` (images inlined) and import it on another computer.
 - **In-app keys** — paste a provider key in the 🔑 panel; it's written to
   `.env.local` and applied instantly, no restart, no file editing.
 
@@ -71,7 +73,9 @@ deliberate:
 
 - Your **API keys** stay in `.env.local` on your machine; the browser only ever
   sees model *output*, never the key.
-- Your **projects** live in your browser's localStorage — nothing is uploaded.
+- Your **projects** are JSON files under `data/projects/` (with images in
+  `public/uploads/`) — nothing is uploaded, and copying those two folders is a
+  full backup. Deleted projects go to `data/trash/`, not straight to oblivion.
 - The route handlers (`app/api/*`) exist only so the key never reaches the
   client; there is no server state and no database.
 

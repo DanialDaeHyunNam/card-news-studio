@@ -23,8 +23,22 @@ auto-selects a model whose key is connected.
 
 ## Architecture
 
-- **No server state, no DB.** Projects live in localStorage (`cardnews.projects.v1`).
-  Route handlers exist only so the API key never reaches the client.
+- **No DB; the local filesystem is the store.** On dev, projects live in
+  `data/projects/<id>.json` via `/api/projects` (dev-only, like `/api/keys`) —
+  no localStorage quota, survives clearing browser data, port changes are safe,
+  and copying `data/` + `public/uploads/` is a full backup. `lib/store.ts` picks
+  the mode once per load (GET `/api/projects` answers → fs; 403/unreachable →
+  localStorage `cardnews.projects.v1`, which is what hosted/prod uses). First fs
+  load migrates any legacy localStorage projects once (`cardnews.migrated.v1`
+  marker stops them resurrecting after deletes). Saves are debounced 300ms and
+  the route only rewrites files whose content changed. `data/` is gitignored —
+  user content must never reach the public repo. Route handlers otherwise exist
+  only so the API key never reaches the client.
+- **Project export/import** (`lib/transfer.ts`): per-project ⬇ on the Home grid
+  downloads a self-contained `.cardnews.json` (every `/uploads/` image inlined
+  as a data URL); ⬆ Import (Home; lives in the templates header when there are
+  no projects yet) re-files inlined images through `/api/asset` and always
+  assigns a fresh project id. Foreign JSON is sanitized through `normalizeCard`.
 - **Data model** (`lib/types.ts`): Project → cards[] → elements[] (text/shape/image).
   Coordinates are **percent of the card**; `fontSize`/`radius` are **px at 1080-wide
   export scale**. One renderer (`components/CardView.tsx`) serves canvas, thumbnails,

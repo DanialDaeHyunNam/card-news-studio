@@ -582,6 +582,59 @@ select:focus {
 .project-card:hover .project-delete {
   opacity: 1;
 }
+.project-export {
+  position: absolute;
+  top: 8px;
+  right: 40px;
+  background: rgba(0, 0, 0, 0.6);
+  border: none;
+  color: #ccc;
+  border-radius: 999px;
+  width: 26px;
+  height: 26px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.project-card:hover .project-export {
+  opacity: 1;
+}
+.project-export:hover,
+.project-delete:hover {
+  color: #fff;
+}
+
+/* section title + action on one line (projects "Import", etc.) */
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.section-head h2 {
+  margin-bottom: 0;
+}
+.project-grid .section-head {
+  margin-bottom: 16px;
+}
+.templates .section-head {
+  margin-bottom: 6px;
+}
+.import-btn {
+  background: none;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.16));
+  color: var(--text-dim, #aaa);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+.import-btn:hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.4);
+}
 
 .mobile-only {
   display: none;

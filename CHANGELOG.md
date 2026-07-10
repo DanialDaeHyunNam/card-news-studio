@@ -5,6 +5,32 @@ All notable changes to Card News Studio. This project uses simple
 the deployed one and prompts an update when it's behind (see
 [ARCHITECTURE.md](ARCHITECTURE.md#hosted-vs-local-mode)).
 
+## 0.7.0 — 2026-07-10
+
+Your projects now live on your disk, not in the browser — plus a portable
+export/import for moving work between computers.
+
+### Added
+- **Filesystem project store** — on local dev, projects are saved as plain JSON
+  files in `data/projects/<id>.json` (via the dev-only `/api/projects` route,
+  same pattern as `/api/keys`). No more ~5MB localStorage quota, projects
+  survive clearing browser data or changing the dev port, and backing up is
+  copying `data/` + `public/uploads/`. Existing localStorage projects are
+  migrated automatically on first load; the hosted demo (and prod builds)
+  keep using localStorage as before.
+- **Soft delete** — deleting a project moves its file to `data/trash/` instead
+  of destroying it, so an accidental delete is recoverable.
+- **Project export / import** — a ⬇ button on each project card downloads a
+  self-contained `.cardnews.json` with every `/uploads/` image inlined; the
+  ⬆ Import button (projects header, or the templates header on a fresh
+  machine) re-files those images locally and always assigns a fresh project id,
+  so re-importing never overwrites an existing project.
+
+### Changed
+- Saves are debounced (300ms) and only rewrite project files whose content
+  actually changed. `data/` is gitignored — user content never reaches the
+  public repo.
+
 ## 0.6.1 — 2026-07-09
 
 Small follow-ups to 0.6.0.
