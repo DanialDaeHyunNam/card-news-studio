@@ -54,11 +54,6 @@ const D = {
   ],
   blank_start: ["또는 빈 캔버스에서 시작 →", "Or start from a blank canvas →"],
   blank_card: ["빈 캔버스로 시작", "Blank canvas"],
-  banner_none: ["연결된 API 키가 없어요 — ", "No API key connected — "],
-  banner_none_cta: ["원하는 키 연결하기", "connect one"],
-  banner_need_mid: ["모델은", "needs an"],
-  banner_need_tail: ["키가 필요해요 — ", "key — "],
-  banner_need_cta: ["연결하기", "connect"],
   modal_title: ["API 키 관리", "API Keys"],
   tpl_title: ["템플릿으로 시작", "Start from a template"],
   tpl_sub: [
