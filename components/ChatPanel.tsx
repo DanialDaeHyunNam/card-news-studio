@@ -5,7 +5,8 @@ import type { Operation, Project } from "@/lib/types";
 import { fileToAttachment, uploadAttachment, type Attachment } from "@/lib/image";
 import type { UsageEvent } from "@/lib/usage";
 import { getTemplates, instantiateTemplate, type Template } from "@/lib/templates";
-import { readSSE, extractReply, parseStructured } from "@/lib/stream";
+import { extractReply, parseStructured } from "@/lib/stream";
+import { streamChat } from "@/lib/ai-transport";
 import { useClickOutside } from "@/lib/hooks";
 import { useLang, type DictKey } from "@/lib/i18n";
 import CardView from "./CardView";
@@ -15,8 +16,8 @@ interface ChatPanelProps {
   selection: { cardId?: string; elementId?: string };
   selectionLabel: string;
   disabled?: boolean;
-  // When set (hosted deploy), sending intercepts to this instead of hitting the
-  // server — the AI edit needs a local key, so it routes to the install guide.
+  // When set (hosted deploy without a key for this project's model), sending
+  // intercepts to this instead of running — it opens the key modal.
   onBlocked?: () => void;
   // Register a callback so the inspector's @ buttons can drop a reference token
   // into the chat input.
@@ -100,8 +101,7 @@ export default function ChatPanel({ project, selection, selectionLabel, disabled
   }
 
   async function send(text?: string) {
-    // Hosted deploy: no local key, so the AI edit can't run — show how to run
-    // it locally instead of failing.
+    // Hosted without a key for this model — route to the key modal, don't fail.
     if (onBlocked) return onBlocked();
     const message = (text ?? input).trim();
     if (!message || busy || disabled) return;
@@ -116,30 +116,18 @@ export default function ChatPanel({ project, selection, selectionLabel, disabled
     scrollDown();
     const tpl = tplRef;
     try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          project: { ...project, chat: [] },
-          selection,
-          history: project.chat.map((m) => ({ role: m.role, text: m.text })),
-          message,
-          attachments: atts.map((a) => ({ apiDataUrl: a.apiDataUrl, width: a.width, height: a.height, bg: a.bg, bgUniform: a.bgUniform })),
-          templateRef: tpl ? { name: tpl.name, theme: tpl.theme, cards: tpl.cards } : undefined,
-          lang,
-        }),
-      });
-
-      // Validation failures come back as JSON, not an event stream.
-      if (!res.headers.get("content-type")?.includes("event-stream")) {
-        const d = await res.json().catch(() => null);
-        throw new Error(d?.error || `요청 실패 (${res.status})`);
-      }
-
       let acc = "";
       let doneText = "";
       let usage: UsageEvent | undefined;
-      for await (const ev of readSSE(res)) {
+      for await (const ev of streamChat({
+        project: { ...project, chat: [] },
+        selection,
+        history: project.chat.map((m) => ({ role: m.role, text: m.text })),
+        message,
+        attachments: atts.map((a) => ({ apiDataUrl: a.apiDataUrl, width: a.width, height: a.height, bg: a.bg, bgUniform: a.bgUniform })),
+        templateRef: tpl ? { name: tpl.name, theme: tpl.theme, cards: tpl.cards } : undefined,
+        lang,
+      })) {
         if (ev.type === "delta") {
           acc += ev.text ?? "";
           setStreamReply(extractReply(acc));

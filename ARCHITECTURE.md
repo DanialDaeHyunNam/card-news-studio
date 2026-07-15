@@ -188,21 +188,41 @@ gracefully in production (`writable: false` hides the inputs and shows a hint).
 
 ## Hosted vs. local mode
 
-The tool only works with local keys and local file storage, so a public
-deployment can't actually run it. `app/layout.tsx` (a server component) computes
+Since v0.8.0 the hosted deploy **runs for real** — it just runs *differently*.
+`app/layout.tsx` (a server component) computes
 `HOSTED = process.env.VERCEL === "1" || process.env.HOSTED_DEMO === "1"` at
 render time and stamps `<html data-hosted="1">`. Because `/` is statically
 prerendered, this is evaluated **at build time** — which is exactly right on
-Vercel (it sets `VERCEL=1` during the build).
+Vercel (it sets `VERCEL=1` during the build). `useHosted()` (`lib/hooks.ts`)
+reads that attribute in a lazy initializer, so the client knows on its first
+render (no flash); `isHostedRuntime()` (`lib/ai-transport.ts`) is the same
+signal for non-React code.
 
-`useHosted()` (`lib/hooks.ts`) reads that attribute in a lazy initializer, so the
-client knows on its first render (no flash). When hosted, `components/Home.tsx`:
+|  | local | hosted |
+| --- | --- | --- |
+| Projects | files in `data/projects/` | `localStorage` (store falls back automatically) |
+| API keys | `.env.local` (via `/api/keys`) | browser storage — `lib/client-keys.ts` (sessionStorage by default, localStorage on "remember") |
+| AI calls | `/api/generate` etc. → `lib/ai.ts` server dispatch | **browser → provider, directly** — `lib/ai-transport.ts` builds the identical request via `lib/requests.ts` and streams it with `lib/ai-client.ts` (raw fetch SSE; Anthropic uses the official `anthropic-dangerous-direct-browser-access` header) |
 
-- shows a "this is a preview — runs on your computer" banner,
-- swaps the 🔑 key button for an **Install locally** button, and
-- routes every real action (Generate, open a template / blank / project) to
-  `components/InstallGuide.tsx` — a bilingual macOS/Windows install guide with
-  copyable terminal blocks.
+The split is glued by three invariants:
+
+- **One prompt source.** `lib/requests.ts` holds the pure request builders;
+  the API routes and the hosted browser path both call them, so the two modes
+  can never drift.
+- **One OpenAI-compat adapter.** `lib/ai-compat.ts` is isomorphic — the server
+  calls it with the `.env.local` key, the browser with the user's key.
+- **The disclaimer is a contract.** The key panel states that keys live only in
+  this browser and travel only to the provider's domain. `next.config.ts` ships
+  a Content-Security-Policy that *enforces* it: `connect-src` allows only
+  ourselves + the three provider domains, `script-src` allows no external hosts
+  (which is also why analytics is limited to Vercel's same-origin script).
+
+Hosted UX: a two-track bar (local install as the primary CTA + a
+`DiffModal.tsx` honest comparison), the bilingual `InstallGuide.tsx`, a
+dismiss-forever "browser mode" pill in the editor, `/privacy`, and an
+"erase all data" footer action (`lib/wipe.ts`). YouTube caption fetching and
+the photo/frame proxies still ride our routes on hosted — they carry no key
+and no personal data.
 
 Preview it locally with `HOSTED_DEMO=1 bun dev`. **Deploy from this folder only**
 (`vercel deploy --prod` inside `card-news/`), never from a parent directory.

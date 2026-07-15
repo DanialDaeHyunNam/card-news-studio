@@ -121,15 +121,27 @@ pill-shaped topic bar.
   ops.ts (normalize/patch) + CardView render together.
 - Model choice is deliberate (`claude-opus-4-8`); don't downgrade for cost without
   the owner's say-so.
-- **Hosted vs local mode**: the tool only runs locally (keys in `.env.local`,
-  projects in localStorage), so a public deploy can't run it. `app/layout.tsx`
+- **Hosted vs local mode (v0.8.0 — hosted RUNS now, via BYOK)**: `app/layout.tsx`
   stamps `<html data-hosted>` when `process.env.VERCEL` (or `HOSTED_DEMO=1`);
-  `useHosted()` (`lib/hooks.ts`) reads it. When hosted, `Home.tsx` shows a
-  "runs locally" banner and routes every real action (generate / template /
-  blank / open) to `components/InstallGuide.tsx` (bilingual macOS/Windows
-  guide). `/` is statically prerendered → the flag bakes at BUILD
-  time, which is correct on Vercel (VERCEL=1 during build). Preview locally with
-  `HOSTED_DEMO=1 bun dev`. **Deploy from `card-news/` only**, never a parent dir.
+  `useHosted()` reads it (non-React: `isHostedRuntime()` in `lib/ai-transport.ts`).
+  Local = `.env.local` keys + server routes + fs projects (UNCHANGED). Hosted =
+  keys in browser storage (`lib/client-keys.ts`, session-default + "remember"
+  opt-in) and AI calls **browser→provider direct** (`lib/ai-client.ts`, raw
+  fetch SSE; Anthropic needs the `anthropic-dangerous-direct-browser-access`
+  header). Invariants: ① prompts are built ONLY in `lib/requests.ts` (shared by
+  routes and browser path — never fork them) ② `lib/ai-compat.ts` is the one
+  isomorphic OpenAI/Gemini adapter ③ the key-panel disclaimer is a CONTRACT —
+  keys only in this browser, only to the provider domain; if code would break a
+  sentence, fix the code, and keep `next.config.ts` CSP `connect-src` in sync
+  with the provider list. All three providers verified CORS-open (2026-07-15
+  preflight: Anthropic `*`, OpenAI/Gemini echo origin). Hosted UX: two-track
+  bar + `DiffModal`, editor "browser mode" pill (dismiss = forever via
+  `cardnews.hostedNoteDismissed`), `/privacy`, footer "erase all data"
+  (`lib/wipe.ts`). Analytics: `lib/analytics.ts` trackEvent wrapper ONLY —
+  event props never contain typed content or keys; custom events are Pro-only
+  (currently no-op on Hobby). `/` bakes the flag at BUILD time (correct on
+  Vercel). Preview with `HOSTED_DEMO=1 bun dev`. **Deploy from `card-news/`
+  only**, never a parent dir.
 - **Versioning / releases**: `package.json` `version` is the single source (inlined
   as `NEXT_PUBLIC_APP_VERSION` by `next.config.ts`, exposed via `/api/version`,
   shown in header/footer). A local copy compares against the canonical deploy's

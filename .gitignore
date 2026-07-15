@@ -22,3 +22,4 @@ npm-debug.log*
 
 # user projects — filesystem store written by /api/projects, never committed
 data/
+tsconfig.tsbuildinfo

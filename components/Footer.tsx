@@ -3,6 +3,7 @@
 import { CANONICAL_URL, GITHUB_URL, SOCIAL, VERSION } from "@/lib/site";
 import { useLang } from "@/lib/i18n";
 import { useHosted } from "@/lib/hooks";
+import { wipeAllData } from "@/lib/wipe";
 import LogoMark from "./LogoMark";
 
 function XIcon() {
@@ -44,6 +45,7 @@ export default function Footer() {
                 {t("footer_star_soon_2")}
               </span>
             )}
+            <a href="/privacy">{t("footer_privacy")}</a>
             <span className="footer-dim">MIT License</span>
           </div>
 
@@ -74,6 +76,19 @@ export default function Footer() {
             </span>
           </span>
           <div className="footer-socials">
+            <button
+              className="footer-wipe"
+              onClick={() => {
+                // Whole-browser wipe: confirm() carries the full warning (and the
+                // "export first" nudge) — the copy differs because local keeps
+                // its projects on disk.
+                if (!confirm(t(hosted ? "wipe_confirm_hosted" : "wipe_confirm_local"))) return;
+                wipeAllData();
+                location.reload();
+              }}
+            >
+              {t("wipe_btn")}
+            </button>
             <a href={SOCIAL.threads.url} target="_blank" rel="noreferrer" title="Threads">
               <span className="footer-icon">@</span>
             </a>

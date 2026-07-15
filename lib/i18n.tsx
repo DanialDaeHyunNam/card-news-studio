@@ -129,6 +129,97 @@ const D = {
     ".env.local에 저장 · 즉시 적용 · 값은 서버에만 남습니다. 키를 연결하면 해당 프로바이더 모델이 바로 열립니다.",
     "Saved to .env.local · applied instantly · never leaves the server. Connect a key and that provider's models unlock immediately.",
   ],
+  // hosted BYOK key panel — the disclaimer is a contract with lib/ai-client.ts:
+  // keys live only in this browser and travel only to the provider's domain.
+  keys_has_session: ["이 세션에 저장됨", "Stored for this session"],
+  keys_has_local: ["이 브라우저에 저장됨", "Stored on this browser"],
+  keys_remove: ["삭제", "Remove"],
+  keys_remember: [
+    "이 브라우저에 기억 (해제하면 탭을 닫을 때 사라져요)",
+    "Remember on this browser (unchecked: cleared when the tab closes)",
+  ],
+  keys_shape: ["API 키 형식이 아닌 것 같아요. (공백 없이 8자 이상)", "That doesn't look like an API key (8+ chars, no spaces)."],
+  keys_store_fail: [
+    "브라우저 저장소에 키를 저장하지 못했습니다. 시크릿 모드 설정을 확인해 주세요.",
+    "Couldn't store the key in this browser — check private-mode storage settings.",
+  ],
+  keyd_line1: [
+    "키는 이 브라우저에만 저장되고, AI 사용 시 이 브라우저에서 {domain}으로 직접 전송됩니다 — 다른 어디로도 가지 않으며, 이 사이트의 서버는 요청을 보지도 않습니다.",
+    "Your key is stored only in this browser and sent directly from it to {domain} — nowhere else. This site's server never even sees the request.",
+  ],
+  keyd_line2: ["지출 한도를 걸어둔 전용 키 사용을 권장해요 ↗", "We recommend a dedicated key with a spend limit ↗"],
+  keyd_line3: [
+    "생성 시 입력한 주제·카드 내용·첨부 이미지가 {provider} API로 전송됩니다.",
+    "When you generate, your topic, card contents, and attached images are sent to the {provider} API.",
+  ],
+  keyd_local: [
+    "키가 내 컴퓨터 밖으로 안 나가는 게 더 좋다면 로컬 설치",
+    "Prefer the key to never leave your machine? Install locally",
+  ],
+  keyd_privacy: ["개인정보 처리방침", "Privacy policy"],
+
+  // hosted two-track CTA + local-vs-browser comparison modal (pattern from ZCLIP)
+  track_install: ["💻 로컬로 설치", "💻 Install locally"],
+  track_install_sub: ["파일로 영구 저장 · 키가 컴퓨터 밖으로 안 나감", "Files on disk · keys never leave your machine"],
+  track_q: ["로컬 실행과 브라우저 실행, 뭐가 다른가요?", "What's the difference between local and browser?"],
+  diff_title: ["로컬 vs 브라우저 — 정직한 비교", "Local vs browser — the honest comparison"],
+  diff_browser_h: ["🌐 브라우저에서", "🌐 In the browser"],
+  diff_local_h: ["💻 로컬 설치", "💻 Installed locally"],
+  diff_r1_label: ["API 키", "Your API key"],
+  diff_r1_browser: [
+    "이 브라우저에만 저장됩니다(기본은 탭을 닫으면 증발). AI 사용 시 브라우저에서 제공자 API로 직접 전송되고, 이 사이트의 서버는 요청을 보지도 않습니다.",
+    "Stays in this browser (by default, gone when the tab closes). AI calls go straight from your browser to the provider — this site's server never even sees the request.",
+  ],
+  diff_r1_local: [
+    "내 컴퓨터 밖으로 나가지 않습니다(.env.local). 믿을 것은 내 컴퓨터뿐.",
+    "Never leaves your machine (.env.local). Nothing to trust but your own computer.",
+  ],
+  diff_r2_label: ["작업물", "Your projects"],
+  diff_r2_browser: [
+    "이 브라우저(localStorage)에만 남습니다 — 브라우저 데이터를 지우면 사라져요. ⬇ 내보내기로 백업하세요.",
+    "Live in this browser only (localStorage) — clearing browser data erases them. Back up with ⬇ export.",
+  ],
+  diff_r2_local: [
+    "data/projects에 파일로 영구 저장됩니다. 폴더 복사가 곧 백업.",
+    "Saved as plain files in data/projects, forever. Copying the folder IS the backup.",
+  ],
+  diff_r3_label: ["기능", "Features"],
+  diff_r3_browser: [
+    "편집·템플릿·PNG 내보내기는 키 없이. AI 생성·챗 편집은 내 API 키로.",
+    "Editing, templates and PNG export need no key. AI generation and chat edits run on your own key.",
+  ],
+  diff_r3_local: [
+    "전부 열립니다 — 파일 저장·첨부 이미지 보관까지 제한 없음.",
+    "Everything unlocks — file storage, attachment library, no limits.",
+  ],
+  diff_r4_label: ["시작", "Setup"],
+  diff_r4_browser: ["0초 — 지금 이 페이지가 앱이에요.", "Zero — this page IS the app."],
+  diff_r4_local: ["복사-붙여넣기 설치 한 번 (약 3분).", "One copy-paste install (~3 minutes)."],
+  diff_verdict: [
+    "진짜 집은 로컬입니다 — 키도 안 나가고 작업물도 파일로 남습니다. 브라우저는 가장 빠른 맛보기.",
+    "Local is the better home — keys stay put, projects live as files. The browser is the fastest taste.",
+  ],
+  diff_install: ["로컬로 설치", "Install locally"],
+  diff_try: ["브라우저로 계속", "Continue in browser"],
+
+  // hosted persistent notes + data wipe
+  home_hosted_note: [
+    "모든 작업물은 이 브라우저에만 저장되며 서버로 전송되지 않습니다. 브라우저 데이터를 지우면 사라지니 ⬇ 내보내기로 백업하세요.",
+    "Everything you make is stored only in this browser and never uploaded. Clearing browser data erases it — back up with ⬇ export.",
+  ],
+  hostednote_1: ["브라우저 모드 — 작업물과 키는 이 브라우저에만 저장됩니다.", "Browser mode — your projects and keys live only in this browser."],
+  hostednote_2: ["로컬 설치는 파일로 영구 저장 + 키가 컴퓨터 밖으로 안 나갑니다.", "Install locally for permanent files + keys that never leave your machine."],
+  hostednote_cta: ["설치", "Install"],
+  wipe_btn: ["모든 데이터 지우기", "Erase all data"],
+  wipe_confirm_hosted: [
+    "이 브라우저에 저장된 모든 프로젝트·설정·API 키를 지웁니다. 되돌릴 수 없어요.\n\n남기고 싶은 프로젝트가 있다면 먼저 카드의 ⬇ 버튼으로 내보내세요.\n\n정말 지울까요?",
+    "This erases every project, setting and API key stored in this browser. It cannot be undone.\n\nExport any project you want to keep (⬇ on its card) first.\n\nErase everything?",
+  ],
+  wipe_confirm_local: [
+    "이 브라우저에 저장된 설정(언어·브랜드색·API 키 캐시)을 지웁니다. 파일로 저장된 프로젝트(data/projects)는 지워지지 않아요.\n\n계속할까요?",
+    "This clears browser-stored settings (language, brand color, key cache). Projects saved as files (data/projects) are NOT touched.\n\nContinue?",
+  ],
+  footer_privacy: ["개인정보 처리방침", "Privacy"],
 
   // editor
   ed_back: ["← 목록", "← Back"],
