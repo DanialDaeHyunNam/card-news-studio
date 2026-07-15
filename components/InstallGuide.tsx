@@ -9,8 +9,8 @@ import CopyButton from "./CopyButton";
 // Shown ONLY on a hosted deploy (see useHosted) — the tool can't run on a public
 // URL because API keys live in .env.local and projects in localStorage, both of
 // which only exist on the user's own machine. This overlay walks a non-developer
-// through installing + running locally, mirroring all-libertas.vercel.app:
-// a macOS/Windows toggle, copyable terminal blocks, and three numbered steps.
+// through installing + running locally: a macOS/Windows toggle, copyable
+// terminal blocks, and three numbered steps.
 
 type OS = "mac" | "win";
 

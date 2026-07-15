@@ -126,8 +126,8 @@ pill-shaped topic bar.
   stamps `<html data-hosted>` when `process.env.VERCEL` (or `HOSTED_DEMO=1`);
   `useHosted()` (`lib/hooks.ts`) reads it. When hosted, `Home.tsx` shows a
   "runs locally" banner and routes every real action (generate / template /
-  blank / open) to `components/InstallGuide.tsx` (bilingual macOS/Windows guide,
-  mirrors all-libertas). `/` is statically prerendered → the flag bakes at BUILD
+  blank / open) to `components/InstallGuide.tsx` (bilingual macOS/Windows
+  guide). `/` is statically prerendered → the flag bakes at BUILD
   time, which is correct on Vercel (VERCEL=1 during build). Preview locally with
   `HOSTED_DEMO=1 bun dev`. **Deploy from `card-news/` only**, never a parent dir.
 - **Versioning / releases**: `package.json` `version` is the single source (inlined

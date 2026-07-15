@@ -202,8 +202,7 @@ client knows on its first render (no flash). When hosted, `components/Home.tsx`:
 - swaps the 🔑 key button for an **Install locally** button, and
 - routes every real action (Generate, open a template / blank / project) to
   `components/InstallGuide.tsx` — a bilingual macOS/Windows install guide with
-  copyable terminal blocks, mirroring
-  [all-libertas.vercel.app](https://all-libertas.vercel.app).
+  copyable terminal blocks.
 
 Preview it locally with `HOSTED_DEMO=1 bun dev`. **Deploy from this folder only**
 (`vercel deploy --prod` inside `card-news/`), never from a parent directory.
