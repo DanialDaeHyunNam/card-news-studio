@@ -190,6 +190,15 @@ const D = {
   diff_r4_label: ["시작", "Setup"],
   diff_r4_browser: ["0초 — 지금 이 페이지가 앱이에요.", "Zero — this page IS the app."],
   diff_r4_local: ["복사-붙여넣기 설치 한 번 (약 3분).", "One copy-paste install (~3 minutes)."],
+  diff_r5_label: ["업데이트", "Updates"],
+  diff_r5_browser: [
+    "자동 — 열 때마다 항상 최신 버전이고, 개선이 곧바로 반영돼요.",
+    "Automatic — you're always on the latest version; improvements land instantly.",
+  ],
+  diff_r5_local: [
+    "새 버전이 나오면 앱이 배너로 알려줘요 — git pull 한 번이면 끝.",
+    "The app shows a banner when a new version ships — one git pull away.",
+  ],
   diff_verdict: [
     "진짜 집은 로컬입니다 — 키도 안 나가고 작업물도 파일로 남습니다. 브라우저는 가장 빠른 맛보기.",
     "Local is the better home — keys stay put, projects live as files. The browser is the fastest taste.",

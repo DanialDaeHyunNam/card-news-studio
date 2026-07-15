@@ -13,6 +13,7 @@ const ROWS: [DictKey, DictKey, DictKey][] = [
   ["diff_r2_label", "diff_r2_browser", "diff_r2_local"],
   ["diff_r3_label", "diff_r3_browser", "diff_r3_local"],
   ["diff_r4_label", "diff_r4_browser", "diff_r4_local"],
+  ["diff_r5_label", "diff_r5_browser", "diff_r5_local"],
 ];
 
 export default function DiffModal({ onInstall, onClose }: { onInstall: () => void; onClose: () => void }) {
