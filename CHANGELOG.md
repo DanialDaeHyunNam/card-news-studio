@@ -5,6 +5,12 @@ All notable changes to Card News Studio. This project uses simple
 the deployed one and prompts an update when it's behind (see
 [ARCHITECTURE.md](ARCHITECTURE.md#hosted-vs-local-mode)).
 
+## 0.8.1 — 2026-07-15
+
+### Changed
+- The hosted "stored only in this browser — back up with export" note now
+  appears only when you actually have projects to export.
+
 ## 0.8.0 — 2026-07-15
 
 The hosted app now runs for real. Editing, templates and PNG export work with

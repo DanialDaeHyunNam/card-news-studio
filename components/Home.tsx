@@ -327,7 +327,9 @@ export default function Home({ projects, error, busy, onGenerate, onOpen, onCrea
 
         {error && <div className="hero-error">{error}</div>}
 
-        {hosted && <p className="hosted-note-line">{t("home_hosted_note")}</p>}
+        {/* only when there's actually something to lose/export — an empty
+            workspace makes "back up with export" read as noise */}
+        {hosted && projects.length > 0 && <p className="hosted-note-line">{t("home_hosted_note")}</p>}
 
         {(() => {
           if (!keys) return null;
