@@ -5,6 +5,13 @@ All notable changes to Card News Studio. This project uses simple
 the deployed one and prompts an update when it's behind (see
 [ARCHITECTURE.md](ARCHITECTURE.md#hosted-vs-local-mode)).
 
+## 0.8.2 — 2026-07-15
+
+### Removed
+- The standalone "No API key connected" hero banner — redundant: the model
+  picker already shows a "No key" chip, and pressing Generate without a key
+  opens the key modal itself.
+
 ## 0.8.1 — 2026-07-15
 
 ### Changed

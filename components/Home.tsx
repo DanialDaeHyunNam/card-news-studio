@@ -7,7 +7,7 @@ import { newId } from "@/lib/ops";
 import { getTemplates, instantiateTemplate } from "@/lib/templates";
 import { exportProject, importProjectFile } from "@/lib/transfer";
 import { GITHUB_URL, VERSION } from "@/lib/site";
-import { MODELS, PROVIDER_LABELS, pickDefaultModel } from "@/lib/models";
+import { MODELS, pickDefaultModel } from "@/lib/models";
 import CardView from "./CardView";
 import HowItWorks from "./HowItWorks";
 import Footer from "./Footer";
@@ -331,28 +331,9 @@ export default function Home({ projects, error, busy, onGenerate, onOpen, onCrea
             workspace makes "back up with export" read as noise */}
         {hosted && projects.length > 0 && <p className="hosted-note-line">{t("home_hosted_note")}</p>}
 
-        {(() => {
-          if (!keys) return null;
-          const selected = MODELS.find((m) => m.id === model)!;
-          if (keys[selected.envVar]) return null;
-          const hasAnyKey = Object.values(keys).some(Boolean);
-          const provider = PROVIDER_LABELS[selected.envVar]?.label ?? selected.envVar;
-          return (
-            <button className="key-banner" onClick={() => setShowKeys(true)}>
-              {hasAnyKey ? (
-                <>
-                  🔑 <b>{selected.short}</b> {t("banner_need_mid")} {provider} {t("banner_need_tail")}
-                  <b>{t("banner_need_cta")}</b>
-                </>
-              ) : (
-                <>
-                  🔑 {t("banner_none")}
-                  <b>{t("banner_none_cta")}</b>
-                </>
-              )}
-            </button>
-          );
-        })()}
+        {/* No standalone "no key" banner: the model picker already shows a "No
+            key" chip, and pressing Generate without a key opens the key modal
+            itself — a third nudge was noise. */}
       </section>
 
       {showKeys && keys && (
