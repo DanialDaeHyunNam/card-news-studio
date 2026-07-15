@@ -5,6 +5,13 @@ All notable changes to Card News Studio. This project uses simple
 the deployed one and prompts an update when it's behind (see
 [ARCHITECTURE.md](ARCHITECTURE.md#hosted-vs-local-mode)).
 
+## 0.8.3 — 2026-07-15
+
+### Added
+- "Updates" row in the local-vs-browser comparison: the browser is always on
+  the latest version automatically; local installs get the update banner +
+  one git pull.
+
 ## 0.8.2 — 2026-07-15
 
 ### Removed
