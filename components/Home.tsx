@@ -16,8 +16,11 @@ import KeyPanel from "./KeyPanel";
 import LangSwitch from "./LangSwitch";
 import ModelPicker from "./ModelPicker";
 import InstallGuide from "./InstallGuide";
+import DiffModal from "./DiffModal";
 import UpdateGuide from "./UpdateGuide";
 import { useHosted, useUpdateCheck } from "@/lib/hooks";
+import { clientKeyFlags } from "@/lib/client-keys";
+import { trackEvent } from "@/lib/analytics";
 import { useLang, type DictKey } from "@/lib/i18n";
 
 interface HomeProps {
@@ -39,6 +42,7 @@ export default function Home({ projects, error, busy, onGenerate, onOpen, onCrea
   // every "real action" opens the install guide instead of doing the action.
   const hosted = useHosted();
   const [showInstall, setShowInstall] = useState(false);
+  const [showDiff, setShowDiff] = useState(false);
   // Local copies check the canonical deploy for a newer version.
   const { latest, hasUpdate } = useUpdateCheck(hosted);
   const [showUpdate, setShowUpdate] = useState(false);
@@ -89,21 +93,28 @@ export default function Home({ projects, error, busy, onGenerate, onOpen, onCrea
   );
 
   useEffect(() => {
+    // Prefer a value model whose key is actually connected.
+    const adoptKeys = (k: Record<string, boolean>) => {
+      setKeys(k);
+      setModel((cur) => {
+        const info = MODELS.find((m) => m.id === cur);
+        if (info && k[info.envVar]) return cur;
+        return pickDefaultModel(k);
+      });
+    };
+    if (hosted) {
+      // BYOK: key presence lives in this browser (lib/client-keys), not on the server.
+      adoptKeys(clientKeyFlags());
+      return;
+    }
     fetch("/api/keys")
       .then((r) => r.json())
       .then((d) => {
-        const k: Record<string, boolean> = d.keys ?? {};
-        setKeys(k);
+        adoptKeys(d.keys ?? {});
         setWritable(Boolean(d.writable));
-        // Prefer a value model whose key is actually connected.
-        setModel((cur) => {
-          const info = MODELS.find((m) => m.id === cur);
-          if (info && k[info.envVar]) return cur;
-          return pickDefaultModel(k);
-        });
       })
       .catch(() => setKeys({}));
-  }, []);
+  }, [hosted]);
 
   function emptyProject(): Project {
     const theme = defaultTheme();
@@ -141,7 +152,6 @@ export default function Home({ projects, error, busy, onGenerate, onOpen, onCrea
   }
 
   function startGenerate() {
-    if (hosted) return setShowInstall(true);
     if (!topic.trim()) return;
     const selected = MODELS.find((m) => m.id === model);
     // Don't flash into the editor only to fail — nudge the key modal first.
@@ -149,16 +159,25 @@ export default function Home({ projects, error, busy, onGenerate, onOpen, onCrea
       setShowKeys(true);
       return;
     }
+    trackEvent("generate_click", { model, format, youtube: isYoutube });
     onGenerate({ topic, format, cardCount, model, referenceId: referenceId || undefined, accent: accent ?? undefined });
   }
 
   return (
     <div className="home">
+      {/* Two-track bar: local install is the primary CTA (the better home);
+          the browser IS the second track — you're already in it. The one-line
+          question opens the honest comparison modal. */}
       {hosted && (
-        <button className="hosted-banner" onClick={() => setShowInstall(true)}>
-          <span>🖥 {t("hosted_banner")}</span>
-          <b>{t("hosted_banner_cta")} →</b>
-        </button>
+        <div className="track-bar">
+          <button className="track-install" onClick={() => setShowInstall(true)}>
+            <b>{t("track_install")}</b>
+            <span>{t("track_install_sub")}</span>
+          </button>
+          <button className="track-q" onClick={() => setShowDiff(true)}>
+            {t("track_q")} ↗
+          </button>
+        </div>
       )}
       {!hosted && hasUpdate && !updDismissed && (
         <div className="update-banner">
@@ -205,10 +224,7 @@ export default function Home({ projects, error, busy, onGenerate, onOpen, onCrea
             <span className="btn ghost ver-chip">v{VERSION}</span>
           )}
           <LangSwitch />
-          <button
-            className="btn ghost"
-            onClick={() => (hosted ? setShowInstall(true) : setShowKeys((v) => !v))}
-          >
+          <button className="btn ghost" onClick={() => setShowKeys((v) => !v)}>
             🔑 {t("nav_keys")}
           </button>
           {GITHUB_URL && (
@@ -271,7 +287,7 @@ export default function Home({ projects, error, busy, onGenerate, onOpen, onCrea
             value={model}
             onChange={setModel}
             keys={keys}
-            onConnectKey={() => (hosted ? setShowInstall(true) : setShowKeys(true))}
+            onConnectKey={() => setShowKeys(true)}
           />
           <div className="accent-ctl" title={t("accent_title")}>
             <span className="accent-label">{t("brand_label")}</span>
@@ -311,8 +327,10 @@ export default function Home({ projects, error, busy, onGenerate, onOpen, onCrea
 
         {error && <div className="hero-error">{error}</div>}
 
+        {hosted && <p className="hosted-note-line">{t("home_hosted_note")}</p>}
+
         {(() => {
-          if (hosted || !keys) return null;
+          if (!keys) return null;
           const selected = MODELS.find((m) => m.id === model)!;
           if (keys[selected.envVar]) return null;
           const hasAnyKey = Object.values(keys).some(Boolean);
@@ -344,7 +362,18 @@ export default function Home({ projects, error, busy, onGenerate, onOpen, onCrea
                 ✕
               </button>
             </div>
-            <KeyPanel keys={keys} writable={writable} onSaved={(v) => setKeys({ ...keys, [v]: true })} />
+            <KeyPanel
+              keys={keys}
+              writable={writable}
+              hosted={hosted}
+              selectedModelId={model}
+              onSaved={(v) => setKeys({ ...keys, [v]: true })}
+              onRemoved={(v) => setKeys({ ...keys, [v]: false })}
+              onLocalGuide={() => {
+                setShowKeys(false);
+                setShowInstall(true);
+              }}
+            />
           </div>
         </div>
       )}
@@ -419,14 +448,27 @@ export default function Home({ projects, error, busy, onGenerate, onOpen, onCrea
         </div>
         <p className="section-sub">{t("tpl_sub")}</p>
         <div className="tpl-grid">
-          <button className="tpl-blank" onClick={() => onCreate(emptyProject())}>
+          <button
+            className="tpl-blank"
+            onClick={() => {
+              trackEvent("blank_create");
+              onCreate(emptyProject());
+            }}
+          >
             <span className="tpl-blank-inner">
               <span className="tpl-blank-plus">+</span>
               <span className="tpl-blank-label">{t("blank_card")}</span>
             </span>
           </button>
           {templatePreviews.map(({ tpl, firstCard, theme }) => (
-            <div key={tpl.id} className="tpl-card" onClick={() => onCreate(instantiateTemplate(tpl))}>
+            <div
+              key={tpl.id}
+              className="tpl-card"
+              onClick={() => {
+                trackEvent("template_select", { template: tpl.id });
+                onCreate(instantiateTemplate(tpl));
+              }}
+            >
               <div className="tpl-preview">
                 <CardView card={firstCard} theme={theme} format={tpl.format} width={188} />
               </div>
@@ -449,6 +491,15 @@ export default function Home({ projects, error, busy, onGenerate, onOpen, onCrea
       <Footer />
 
       {showInstall && <InstallGuide onClose={() => setShowInstall(false)} />}
+      {showDiff && (
+        <DiffModal
+          onInstall={() => {
+            setShowDiff(false);
+            setShowInstall(true);
+          }}
+          onClose={() => setShowDiff(false)}
+        />
+      )}
       {showUpdate && <UpdateGuide latest={latest} onClose={() => setShowUpdate(false)} />}
     </div>
   );

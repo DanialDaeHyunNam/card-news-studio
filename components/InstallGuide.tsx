@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { GITHUB_URL } from "@/lib/site";
+import { trackEvent } from "@/lib/analytics";
 import { useLang } from "@/lib/i18n";
 import LangSwitch from "./LangSwitch";
 import CopyButton from "./CopyButton";
@@ -36,6 +37,7 @@ export default function InstallGuide({ onClose }: { onClose: () => void }) {
   const { t } = useLang();
   const [os, setOs] = useState<OS>(detectOS);
   const aiPrompt = t("inst_ai_prompt").replace("{repo}", REPO_URL);
+  useEffect(() => trackEvent("install_guide_open"), []);
 
   return (
     <div className="inst-overlay" onClick={onClose}>

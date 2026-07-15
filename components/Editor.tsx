@@ -10,6 +10,8 @@ import { DEFAULT_MODEL, MODELS, pickDefaultModel } from "@/lib/models";
 import { addUsage, emptyUsage, fmtCost, fmtTokens, type UsageEvent, type UsageTotals } from "@/lib/usage";
 import { useLang } from "@/lib/i18n";
 import { useClickOutside, useHosted } from "@/lib/hooks";
+import { clientKeyFlags } from "@/lib/client-keys";
+import { trackEvent } from "@/lib/analytics";
 import LangSwitch from "./LangSwitch";
 import CardView, { cardHeight } from "./CardView";
 import Inspector from "./Inspector";
@@ -63,11 +65,24 @@ export default function Editor({ project, onChange, onClose, generating }: Edito
   // Card-strip drag-to-reorder: index being dragged + the slot it's hovering.
   const [dragCard, setDragCard] = useState<number | null>(null);
   const [overCard, setOverCard] = useState<number | null>(null);
-  // Hosted deploy: the canvas is fully explorable, but anything needing a local
-  // key (AI chat, connecting a key) routes to the install guide instead.
+  // Hosted deploy (BYOK): everything runs, with keys from this browser
+  // (lib/client-keys). AI actions without a key route to the key modal.
   const hosted = useHosted();
   const [showInstall, setShowInstall] = useState(false);
-  const needInstall = () => setShowInstall(true);
+  // Hosted "browser mode" pill (bottom-center, first visit only). ✕ dismisses
+  // it FOREVER via localStorage — state alone would resurrect it on every
+  // reload, which reads as nagging (lesson from ZCLIP).
+  const [hostedNoteHidden, setHostedNoteHidden] = useState(
+    () => typeof localStorage !== "undefined" && localStorage.getItem("cardnews.hostedNoteDismissed") === "1",
+  );
+  const dismissHostedNote = () => {
+    setHostedNoteHidden(true);
+    try {
+      localStorage.setItem("cardnews.hostedNoteDismissed", "1");
+    } catch {
+      /* quota — session-only dismissal is fine */
+    }
+  };
   // Bridge: the @ reference buttons (Inspector) drop text into the chat input.
   const chatInsert = useRef<((t: string) => void) | null>(null);
   const registerChatInsert = useCallback((fn: (t: string) => void) => {
@@ -96,24 +111,31 @@ export default function Editor({ project, onChange, onClose, generating }: Edito
   }
 
   useEffect(() => {
+    // If this project's model has no connected key, switch to a value model
+    // whose key is connected.
+    const adoptKeys = (k: Record<string, boolean>) => {
+      setKeyStatus(k);
+      const cur = MODELS.find((m) => m.id === (projectRef.current.model ?? DEFAULT_MODEL));
+      const target = pickDefaultModel(k);
+      const targetInfo = MODELS.find((m) => m.id === target);
+      if ((!cur || !k[cur.envVar]) && targetInfo && k[targetInfo.envVar] && target !== projectRef.current.model) {
+        mutate((p) => void (p.model = target));
+      }
+    };
+    if (hosted) {
+      // BYOK: key presence lives in this browser (lib/client-keys), not on the server.
+      adoptKeys(clientKeyFlags());
+      return;
+    }
     fetch("/api/keys")
       .then((r) => r.json())
       .then((d) => {
-        const k: Record<string, boolean> = d.keys ?? {};
-        setKeyStatus(k);
+        adoptKeys(d.keys ?? {});
         setKeyWritable(Boolean(d.writable));
-        // If this project's model has no connected key, switch to a value model
-        // whose key is connected.
-        const cur = MODELS.find((m) => m.id === (projectRef.current.model ?? DEFAULT_MODEL));
-        const target = pickDefaultModel(k);
-        const targetInfo = MODELS.find((m) => m.id === target);
-        if ((!cur || !k[cur.envVar]) && targetInfo && k[targetInfo.envVar] && target !== projectRef.current.model) {
-          mutate((p) => void (p.model = target));
-        }
       })
       .catch(() => setKeyStatus({}));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [hosted]);
 
   // While generating, follow the newest card so the canvas "draws" too; reset
   // to the first card once the run finishes.
@@ -429,6 +451,7 @@ export default function Editor({ project, onChange, onClose, generating }: Edito
 
   async function exportPng(cards: { card: Card; index: number }[]) {
     if (exporting) return;
+    trackEvent("export_png", { cards: cards.length });
     setExporting(true);
     const base = (project.name || "card").replace(/[^\w가-힣-]+/g, "_");
     for (const { card: c, index } of cards) {
@@ -462,7 +485,7 @@ export default function Editor({ project, onChange, onClose, generating }: Edito
           value={project.model ?? DEFAULT_MODEL}
           onChange={(id) => mutate((p) => void (p.model = id), true)}
           keys={keyStatus}
-          onConnectKey={() => (hosted ? needInstall() : setShowKeys(true))}
+          onConnectKey={() => setShowKeys(true)}
           disabled={gen}
         />
         <div className="accent-ctl" title={t("brand_title")}>
@@ -727,7 +750,11 @@ export default function Editor({ project, onChange, onClose, generating }: Edito
                   ? `${t("sel_card")} ${safeCardIdx + 1} · ${selectedEl.type === "text" ? t("sel_text") : selectedEl.type === "shape" ? t("sel_shape") : t("sel_image")}`
                   : `${t("sel_card")} ${safeCardIdx + 1}`
               }
-              onBlocked={hosted ? needInstall : undefined}
+              onBlocked={
+                hosted && keyStatus && !keyStatus[MODELS.find((m) => m.id === (project.model ?? DEFAULT_MODEL))?.envVar ?? ""]
+                  ? () => setShowKeys(true)
+                  : undefined
+              }
               onRegisterInsert={registerChatInsert}
               onApply={applyChat}
             />
@@ -759,9 +786,29 @@ export default function Editor({ project, onChange, onClose, generating }: Edito
             <KeyPanel
               keys={keyStatus}
               writable={keyWritable}
+              hosted={hosted}
+              selectedModelId={project.model ?? DEFAULT_MODEL}
               onSaved={(v) => setKeyStatus((k) => ({ ...(k ?? {}), [v]: true }))}
+              onRemoved={(v) => setKeyStatus((k) => ({ ...(k ?? {}), [v]: false }))}
+              onLocalGuide={() => {
+                setShowKeys(false);
+                setShowInstall(true);
+              }}
             />
           </div>
+        </div>
+      )}
+
+      {hosted && !hostedNoteHidden && (
+        <div className="hosted-note">
+          <button className="hosted-note-main" onClick={() => setShowInstall(true)}>
+            <span className="hosted-note-dot" aria-hidden />
+            {t("hostednote_1")} <span className="hosted-note-sub">{t("hostednote_2")}</span>
+            <b className="hosted-note-cta">{t("hostednote_cta")} →</b>
+          </button>
+          <button type="button" className="hosted-note-x" onClick={dismissHostedNote} aria-label="✕">
+            ✕
+          </button>
         </div>
       )}
 

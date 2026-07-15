@@ -5,6 +5,40 @@ All notable changes to Card News Studio. This project uses simple
 the deployed one and prompts an update when it's behind (see
 [ARCHITECTURE.md](ARCHITECTURE.md#hosted-vs-local-mode)).
 
+## 0.8.0 — 2026-07-15
+
+The hosted app now runs for real. Editing, templates and PNG export work with
+no key at all; AI runs on your own key (BYOK), sent from your browser straight
+to the provider — the server never sees your key or your content.
+
+### Added
+- **Hosted BYOK** — key panel stores keys in this browser (session-only by
+  default, "remember on this browser" opt-in), with masked display, remove
+  button, and an always-visible disclaimer whose provider name/domain follows
+  the selected model. AI calls stream directly browser→provider
+  (`lib/ai-client.ts`, raw fetch SSE; shared OpenAI/Gemini adapter in
+  `lib/ai-compat.ts`). All three providers verified CORS-reachable.
+- **Two-track landing (hosted)** — "Install locally" as the primary CTA plus a
+  "what's the difference?" comparison modal (`DiffModal`); a dismissable
+  "browser mode" pill in the editor links to the install guide.
+- **Erase all data** — footer action wiping every `cardnews.*` entry from both
+  browser storages (filesystem projects are untouched), with an export-first
+  nudge.
+- **/privacy** — bilingual privacy notice matching the actual architecture,
+  linked from the footer and the key panel.
+- **Vercel Web Analytics** — cookieless page views + a `trackEvent` wrapper for
+  key clicks (generate / template / export / key save / guides). Event props
+  never include typed content or keys. (Custom events light up on a Pro plan.)
+- **Content-Security-Policy** — scripts self-only; `connect-src` limited to the
+  app + the three provider APIs, enforcing the BYOK promise at the browser level.
+
+### Changed
+- Prompt assembly moved to `lib/requests.ts`, shared verbatim by the API routes
+  (local) and the browser path (hosted) — the two modes cannot drift.
+- Hosted YouTube flow runs the caption fetch/frame proxy through the app routes
+  (keyless) and the frame *vision pick* on your key in the browser.
+- App-wide link underlines removed (hover = color shift), per design language.
+
 ## 0.7.0 — 2026-07-10
 
 Your projects now live on your disk, not in the browser — plus a portable

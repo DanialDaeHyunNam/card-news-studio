@@ -8,7 +8,9 @@ type RawCard = { background?: string; elements?: Record<string, unknown>[] };
 import { loadProjects, saveProjects } from "@/lib/store";
 import { newId, normalizeCard, enforceRoles } from "@/lib/ops";
 import { addUsage, type UsageEvent } from "@/lib/usage";
-import { readSSE, extractCards, parseStructured } from "@/lib/stream";
+import { extractCards, parseStructured } from "@/lib/stream";
+import { streamGenerate, streamVideoBg } from "@/lib/ai-transport";
+import type { GenerateBody } from "@/lib/requests";
 import { LangProvider, useLang } from "@/lib/i18n";
 import Home from "@/components/Home";
 import Editor from "@/components/Editor";
@@ -137,15 +139,9 @@ function Root() {
   }
 
   async function pickVideoBg(videoId: string, model: string): Promise<{ frame: number; accent: string } | null> {
-    const res = await fetch("/api/video-bg", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ videoId, model, lang }),
-    });
-    if (!res.headers.get("content-type")?.includes("event-stream")) return null;
     let acc = "";
     let doneText = "";
-    for await (const ev of readSSE(res)) {
+    for await (const ev of streamVideoBg(videoId, model, lang)) {
       if (ev.type === "delta") acc += ev.text ?? "";
       else if (ev.type === "done") doneText = ev.text || acc;
       else if (ev.type === "error") return null;
@@ -189,29 +185,19 @@ function Root() {
           }
         : undefined;
 
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          topic: req.requestTopic,
-          format: cfg.format,
-          cardCount: cfg.cardCount,
-          model: cfg.model,
-          accent: cfg.accent,
-          reference,
-          source: req.source,
-          lang,
-        }),
-      });
-      if (!res.headers.get("content-type")?.includes("event-stream")) {
-        const d = await res.json().catch(() => null);
-        throw new Error(d?.error || `생성 실패 (${res.status})`);
-      }
-
       let acc = "";
       let doneText = "";
       let usage: UsageEvent | undefined;
-      for await (const ev of readSSE(res)) {
+      for await (const ev of streamGenerate({
+        topic: req.requestTopic,
+        format: cfg.format,
+        cardCount: cfg.cardCount,
+        model: cfg.model,
+        accent: cfg.accent,
+        reference,
+        source: req.source as GenerateBody["source"],
+        lang,
+      })) {
         if (ev.type === "delta") {
           acc += ev.text ?? "";
           const partial = extractCards(acc);

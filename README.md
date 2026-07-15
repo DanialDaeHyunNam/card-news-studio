@@ -8,9 +8,15 @@ guides and an AI chat, and export PNGs.
 > 주제 하나로 카드뉴스 한 세트. 주제·원문·유튜브 링크를 넣으면 AI가 카피와
 > 레이아웃을 설계하고, 캔버스에서 자유롭게 다듬은 뒤 PNG로 내보냅니다.
 
-Open source (**MIT**). Runs **entirely on your own computer** — no server, no
-database, no account. Your projects are plain JSON files in the app folder
-(`data/projects/`) and your API keys never leave your machine.
+Open source (**MIT**). Two ways to use it:
+
+- **In the browser** ([card-news-zeta.vercel.app](https://card-news-zeta.vercel.app)) —
+  works instantly: editing, templates and PNG export need no key, and AI runs on
+  **your own API key**, stored only in your browser and sent **directly to the
+  provider** — the server never sees your key or your content.
+- **Installed locally** — the better home: projects are plain JSON files in the
+  app folder (`data/projects/`), keys live in `.env.local`, and nothing ever
+  leaves your machine. No server, no database, no account.
 
 - 🧠 **Deep-dive on how it works:** [ARCHITECTURE.md](ARCHITECTURE.md)
 - 🛠️ **Want to hack on it or add a model/template/language:** [CONTRIBUTING.md](CONTRIBUTING.md)
@@ -45,8 +51,9 @@ database, no account. Your projects are plain JSON files in the app folder
 - **Bilingual** — English / Korean throughout (UI, templates, and AI copy).
 - **Project export / import** — download any project as a self-contained
   `.cardnews.json` (images inlined) and import it on another computer.
-- **In-app keys** — paste a provider key in the 🔑 panel; it's written to
-  `.env.local` and applied instantly, no restart, no file editing.
+- **In-app keys** — paste a provider key in the 🔑 panel. Locally it's written
+  to `.env.local`; in the browser it stays in browser storage (session-only by
+  default, "remember" opt-in) and goes straight to the provider (BYOK).
 
 ## Quickstart (local)
 
@@ -66,24 +73,24 @@ Open http://localhost:3000, click **🔑 API Keys**, and paste an
 instant a key is connected. (You can also `cp .env.example .env.local` and set
 the keys there.)
 
-## Runs locally by design
+## Local-first by design
 
-Card News Studio has **no hosted product** — it's a tool you run yourself. That's
-deliberate:
+There is still **no server-side product**: no account, no database, no stored
+user data — in either mode.
 
-- Your **API keys** stay in `.env.local` on your machine; the browser only ever
-  sees model *output*, never the key.
-- Your **projects** are JSON files under `data/projects/` (with images in
-  `public/uploads/`) — nothing is uploaded, and copying those two folders is a
-  full backup. Deleted projects go to `data/trash/`, not straight to oblivion.
-- The route handlers (`app/api/*`) exist only so the key never reaches the
-  client; there is no server state and no database.
+- **Locally**, your API keys stay in `.env.local`; the browser only ever sees
+  model *output*. Projects are JSON files under `data/projects/` (images in
+  `public/uploads/`) — copying those two folders is a full backup, and deleted
+  projects go to `data/trash/`, not straight to oblivion.
+- **In the browser (hosted BYOK)**, your key lives in browser storage and AI
+  requests go **from your browser straight to the provider's API** —
+  the deployment's server handles neither. Projects live in `localStorage`
+  (export to back up), and a Content-Security-Policy header enforces that
+  scripts load only from the app itself and network calls go only to the
+  supported providers. "Erase all data" in the footer wipes everything.
 
-You *can* deploy the landing page to a host like Vercel as a **showcase**. When
-it detects it's running on a public deployment (`process.env.VERCEL`), the app
-shows a bilingual macOS/Windows install guide instead of the live tool — because
-the tool only works with local keys. See
-[ARCHITECTURE.md → Hosted vs. local mode](ARCHITECTURE.md#hosted-vs-local-mode).
+See [ARCHITECTURE.md → Hosted vs. local mode](ARCHITECTURE.md#hosted-vs-local-mode)
+and the in-app [privacy notice](https://card-news-zeta.vercel.app/privacy).
 
 ## Stack
 

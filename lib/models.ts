@@ -299,10 +299,27 @@ export const PROVIDER_NAMES: Record<Provider, string> = {
   google: "Gemini",
 };
 
-export const PROVIDER_LABELS: Record<string, { label: string; keyUrl: string }> = {
-  ANTHROPIC_API_KEY: { label: "Anthropic (Claude)", keyUrl: "https://platform.claude.com/settings/keys" },
-  OPENAI_API_KEY: { label: "OpenAI", keyUrl: "https://platform.openai.com/api-keys" },
-  GEMINI_API_KEY: { label: "Google Gemini", keyUrl: "https://aistudio.google.com/apikey" },
+// `domain` is where the hosted BYOK path sends the key-bearing request — the
+// disclaimer copy interpolates it, so it must match lib/ai-client.ts reality.
+// `spendUrl` is where the user can set a spend limit for that provider.
+export const PROVIDER_LABELS: Record<string, { label: string; keyUrl: string; domain: string; spendUrl?: string }> = {
+  ANTHROPIC_API_KEY: {
+    label: "Anthropic (Claude)",
+    keyUrl: "https://platform.claude.com/settings/keys",
+    domain: "api.anthropic.com",
+    spendUrl: "https://platform.claude.com/settings/limits",
+  },
+  OPENAI_API_KEY: {
+    label: "OpenAI",
+    keyUrl: "https://platform.openai.com/api-keys",
+    domain: "api.openai.com",
+    spendUrl: "https://platform.openai.com/settings/organization/limits",
+  },
+  GEMINI_API_KEY: {
+    label: "Google Gemini",
+    keyUrl: "https://aistudio.google.com/apikey",
+    domain: "generativelanguage.googleapis.com",
+  },
 };
 
 export function resolveModel(id: string | undefined): ModelInfo {
