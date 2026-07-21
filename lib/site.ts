@@ -25,6 +25,6 @@ export function isNewerVersion(latest: string, current: string): boolean {
 }
 
 export const SOCIAL = {
-  threads: { url: "https://www.threads.com/@all.libertas", handle: "@all.libertas" },
-  x: { url: "https://x.com/danialnamkr", handle: "@danialnamkr" },
+  threads: { url: "https://www.threads.com/@build_useful", handle: "@build_useful" },
+  x: { url: "https://x.com/build_useful", handle: "@build_useful" },
 };
