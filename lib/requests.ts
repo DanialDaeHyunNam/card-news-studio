@@ -6,7 +6,7 @@
 // the client bundle.)
 
 import type Anthropic from "@anthropic-ai/sdk";
-import { generateSystem, chatSystem } from "./prompts";
+import { generateSystem, chatSystem, photoSetRules, referenceRules } from "./prompts";
 import { generateSchema, chatSchema } from "./schemas";
 import { FORMATS, type ChatMessage, type Format, type Project, type Theme } from "./types";
 
@@ -26,10 +26,55 @@ export interface AiRequest {
 
 // ------------------------------------------------------------------ generate
 
+// A public Instagram post fetched by /api/instagram — used as a benchmark.
+export interface InstagramRef {
+  url: string;
+  username: string;
+  caption: string;
+  likeCount?: number;
+  commentCount?: number;
+  playCount?: number;
+  kind: "carousel" | "reel" | "image";
+  slides: string[]; // data URLs, in order
+  totalSlides: number;
+}
+
+// Text summary of a reference post; its slides ride along as image blocks
+// labelled "레퍼런스 슬라이드 N" (see addLabeledImages).
+function instagramBlock(ig: InstagramRef): string {
+  const stats = [
+    ig.likeCount !== undefined ? `좋아요 ${ig.likeCount.toLocaleString("en-US")}` : "",
+    ig.commentCount !== undefined ? `댓글 ${ig.commentCount.toLocaleString("en-US")}` : "",
+    ig.playCount !== undefined ? `재생 ${ig.playCount.toLocaleString("en-US")}` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const kind = ig.kind === "carousel" ? `캐러셀 ${ig.totalSlides}장` : ig.kind === "reel" ? "릴스(커버만)" : "단일 이미지";
+  return (
+    `## 레퍼런스 인스타 게시물 (벤치마킹용)\n@${ig.username} · ${kind}${stats ? ` · ${stats}` : ""}\nURL: ${ig.url}\n` +
+    `캡션:\n${ig.caption.slice(0, 3000) || "(없음)"}\n슬라이드 이미지는 메시지의 "레퍼런스 슬라이드 N".`
+  );
+}
+
+function addLabeledImages(blocks: Anthropic.ContentBlockParam[], label: string, dataUrls: string[] | undefined, max: number) {
+  (dataUrls ?? [])
+    .map(parseDataUrl)
+    .filter((p) => p !== null)
+    .slice(0, max)
+    .forEach((img, i) => {
+      blocks.push({ type: "text", text: `${label} ${i + 1}:` });
+      blocks.push({ type: "image", source: { type: "base64", media_type: img.mediaType, data: img.data } });
+    });
+}
+
 export interface GenerateBody {
   topic: string;
   format: Format;
-  cardCount?: number;
+  cardCount?: number; // 0 = auto
+  photos?: string[]; // user photos (model-sized data URLs) → cycled card backgrounds
+  refText?: string; // reels script / analytics notes
+  refImages?: string[]; // screenshots (script, insights)
+  instagram?: InstagramRef;
   model?: string;
   lang?: "ko" | "en";
   accent?: string; // fixed brand point color (hex)
@@ -38,14 +83,25 @@ export interface GenerateBody {
 }
 
 export function buildGenerateRequest(body: GenerateBody): AiRequest {
-  if (!body.topic?.trim() || !FORMATS[body.format]) {
+  const photos = (body.photos ?? []).map(parseDataUrl).filter((p) => p !== null).slice(0, 20);
+  const refImages = (body.refImages ?? []).map(parseDataUrl).filter((p) => p !== null).slice(0, 10);
+  const ig = body.instagram;
+  const hasMaterial = photos.length > 0 || refImages.length > 0 || !!body.refText?.trim() || !!ig;
+  if ((!body.topic?.trim() && !hasMaterial) || !FORMATS[body.format]) {
     throw new Error("topic과 format이 필요합니다.");
   }
 
+  const auto = !body.cardCount; // 0/undefined → the model decides
   const parts = [
-    `## 주제/원문\n${body.topic.trim()}`,
-    `## 카드 수\n${Math.min(Math.max(body.cardCount ?? 6, 2), 12)}장 (훅 카드와 CTA 카드 포함)`,
+    `## 주제/원문\n${body.topic?.trim() || "(따로 없음 — 아래 참고 자료/사진에서 주제를 잡을 것)"}`,
+    auto
+      ? `## 카드 수\n자동 — 내용에 맞게 3~10장 사이에서 결정`
+      : `## 카드 수\n${Math.min(Math.max(body.cardCount ?? 6, 2), 12)}장 (훅 카드와 CTA 카드 포함)`,
   ];
+  if (body.refText?.trim()) {
+    parts.push(`## 릴스 스크립트/메모/성과 데이터 (사용자 제공)\n${body.refText.trim().slice(0, 12000)}`);
+  }
+  if (ig) parts.push(instagramBlock(ig));
   if (body.source?.type === "youtube") {
     parts.push(
       `## 원본 유튜브 영상\n제목: ${body.source.title}\n채널: ${body.source.author}\nURL: ${body.source.url}\n\n` +
@@ -67,12 +123,22 @@ export function buildGenerateRequest(body: GenerateBody): AiRequest {
     );
   }
 
-  return {
-    system: generateSystem(body.format, body.lang),
-    content: parts.join("\n\n"),
-    schema: generateSchema,
-    model: body.model,
-  };
+  let system = generateSystem(body.format, body.lang);
+  if (photos.length > 0) system += `\n\n${photoSetRules(photos.length, auto)}`;
+  if (body.refText?.trim() || refImages.length > 0 || ig) system += `\n\n${referenceRules()}`;
+
+  const igSlides = (ig?.slides ?? []).map(parseDataUrl).filter((p) => p !== null).slice(0, 10);
+  if (photos.length === 0 && refImages.length === 0 && igSlides.length === 0) {
+    return { system, content: parts.join("\n\n"), schema: generateSchema, model: body.model };
+  }
+
+  // Multimodal: each image is preceded by a label the prompt refers to.
+  const blocks: Anthropic.ContentBlockParam[] = [];
+  addLabeledImages(blocks, "사진", body.photos, 20);
+  addLabeledImages(blocks, "참고 이미지", body.refImages, 10);
+  addLabeledImages(blocks, "레퍼런스 슬라이드", ig?.slides, 10);
+  blocks.push({ type: "text", text: parts.join("\n\n") });
+  return { system, content: blocks, schema: generateSchema, model: body.model };
 }
 
 // ---------------------------------------------------------------------- chat
@@ -92,6 +158,25 @@ export interface ChatBody {
   lang?: "ko" | "en";
   attachments?: { apiDataUrl: string; width: number; height: number; bg?: string; bgUniform?: boolean }[];
   templateRef?: TemplateRef; // optional style/layout reference
+  instagram?: InstagramRef; // a post linked in the message → restyle after it
+  mentions?: ChatMention[]; // @카드N / @사진N tokens the user tagged
+}
+
+// A resolved @-mention. Image mentions ride in `attachments` (so the model sees
+// them and can place them via attachment:N); `attachmentIndex` links the two.
+export type ChatMention =
+  | { token: string; kind: "card"; n: number; cardId: string }
+  | { token: string; kind: "image"; src: string; attachmentIndex: number; usedIn: number[] };
+
+function mentionBlock(mentions: ChatMention[]): string {
+  const lines = mentions.map((m) =>
+    m.kind === "card"
+      ? `${m.token} = ${m.n}번 카드 (cardId ${m.cardId})`
+      : `${m.token} = 첨부 ${m.attachmentIndex} 이미지` +
+        (m.usedIn.length ? ` · 현재 ${m.usedIn.join(", ")}번 카드에 사용 중` : " · 업로드만 됨(카드에 아직 없음)") +
+        ` → 넣을 땐 src "attachment:${m.attachmentIndex}"`,
+  );
+  return `## @멘션 (사용자가 태그한 대상)\n${lines.join("\n")}`;
 }
 
 const IMAGE_MEDIA_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"] as const;
@@ -181,11 +266,17 @@ export function buildChatRequest(body: ChatBody): AiRequest {
       `cards(layout): ${JSON.stringify(ref.cards).slice(0, 12000)}`;
   }
 
+  // Reference slides come AFTER the attachments so "첨부 N" indices (which map
+  // to insertable images) stay unchanged; slides are look-only.
+  if (body.instagram) addLabeledImages(blocks, "레퍼런스 슬라이드", body.instagram.slides, 10);
+
   const context = [
     `## 프로젝트 JSON\n${JSON.stringify(sanitizeProject(body.project))}`,
     `## 현재 선택\n${selection}`,
     attachmentInfo.length ? `## 첨부 이미지\n${attachmentInfo.join("\n")}` : "",
     templateBlock,
+    body.instagram ? instagramBlock(body.instagram) : "",
+    body.mentions?.length ? mentionBlock(body.mentions) : "",
     transcript ? `## 이전 대화\n${transcript}` : "",
     `## 요청\n${body.message.trim()}`,
   ]

@@ -84,7 +84,8 @@ ${coordinateDocs(format)}
 - element: text { text, fontSize, fontWeight, color, align, lineHeight, x, y, w,
   fontFamily? (명조 등 폰트 교체), letterSpacing? (em 단위 자간 — 헤드라인/본문(한글)은 -0.04~0만,
   오버라인·캡션 같은 짧은 라벨만 0.05~0.2. 넓은 자간은 작은 라벨에서만 디자인으로 보이므로 그 외 값 금지),
-  italic? / underline? (불리언 — "기울여줘/밑줄 쳐줘" 요청에 사용) }
+  italic? / underline? (불리언 — "기울여줘/밑줄 쳐줘" 요청에 사용),
+  shadow? (불리언 — 부드러운 그림자. 사진 위 흰 글씨 가독성용. "그림자 넣어줘/글씨 잘 보이게" 요청에 사용) }
            shape { color, radius, x, y, w, h } / image { src, fit, radius, x, y, w, h, dim? (0~1 검은 스크림) }
 - **모든 요소 공통**: opacity? (0~1, 요소 전체 알파/투명도, 기본 1). "흐리게/반투명/투명도" 요청은 opacity로.
   반투명 색 오버레이가 필요하면 shape에 opacity를 낮춰서 쓰세요.
@@ -139,9 +140,46 @@ ${photoLibraryPrompt(FORMATS[format].h)}
 - 카드 수가 다르면 현재 카드 순서 기준으로 매핑(훅→첫 스타일, 본문→중간 스타일, CTA→마지막 스타일).
 - 사용자의 추가 단서(예: "배경 사진은 첨부 이미지로만 교체")가 있으면 그 지시를 최우선으로 반영.
 
+## @멘션 (제공될 때)
+- 사용자가 "@카드3", "@사진2"(영문 "@card3", "@img2")처럼 태그하면 "@멘션" 블록에 정확한 대상이 적혀 있습니다. 메시지 속 그 토큰은 그 대상을 뜻함 — 추측하지 말고 매핑대로 처리.
+- @카드N → 그 cardId의 카드. @사진N → 첨부로 함께 온 이미지(직접 보고 판단). 그 사진을 카드에 넣거나 바꿀 땐 src "attachment:K"(블록에 적힌 K) 사용 — add_element(배경이면 index 0, x0 y0 w100 h100, fit cover, dim) 또는 기존 image의 update_element patch.src.
+- 예: "@사진2를 @카드4 배경으로" = 4번 카드의 기존 배경 image 요소 src를 attachment:K로 update_element(없으면 index 0으로 add_element).
+
+## 레퍼런스 인스타 게시물 (제공될 때)
+- 사용자가 메시지에 인스타 링크를 넣으면 그 게시물의 슬라이드("레퍼런스 슬라이드 N")·캡션·반응 수가 함께 옵니다. 슬라이드를 직접 보고 따라할 점을 뽑으세요: 글 위치(위/아래/가운데)·정렬, 제목/본문 크기 비율과 굵기, 글자색, 그림자(shadow)·딤·스크림 정도, 카드당 글 양, 훅 방식, 장 구성.
+- 특별한 지시가 없으면 "형식만 따라하기": 현재 카드의 **내용(문구)은 유지**하고 update_style(역할 공통 스타일)·update_element(위치/정렬)·image dim 조정으로 레퍼런스의 모양에 맞춤. 사용자가 "구성/문구도 따라해줘"라고 하면 그때 카피·장 구성까지 바꿀 것(문장을 그대로 베끼지는 말 것).
+- **카드에 이미 있는 사진(image 요소·배경 url)은 사용자의 콘텐츠 — 지우거나 단색/그라디언트로 바꾸지 말 것.** 레퍼런스 배경이 단색이어도 사진은 그대로 두고, 레퍼런스의 글 스타일(크기·굵기·정렬·위치·장식 요소)만 사진 위에 적용하되 사진 위에서 읽히도록 글자는 밝게+shadow, 필요하면 image dim만 조절. 사용자가 "배경도 따라해/사진 빼줘"라고 명시할 때만 사진을 교체·삭제.
+- 레퍼런스 슬라이드 이미지는 보기 전용 — 카드에 넣을 수 없음(src로 쓰지 말 것). 사진 배경이 필요하면 첨부 이미지나 기존 이미지 URL을 쓰세요.
+- reply에 레퍼런스에서 무엇을 가져와 어떻게 바꿨는지 한두 줄로 요약.
+
 ## 출력 언어
 - reply와 새로 쓰는 카피는 ${outLang}로 작성할 것.
 
 ## reply 스타일
 - 1~3문장. 무엇을 어떻게 바꿨는지 요약. 제안이 있으면 짧게 덧붙임.`;
+}
+
+// Appended to generateSystem when the user attached their own photos. It
+// deliberately OVERRIDES a few base rules (single block anchor, accent bars,
+// "no images") — the reels-carousel look is photo-first, text-light.
+export function photoSetRules(photoCount: number, autoCount: boolean): string {
+  return `## 사용자 사진 세트 모드 (위 규칙보다 우선)
+사용자가 자기 사진 ${photoCount}장을 첨부했습니다(메시지의 "사진 1…${photoCount}"). 잘 된 릴스를 캐러셀로 펼친 느낌 — 사진이 주인공이고 글은 사진 위에 얹힙니다.
+- **배경 배정은 클라이언트가 함**: k번째 카드(1부터)의 배경 = 사진 ((k-1) mod ${photoCount}) + 1. 카드가 사진보다 많으면 1,2,…,${photoCount},1,2… 로 돌고, 적으면 앞에서부터 씀. 이미지 요소·배경 사진·딤·스크림 shape를 직접 만들지 말 것 — cards[].background는 "#111111", elements에는 text만.
+${autoCount ? `- **카드 수는 네가 결정**: 원문/스크립트의 핵심 포인트 수에 맞춰 3~10장. 훅 1장 + 포인트마다 1장 (+ 필요하면 마무리 1장). 억지로 늘리거나 사진 수에 맞추지 말 것.\n` : ""}- 각 카드를 만들 때 **그 카드에 깔릴 사진을 실제로 보고** 글 위치를 정할 것: 얼굴·인물·핵심 피사체를 가리지 않는 빈 영역(하늘, 벽, 바닥, 어두운 면)에 둔다. 사진마다 위(y 6~14 시작) 또는 아래(블록 끝이 y 90 안쪽) 중 빈 쪽을 고르고, 카드마다 달라도 됨(이 모드에선 앵커 통일 규칙 대신 이 규칙).
+- 한 카드의 글은 한 덩어리: title 바로 아래(약 2~4%) body. 정렬은 left, x 7~9, w 82~86. 1장 훅만 center 허용.
+- 스타일(모든 text에 shadow: true, color "#ffffff"):
+  - 1장 훅: role "mega" **하나만** 한 줄~두 줄 (fontSize 80~96, fontWeight 700, letterSpacing -0.03, lineHeight 1.1, align center). 부제(body)는 쓰지 말 것 — body는 세트 전체에서 left로 통일되므로 가운데 mega 아래에 두면 정렬이 어긋남.
+  - 본문 카드: role "title" = 짧은 명령형/한 문장 핵심(fontSize 64~76, fontWeight 700, letterSpacing -0.03, lineHeight 1.12) + role "body" = 1~2문장 구체적 경험·숫자(fontSize 32~36, fontWeight 500, lineHeight 1.35).
+  - overline 번호·accent 바·caption은 쓰지 말 것(사진 세트는 깔끔하게). 마지막 장도 과한 CTA 대신 여운 있는 한 줄.
+- 카피: 구어체, 짧게. body에는 스크립트/경험의 구체 디테일(숫자, 실제 상황)을 살릴 것.`;
+}
+
+// Appended when reference material (script / analytics / an Instagram post) came along.
+export function referenceRules(): string {
+  return `## 참고 자료 사용법
+- "릴스 스크립트/메모"가 있으면 그게 원문 — 흐름과 핵심 포인트를 카드로 펼칠 것. 좋은 대사는 살리고, 말로 한 것을 읽히는 문장으로 다듬을 것.
+- "성과 데이터(analytics)"가 있으면 반응이 좋았던 지점(시청 유지, 저장·공유, 댓글에서 많이 나온 반응)을 훅과 앞쪽 카드에 배치.
+- "참고 이미지"는 스크립트·인사이트 캡처일 수 있음 — 읽어서 내용으로 활용.
+- "레퍼런스 인스타 게시물"이 있으면 그 구조(장 수, 훅 방식, 카드당 글 양, 글 위치·크기감)를 벤치마킹. 문구를 그대로 베끼지 말 것. 사용자 자신의 스크립트/주제가 있으면 내용은 그걸로, 형식만 레퍼런스에서.`;
 }

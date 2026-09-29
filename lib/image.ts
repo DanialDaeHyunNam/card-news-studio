@@ -74,3 +74,74 @@ export function splitDataUrl(dataUrl: string): { mediaType: string; data: string
   const m = /^data:([^;]+);base64,(.+)$/.exec(dataUrl);
   return m ? { mediaType: m[1], data: m[2] } : null;
 }
+
+const isHeic = (f: File) => /image\/hei[cf]/.test(f.type) || /\.hei[cf]$/i.test(f.name);
+
+async function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const el = new Image();
+    el.onload = () => resolve(el);
+    el.onerror = () => reject(new Error("이미지를 읽을 수 없습니다"));
+    el.src = src;
+  });
+}
+
+// Decode any picked file into an <img>. HEIC goes through the local /api/heic
+// converter first (browsers other than Safari can't decode it).
+async function decodeFile(file: File): Promise<HTMLImageElement> {
+  const url = URL.createObjectURL(file);
+  try {
+    return await loadImage(url);
+  } catch {
+    if (!isHeic(file)) throw new Error(`${file.name}: 이미지를 읽을 수 없습니다`);
+    const res = await fetch("/api/heic", { method: "POST", body: file });
+    if (!res.ok) throw new Error(`${file.name}: HEIC는 JPG/PNG로 변환 후 넣어주세요`);
+    const jpg = URL.createObjectURL(await res.blob());
+    try {
+      return await loadImage(jpg);
+    } finally {
+      URL.revokeObjectURL(jpg);
+    }
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+// A photo for a photo-set generation: `full` (≤2160px — 2× export width) goes on
+// the card, `api` (≤800px) is what the model looks at, `thumb` is for the tray.
+export async function fileToGenPhoto(file: File): Promise<import("./types").GenPhoto> {
+  const img = await decodeFile(file);
+  return {
+    id: crypto.randomUUID(),
+    full: scaleToDataUrl(img, 2160),
+    api: scaleToDataUrl(img, 800),
+    thumb: scaleToDataUrl(img, 160),
+  };
+}
+
+// A reference screenshot (script / insights): the model needs to READ it, so
+// keep more resolution than photos.
+export async function fileToRefImage(file: File): Promise<{ id: string; api: string; thumb: string }> {
+  const img = await decodeFile(file);
+  return { id: crypto.randomUUID(), api: scaleToDataUrl(img, 1400), thumb: scaleToDataUrl(img, 160) };
+}
+
+// Downscale any data URL (e.g. an Instagram slide) to a tiny thumbnail for the
+// persisted chat history, which lives under the ~5MB storage budget.
+export async function shrinkDataUrl(dataUrl: string, maxDim = 160): Promise<string> {
+  return scaleToDataUrl(await loadImage(dataUrl), maxDim);
+}
+
+// An image already on a card / in /uploads, prepared for the model like a chat
+// attachment (tagged via @사진N): resized copy + dims + a tiny history thumb.
+export async function srcToModelImage(
+  src: string,
+): Promise<{ apiDataUrl: string; thumb: string; width: number; height: number }> {
+  const img = await loadImage(src);
+  return {
+    apiDataUrl: scaleToDataUrl(img, 1000),
+    thumb: scaleToDataUrl(img, 120),
+    width: img.naturalWidth,
+    height: img.naturalHeight,
+  };
+}

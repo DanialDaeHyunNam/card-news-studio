@@ -22,6 +22,7 @@ const textElement = {
     letterSpacing: { type: "number" },
     italic: { type: "boolean" },
     underline: { type: "boolean" },
+    shadow: { type: "boolean" },
     opacity: { type: "number" },
   },
 };
@@ -105,6 +106,9 @@ const patchSchema = {
     align: { type: "string", enum: ["left", "center", "right"] },
     lineHeight: { type: "number" },
     letterSpacing: { type: "number" },
+    italic: { type: "boolean" },
+    underline: { type: "boolean" },
+    shadow: { type: "boolean" },
     x: { type: "number" },
     y: { type: "number" },
     w: { type: "number" },

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Format, GenConfig, Project } from "@/lib/types";
+import type { Format, GenConfig, GenPhoto, Project } from "@/lib/types";
+import { fileToGenPhoto, fileToRefImage } from "@/lib/image";
 import { FORMATS, defaultTheme } from "@/lib/types";
 import { newId } from "@/lib/ops";
 import { getTemplates, instantiateTemplate } from "@/lib/templates";
@@ -26,7 +27,8 @@ import { useLang, type DictKey } from "@/lib/i18n";
 interface HomeProps {
   projects: Project[];
   error?: string | null;
-  busy?: boolean; // YouTube pre-flight (fetching captions / analyzing frames)
+  busy?: boolean; // YouTube/Instagram pre-flight (captions, frames, slides)
+  initial?: GenConfig | null; // restore the inputs of a failed generation
   onGenerate: (cfg: GenConfig) => void;
   onOpen: (id: string) => void;
   onCreate: (p: Project) => void;
@@ -35,8 +37,18 @@ interface HomeProps {
 }
 
 const YT_RE = /(youtube\.com\/(watch|shorts|live|embed)|youtu\.be\/)/;
+const IG_RE = /instagram\.com\/(?:[\w.]+\/)?(?:p|reel|reels|tv)\/[\w-]{5,}/;
+const MAX_PHOTOS = 20;
+const MAX_REF_IMAGES = 10;
+const IMAGE_ACCEPT = "image/*,.heic,.heif";
 
-export default function Home({ projects, error, busy, onGenerate, onOpen, onCreate, onDelete, onImport }: HomeProps) {
+type RefImage = { id: string; api: string; thumb: string };
+
+function imageFiles(list: FileList | File[] | null | undefined): File[] {
+  return Array.from(list ?? []).filter((f) => f.type.startsWith("image/") || /\.hei[cf]$/i.test(f.name));
+}
+
+export default function Home({ projects, error, busy, initial, onGenerate, onOpen, onCreate, onDelete, onImport }: HomeProps) {
   const { lang, t } = useLang();
   // On a public deploy the tool can't run (no local keys / localStorage), so
   // every "real action" opens the install guide instead of doing the action.
@@ -47,9 +59,9 @@ export default function Home({ projects, error, busy, onGenerate, onOpen, onCrea
   const { latest, hasUpdate } = useUpdateCheck(hosted);
   const [showUpdate, setShowUpdate] = useState(false);
   const [updDismissed, setUpdDismissed] = useState(false);
-  const [topic, setTopic] = useState("");
-  const [format, setFormat] = useState<Format>("4:5");
-  const [cardCount, setCardCount] = useState(6);
+  const [topic, setTopic] = useState(initial?.topic ?? "");
+  const [format, setFormat] = useState<Format>(initial?.format ?? "4:5");
+  const [cardCount, setCardCount] = useState(initial?.cardCount ?? 6);
   const [referenceId, setReferenceId] = useState("");
   const [model, setModel] = useState(() => pickDefaultModel(null));
   const [showKeys, setShowKeys] = useState(false);
@@ -61,6 +73,66 @@ export default function Home({ projects, error, busy, onGenerate, onOpen, onCrea
     return window.localStorage.getItem("cardnews.accent");
   });
   const isYoutube = YT_RE.test(topic);
+  const isInstagram = IG_RE.test(topic);
+  // Photo set: the user's own photos become full-bleed card backgrounds, cycled
+  // card k → photo (k-1) mod N. Reference material (reels script, analytics,
+  // screenshots) steers the copy.
+  const [photos, setPhotos] = useState<GenPhoto[]>(initial?.photos ?? []);
+  const [refText, setRefText] = useState(initial?.refText ?? "");
+  const [refImages, setRefImages] = useState<RefImage[]>(
+    () => initial?.refImages?.map((api) => ({ id: crypto.randomUUID(), api, thumb: api })) ?? [],
+  );
+  const [refOpen, setRefOpen] = useState(() => !!(initial?.refText || initial?.refImages?.length));
+  const [attachBusy, setAttachBusy] = useState(false);
+  const [attachErr, setAttachErr] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const photoInput = useRef<HTMLInputElement>(null);
+  const refImageInput = useRef<HTMLInputElement>(null);
+  const hasMaterial = photos.length > 0 || refImages.length > 0 || refText.trim().length > 0;
+
+  async function convertAll<T>(files: File[], convert: (f: File) => Promise<T>): Promise<T[]> {
+    setAttachErr(null);
+    setAttachBusy(true);
+    const out: T[] = [];
+    const errors: string[] = [];
+    for (const f of files) {
+      try {
+        out.push(await convert(f));
+      } catch (e) {
+        errors.push(e instanceof Error ? e.message : f.name);
+      }
+    }
+    setAttachBusy(false);
+    if (errors.length) setAttachErr(errors.join(" · "));
+    return out;
+  }
+
+  async function addPhotos(list: FileList | File[] | null | undefined) {
+    const files = imageFiles(list).slice(0, MAX_PHOTOS - photos.length);
+    if (!files.length) return;
+    const added = await convertAll(files, fileToGenPhoto);
+    if (!added.length) return;
+    // First photos in → let the AI size the set to the content.
+    if (photos.length === 0) setCardCount(0);
+    setPhotos((cur) => [...cur, ...added].slice(0, MAX_PHOTOS));
+  }
+
+  async function addRefImages(list: FileList | File[] | null | undefined) {
+    const files = imageFiles(list).slice(0, MAX_REF_IMAGES - refImages.length);
+    if (!files.length) return;
+    const added = await convertAll(files, fileToRefImage);
+    setRefImages((cur) => [...cur, ...added].slice(0, MAX_REF_IMAGES));
+  }
+
+  function movePhoto(from: number, dir: -1 | 1) {
+    setPhotos((cur) => {
+      const to = from + dir;
+      if (to < 0 || to >= cur.length) return cur;
+      const next = cur.slice();
+      [next[from], next[to]] = [next[to], next[from]];
+      return next;
+    });
+  }
   // Project import: a .cardnews.json exported on another machine (images come
   // inlined; importProjectFile re-files them into public/uploads).
   const importInput = useRef<HTMLInputElement>(null);
@@ -152,15 +224,33 @@ export default function Home({ projects, error, busy, onGenerate, onOpen, onCrea
   }
 
   function startGenerate() {
-    if (!topic.trim()) return;
+    if (!topic.trim() && !hasMaterial) return;
+    if (attachBusy) return;
     const selected = MODELS.find((m) => m.id === model);
     // Don't flash into the editor only to fail — nudge the key modal first.
     if (selected && keys && !keys[selected.envVar]) {
       setShowKeys(true);
       return;
     }
-    trackEvent("generate_click", { model, format, youtube: isYoutube });
-    onGenerate({ topic, format, cardCount, model, referenceId: referenceId || undefined, accent: accent ?? undefined });
+    trackEvent("generate_click", {
+      model,
+      format,
+      youtube: isYoutube,
+      instagram: isInstagram,
+      photos: photos.length,
+      refs: refImages.length + (refText.trim() ? 1 : 0),
+    });
+    onGenerate({
+      topic,
+      format,
+      cardCount,
+      model,
+      referenceId: referenceId || undefined,
+      accent: accent ?? undefined,
+      photos: photos.length ? photos : undefined,
+      refText: refText.trim() || undefined,
+      refImages: refImages.length ? refImages.map((r) => r.api) : undefined,
+    });
   }
 
   return (
@@ -243,24 +333,129 @@ export default function Home({ projects, error, busy, onGenerate, onOpen, onCrea
         </h1>
         <p className="hero-sub">{t("hero_sub")}</p>
 
-        <div className="hero-bar">
+        <div
+          className={`hero-bar ${dragOver ? "drag" : ""}`}
+          onDragOver={(e) => {
+            if (!e.dataTransfer.types.includes("Files")) return;
+            e.preventDefault();
+            setDragOver(true);
+          }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragOver(false);
+            void addPhotos(e.dataTransfer.files);
+          }}
+        >
           <input
             className="hero-input"
             placeholder={t("hero_ph")}
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
+            onPaste={(e) => {
+              const files = imageFiles(e.clipboardData.files);
+              if (files.length) {
+                e.preventDefault();
+                void addPhotos(files);
+              }
+            }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.nativeEvent.isComposing) startGenerate();
             }}
           />
           <button
+            className="hero-attach"
+            title={t("photo_add_title")}
+            disabled={attachBusy || photos.length >= MAX_PHOTOS}
+            onClick={() => photoInput.current?.click()}
+          >
+            {attachBusy ? "…" : "📷"}
+            {photos.length > 0 && <span className="hero-attach-count">{photos.length}</span>}
+          </button>
+          <button
             className="btn pill-white"
-            disabled={busy || (!hosted && !topic.trim())}
+            disabled={busy || attachBusy || (!hosted && !topic.trim() && !hasMaterial)}
             onClick={startGenerate}
           >
-            {busy ? t("gen_busy") : isYoutube ? t("gen_btn_yt") : t("gen_btn")}
+            {busy
+              ? t("gen_busy")
+              : isYoutube
+                ? t("gen_btn_yt")
+                : isInstagram
+                  ? t("gen_btn_ig")
+                  : photos.length
+                    ? t("gen_btn_photos")
+                    : t("gen_btn")}
           </button>
         </div>
+        <input
+          ref={photoInput}
+          type="file"
+          accept={IMAGE_ACCEPT}
+          multiple
+          style={{ display: "none" }}
+          onChange={(e) => {
+            const files = Array.from(e.target.files ?? []);
+            e.target.value = "";
+            void addPhotos(files);
+          }}
+        />
+        <input
+          ref={refImageInput}
+          type="file"
+          accept={IMAGE_ACCEPT}
+          multiple
+          style={{ display: "none" }}
+          onChange={(e) => {
+            const files = Array.from(e.target.files ?? []);
+            e.target.value = "";
+            void addRefImages(files);
+          }}
+        />
+
+        {photos.length > 0 && (
+          <div className="photo-tray">
+            <div className="photo-tray-head">
+              <span>
+                {t("photo_tray_title")} · {photos.length}
+              </span>
+              <span className="photo-tray-hint">{t("photo_cycle_hint")}</span>
+              <button className="link-mini" onClick={() => setPhotos([])}>
+                {t("photo_clear")}
+              </button>
+            </div>
+            <div className="photo-tray-row">
+              {photos.map((p, i) => (
+                <div key={p.id} className="photo-thumb">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={p.thumb} alt="" />
+                  <span className="photo-num">{i + 1}</span>
+                  <button
+                    className="photo-x"
+                    title="✕"
+                    onClick={() => setPhotos((cur) => cur.filter((x) => x.id !== p.id))}
+                  >
+                    ✕
+                  </button>
+                  <div className="photo-move">
+                    <button disabled={i === 0} onClick={() => movePhoto(i, -1)}>
+                      ‹
+                    </button>
+                    <button disabled={i === photos.length - 1} onClick={() => movePhoto(i, 1)}>
+                      ›
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {photos.length < MAX_PHOTOS && (
+                <button className="photo-add" onClick={() => photoInput.current?.click()}>
+                  +
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+        {attachErr && <div className="hero-error attach-err">{attachErr}</div>}
 
         <div className="hero-controls">
           <div className="seg">
@@ -276,6 +471,7 @@ export default function Home({ projects, error, busy, onGenerate, onOpen, onCrea
             ))}
           </div>
           <select className="ctl" value={cardCount} onChange={(e) => setCardCount(Number(e.target.value))}>
+            <option value={0}>{t("cards_auto")}</option>
             {[4, 6, 8, 10].map((n) => (
               <option key={n} value={n}>
                 {n}
@@ -315,7 +511,53 @@ export default function Home({ projects, error, busy, onGenerate, onOpen, onCrea
               ))}
             </select>
           )}
+          <button
+            className={`ctl ref-toggle ${refOpen || refText.trim() || refImages.length ? "on" : ""}`}
+            onClick={() => setRefOpen((v) => !v)}
+          >
+            📝 {t("ref_material")}
+            {refImages.length + (refText.trim() ? 1 : 0) > 0 && ` · ${refImages.length + (refText.trim() ? 1 : 0)}`}
+          </button>
         </div>
+
+        {refOpen && (
+          <div className="ref-panel">
+            <textarea
+              className="ref-text"
+              placeholder={t("ref_text_ph")}
+              value={refText}
+              rows={5}
+              onChange={(e) => setRefText(e.target.value)}
+              onPaste={(e) => {
+                const files = imageFiles(e.clipboardData.files);
+                if (files.length) {
+                  e.preventDefault();
+                  void addRefImages(files);
+                }
+              }}
+            />
+            <div className="ref-images">
+              {refImages.map((r) => (
+                <div key={r.id} className="photo-thumb small">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={r.thumb} alt="" />
+                  <button
+                    className="photo-x"
+                    onClick={() => setRefImages((cur) => cur.filter((x) => x.id !== r.id))}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+              {refImages.length < MAX_REF_IMAGES && (
+                <button className="photo-add small" onClick={() => refImageInput.current?.click()}>
+                  + {t("ref_add_images")}
+                </button>
+              )}
+            </div>
+            <p className="ref-hint">{t("ref_hint")}</p>
+          </div>
+        )}
 
         {GITHUB_URL && (
           <div className="star-cta-wrap">

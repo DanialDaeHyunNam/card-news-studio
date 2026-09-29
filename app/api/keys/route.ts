@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { KEY_ENV_VARS } from "@/lib/models";
+import { CLAUDE_CLI_FLAG, KEY_ENV_VARS } from "@/lib/models";
+import { findClaudeCli } from "@/lib/claude-cli";
 
 /**
  * In-UI API key management (pattern borrowed from ZCLIP/reaction-hooks).
@@ -17,7 +18,11 @@ const KEY_SHAPE = /^[\x21-\x7E]{8,300}$/;
 export async function GET() {
   return Response.json({
     writable: isDev(),
-    keys: Object.fromEntries(KEY_ENV_VARS.map((k) => [k, Boolean(process.env[k])])),
+    keys: {
+      ...Object.fromEntries(KEY_ENV_VARS.map((k) => [k, Boolean(process.env[k])])),
+      // Local Claude Code CLI found → the subscription models are usable.
+      [CLAUDE_CLI_FLAG]: Boolean(await findClaudeCli()),
+    },
   });
 }
 

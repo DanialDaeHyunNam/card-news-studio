@@ -5,6 +5,39 @@ All notable changes to Card News Studio. This project uses simple
 the deployed one and prompts an update when it's behind (see
 [ARCHITECTURE.md](ARCHITECTURE.md#hosted-vs-local-mode)).
 
+## 0.9.0 — 2026-09-30
+
+Turn a reel that worked into a carousel: drop in your own photos, paste the
+script and analytics (or a reference Instagram post), and get a photo-first set
+with legible type — plus a way to run it all on your Claude subscription.
+
+### Added
+- **Photo sets** — 📷 in the hero bar (pick, drag or paste; iPhone HEIC is
+  converted locally via macOS `sips`). The AI sees each photo and places the
+  copy off the subject; photos are laid full-bleed and cycled across cards
+  (card k → photo (k−1) mod N, so N < M loops and N > M stops early), with a
+  gradient scrim on the text's half.
+- **Auto card count** — the AI sizes the set to the content (3–10 cards).
+  Default when photos are attached.
+- **Reference material** panel — reels script, analytics notes and screenshots
+  steer the copy (strong-performing points move toward the front).
+- **Instagram reference** — paste a public post link in the hero bar (or in the
+  editor chat) and every carousel slide, the caption and like/comment counts
+  are read without login and used as a benchmark. In the chat it restyles the
+  current cards to match while keeping your wording and photos.
+- **Claude subscription mode (local only)** — "Claude 구독 (로컬)" models run
+  through your installed Claude Code CLI (`claude -p`), so no API key is
+  needed. API keys are stripped from the CLI's environment so it can never bill
+  the API. Hidden on hosted deploys and when the CLI isn't found.
+- **@-mentions in the chat** — type `@` for a preview picker of cards and
+  images (including recent uploads); tagged images are shown to the AI and can
+  be placed by reference ("@사진3을 @카드1 배경으로").
+- Text **shadow** style (Inspector "S", per element or per role).
+
+### Fixed
+- A failed generation no longer wipes the attached photos/script/topic.
+- The hero bar no longer overflows at narrow widths.
+
 ## 0.8.3 — 2026-07-15
 
 ### Added
