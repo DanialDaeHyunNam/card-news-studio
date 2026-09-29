@@ -41,6 +41,15 @@ Open source (**MIT**). Two ways to use it:
   per-element opacity, all controllable by hand or by the AI.
 - **Brand color** — pin a point color; every element using it recolors together
   when you change it (a real design token, not a one-off value).
+- **Photo sets (reels → carousel)** — add your own photos (HEIC OK locally); the
+  AI decides the card count, places copy off each photo's subject, and cycles
+  the photos across cards with a legibility scrim + text shadow. Paste the
+  reel's script/analytics as reference material.
+- **Instagram reference** — paste a public post link (hero bar or chat) to
+  benchmark every slide of it, no login needed.
+- **Claude subscription mode (local)** — run on your Claude plan through the
+  installed Claude Code CLI instead of an API key.
+- **@-mentions** — tag cards and images in the chat from a preview picker.
 - **YouTube → cards** — paste a video URL; captions are fetched (no API key
   needed) and turned into a card set that quotes the real transcript.
 - **Style continuity** — start a new set that inherits a previous project's theme

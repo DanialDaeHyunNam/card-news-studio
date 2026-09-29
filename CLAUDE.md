@@ -62,6 +62,16 @@ auto-selects a model whose key is connected.
   manages all provider env vars (GET booleans, POST dev-only writes .env.local +
   process.env). Model is per-project (`project.model`), selectable in Home hero and
   Editor topbar; on keys load both auto-switch to a model whose key is connected.
+- **Claude subscription provider** (`lib/claude-cli.ts`, provider `claude-cli`,
+  model ids `claude-cli:opus|sonnet|haiku`): local dev only — spawns the user's
+  installed `claude -p` (stream-json in/out, `--json-schema`, `--tools ""`,
+  `--setting-sources ""`, `--strict-mcp-config`, neutral tmp cwd) so generation
+  runs on their Claude plan, no API key. The child env has `ANTHROPIC_API_KEY`
+  STRIPPED (else the CLI bills the API). `--bare` is unusable (disables OAuth).
+  `/api/keys` reports the pseudo flag `CLAUDE_CLI` when a working binary is found
+  (`CLAUDE_CLI_PATH` overrides); the picker hides the group otherwise and it's
+  first in PROVIDER_ORDER so it auto-selects. Only the StructuredOutput tool's
+  `input_json_delta` is streamed (prose is suppressed). Cost recorded as $0.
 - **i18n** (`lib/i18n.tsx`): flat `[ko, en]` dict + LangProvider (localStorage
   `cardnews.lang`, defaults from navigator.language) + `useLang()` → `{lang, t}`.
   Globe dropdown = `components/LangSwitch.tsx` (Home nav + Editor topbar).
@@ -83,6 +93,26 @@ auto-selects a model whose key is connected.
     bodies without a proof-of-origin token; WEB client returns no tracks — verified 2026-07).
     Response may be json3 or timedtext XML; `parseCaptions` handles both. The Home hero
     detects YouTube URLs in the topic input and runs 자막 fetch → generate.
+- **Photo sets** (Home 📷 tray, `lib/photoset.ts`): user photos (drag/paste/pick;
+  HEIC → JPEG via dev-only `/api/heic` = macOS `sips`) are sent to the model at
+  ≤800px so it places copy off the subject; `photoSetRules` (prompts.ts) overrides
+  the single-anchor/accent-bar rules for a reels-carousel look. The model writes
+  TEXT ONLY — `dressPhotoCard` puts photo `k mod N` full-bleed behind card k (N<M
+  loops, N>M stops), a gradient scrim on the text's half, and `shadow: true` on
+  text (new TextElement/role style field). Card count `0` = Auto (model picks 3–10).
+  Reference material (reels script/analytics text + screenshots) rides along as
+  `refText`/`refImages`. Failed runs hand the inputs back to Home (`lastCfg`).
+- **Instagram** (`/api/instagram`): a post link in the hero bar → every carousel
+  slide + caption + like/comment counts, NO login — Instagram serves crawlers
+  (Googlebot UA) the post's media JSON inline (`carousel_media`). Verified
+  2026-09: GraphQL doc_id → 403, embed page → no media, `?__a=1` → 500. Slides go
+  to the model as a benchmark ("레퍼런스 슬라이드 N"); text beside the link = topic.
+  The editor chat does the same (`lib/instagram.ts` shared client helper): a link
+  in a chat message → slides + caption ride along in `ChatBody.instagram` (added
+  AFTER attachments so "첨부 N" indices don't shift; slides are look-only) and the
+  model restyles the CURRENT cards — wording kept, and existing photos are the
+  user's content: never removed unless explicitly asked (a real run deleted them
+  before that rule existed). Cached per URL in ChatPanel.
 - **Operations** are the edit language the AI speaks (`update_element`, `add_element`,
   `remove_element`, `update_card`, `add_card`, `remove_card`, `update_theme`).
   Applied client-side in `lib/ops.ts` — pure, clamps numbers, skips unknown ids.
@@ -90,6 +120,15 @@ auto-selects a model whose key is connected.
   cap; wide tracking only survives on small labels) on every AI path — generation,
   `update_element`, `update_style` — because models occasionally emit absurd 자간 on
   Korean headlines. Prompts (`lib/prompts.ts`) state the same rule; keep both in sync.
+- **@-mentions** (`lib/mentions.ts`, ChatPanel): typing "@" opens a preview picker
+  of the project's cards (CardView thumbs) and images (card images + recent
+  `/uploads` via GET `/api/asset`, dev-only) → tokens `@카드N`/`@사진N`
+  (en `@cardN`/`@imgN`) + chips. On send, tagged IMAGES join the turn's
+  attachments (model sees them; `attachmentOriginals` = their original src, so
+  `attachment:K` resolves to the same `/uploads` URL, not a copy) and tagged
+  cards map to ids — both via `ChatBody.mentions` → "@멘션" block. Token match is
+  exact (`@사진3` ≠ `@사진30`, `hasToken`). Separate from the Inspector's @
+  buttons, which insert descriptive text.
 - **Attachment protocol**: chat images go to the model resized (≤1200px); the AI
   inserts them via `src: "attachment:N"`, and `lib/ops.ts` substitutes the original
   data URL kept client-side. Chat history persists only tiny thumbnails

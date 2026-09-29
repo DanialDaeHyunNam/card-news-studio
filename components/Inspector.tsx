@@ -400,6 +400,13 @@ export default function Inspector({
                     >
                       <u>U</u>
                     </button>
+                    <button
+                      className={`deco-btn ${element.shadow ? "on" : ""}`}
+                      title={t("insp_shadow")}
+                      onClick={() => onPatchElement({ shadow: !element.shadow }, true)}
+                    >
+                      <span style={{ textShadow: "0 1px 4px rgba(0,0,0,0.9)" }}>S</span>
+                    </button>
                   </div>
                 </label>
               </div>
@@ -642,6 +649,13 @@ export default function Inspector({
                         onClick={() => onApplyRoleStyle(r, { underline: !s.underline })}
                       >
                         <u>U</u>
+                      </button>
+                      <button
+                        className={`deco-btn ${s.shadow ? "on" : ""}`}
+                        title={t("insp_shadow")}
+                        onClick={() => onApplyRoleStyle(r, { shadow: !s.shadow })}
+                      >
+                        <span style={{ textShadow: "0 1px 4px rgba(0,0,0,0.9)" }}>S</span>
                       </button>
                     </div>
                   </div>

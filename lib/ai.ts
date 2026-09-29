@@ -9,6 +9,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { resolveModel, type ModelInfo } from "./models";
 import { openaiCompatStream, type StreamEvent } from "./ai-compat";
+import { claudeCliStream } from "./claude-cli";
 import type { AiRequest } from "./requests";
 
 export type { StreamEvent };
@@ -16,6 +17,10 @@ export type RequestOpts = AiRequest;
 
 export async function* streamStructured(opts: RequestOpts): AsyncGenerator<StreamEvent> {
   const model = resolveModel(opts.model);
+  if (model.provider === "claude-cli") {
+    yield* claudeCliStream(model, opts);
+    return;
+  }
   const key = process.env[model.envVar];
   if (!key) {
     throw new Error(

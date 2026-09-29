@@ -1,4 +1,4 @@
-import { writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { writeFileSync, existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
 
@@ -14,6 +14,20 @@ const EXT: Record<string, string> = {
   "image/webp": "webp",
   "image/gif": "gif",
 };
+
+// Recent uploads, newest first — the chat's @-mention picker offers them so an
+// image uploaded earlier (e.g. a hero photo) can be tagged without re-attaching.
+export async function GET() {
+  if (!isDev()) return Response.json({ uploads: [] });
+  const dir = join(process.cwd(), "public", "uploads");
+  if (!existsSync(dir)) return Response.json({ uploads: [] });
+  const uploads = readdirSync(dir)
+    .filter((f) => /\.(jpe?g|png|webp|gif)$/i.test(f))
+    .map((f) => ({ url: `/uploads/${f}`, mtime: statSync(join(dir, f)).mtimeMs }))
+    .sort((a, b) => b.mtime - a.mtime)
+    .slice(0, 40);
+  return Response.json({ uploads });
+}
 
 export async function POST(req: Request) {
   if (!isDev()) {

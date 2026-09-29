@@ -28,6 +28,7 @@ export interface RoleStyle {
   align?: "left" | "center" | "right";
   italic?: boolean;
   underline?: boolean;
+  shadow?: boolean;
 }
 // The style fields a role governs — used to sync/compare element vs. shared.
 export const ROLE_STYLE_KEYS = [
@@ -40,6 +41,7 @@ export const ROLE_STYLE_KEYS = [
   "align",
   "italic",
   "underline",
+  "shadow",
 ] as const;
 
 export interface TextElement {
@@ -59,6 +61,7 @@ export interface TextElement {
   letterSpacing?: number; // em units; e.g. -0.03 tight headline, 0.1 spaced overline
   italic?: boolean;
   underline?: boolean;
+  shadow?: boolean; // soft drop shadow — keeps white text legible on photos
   opacity?: number; // 0–1 element alpha (default 1)
 }
 
@@ -153,10 +156,21 @@ export interface Operation {
 export interface GenConfig {
   topic: string;
   format: Format;
-  cardCount: number;
+  cardCount: number; // 0 = auto (the AI decides how many cards)
   model: string;
   referenceId?: string;
   accent?: string; // fixed brand point color (hex); omitted = AI chooses
+  photos?: GenPhoto[]; // user photos → full-bleed card backgrounds, cycled
+  refText?: string; // reels script / analytics notes to build from
+  refImages?: string[]; // screenshots (script, insights) — model-sized data URLs
+}
+// A user photo for a photo-set generation. `full` is what lands on the card
+// (uploaded to /uploads on local), `api` the small copy the model looks at.
+export interface GenPhoto {
+  id: string;
+  full: string;
+  api: string;
+  thumb: string;
 }
 export interface GenProgress {
   total: number;

@@ -4,7 +4,13 @@
 // Pricing is USD per million tokens (input/output); Anthropic cache read bills
 // at 0.1× input, cache write (5m TTL) at 1.25× input.
 
-export type Provider = "anthropic" | "openai" | "google";
+// "claude-cli" = the user's local Claude Code CLI on their Claude subscription
+// (lib/claude-cli.ts) — local dev only, no key; its envVar is a pseudo flag.
+export type Provider = "claude-cli" | "anthropic" | "openai" | "google";
+
+// Pseudo "key" flag for the CLI provider: /api/keys reports it true when a
+// working `claude` binary is found locally. Never an actual env var / key.
+export const CLAUDE_CLI_FLAG = "CLAUDE_CLI";
 
 export interface ModelInfo {
   id: string;
@@ -34,6 +40,41 @@ const OPENAI_BASE = "https://api.openai.com/v1";
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/openai";
 
 export const MODELS: ModelInfo[] = [
+  // ---- Claude subscription via the local Claude Code CLI ---- (id = "claude-cli:<alias>")
+  {
+    id: "claude-cli:opus",
+    label: "Claude Opus (구독)",
+    short: "Opus · 구독",
+    provider: "claude-cli",
+    envVar: CLAUDE_CLI_FLAG,
+    implemented: true,
+    tier: "recommended",
+    speed: 1,
+    note: ["내 Claude 구독 · 키 불필요 · 로컬 전용", "Your Claude plan · no key · local only"],
+  },
+  {
+    id: "claude-cli:sonnet",
+    label: "Claude Sonnet (구독)",
+    short: "Sonnet · 구독",
+    provider: "claude-cli",
+    envVar: CLAUDE_CLI_FLAG,
+    implemented: true,
+    tier: "recommended",
+    speed: 2,
+    note: ["내 Claude 구독 · 더 빠름", "Your Claude plan · faster"],
+  },
+  {
+    id: "claude-cli:haiku",
+    label: "Claude Haiku (구독)",
+    short: "Haiku · 구독",
+    provider: "claude-cli",
+    envVar: CLAUDE_CLI_FLAG,
+    implemented: true,
+    tier: "more",
+    speed: 3,
+    note: ["내 Claude 구독 · 가장 빠름", "Your Claude plan · fastest"],
+  },
+
   // ---- Anthropic (Claude) ----
   {
     id: "claude-opus-4-8",
@@ -289,11 +330,14 @@ export const MODELS: ModelInfo[] = [
 
 export const DEFAULT_MODEL = "claude-opus-4-8";
 
-export const KEY_ENV_VARS = [...new Set(MODELS.map((m) => m.envVar))];
+// Real API-key env vars (the key modal / BYOK storage) — excludes the CLI flag.
+export const KEY_ENV_VARS = [...new Set(MODELS.filter((m) => m.provider !== "claude-cli").map((m) => m.envVar))];
 
 // Provider display order + labels for the grouped model picker.
-export const PROVIDER_ORDER: Provider[] = ["anthropic", "openai", "google"];
+// The subscription CLI comes first so pickDefaultModel prefers it when present.
+export const PROVIDER_ORDER: Provider[] = ["claude-cli", "anthropic", "openai", "google"];
 export const PROVIDER_NAMES: Record<Provider, string> = {
+  "claude-cli": "Claude 구독 (로컬)",
   anthropic: "Claude",
   openai: "OpenAI",
   google: "Gemini",
@@ -331,6 +375,7 @@ export function resolveModel(id: string | undefined): ModelInfo {
 // to one of these so a fresh project starts cheap; the user can still pick a
 // pricier model manually.
 const VALUE_DEFAULT: Record<Provider, string> = {
+  "claude-cli": "claude-cli:opus", // no per-token cost → quality default
   anthropic: "claude-haiku-4-5",
   openai: "gpt-5.4-mini",
   google: "gemini-3-flash",

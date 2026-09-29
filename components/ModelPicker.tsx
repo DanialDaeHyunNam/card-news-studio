@@ -34,7 +34,9 @@ export default function ModelPicker({ value, onChange, keys, onConnectKey, align
     if (keys && !keys[m.envVar]) onConnectKey?.();
   }
 
-  const groups = PROVIDER_ORDER.map((provider) => {
+  // The subscription (CLI) group only exists where the CLI was found (local);
+  // there's no key to "connect", so hide it instead of nagging.
+  const groups = PROVIDER_ORDER.filter((p) => p !== "claude-cli" || keys?.CLAUDE_CLI).map((provider) => {
     const all = MODELS.filter((m) => m.provider === provider);
     const models = all.filter((m) => showAll || m.tier === "recommended" || m.id === value);
     return { provider, models, envVar: all[0]?.envVar ?? "" };
@@ -94,7 +96,8 @@ export default function ModelPicker({ value, onChange, keys, onConnectKey, align
                               {noKey && <span className="mp-tag warn">{t("keys_none")}</span>}
                             </span>
                             <span className="mp-spec">
-                              {priceLabel(m)} · {m.note[lang === "ko" ? 0 : 1]}
+                              {m.pricing ? `${priceLabel(m)} · ` : ""}
+                              {m.note[lang === "ko" ? 0 : 1]}
                             </span>
                           </span>
                           <span className="mp-speed" title={`${t("mp_speed")}: ${m.speed}/3`}>

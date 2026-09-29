@@ -2,7 +2,18 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Operation, Project } from "@/lib/types";
-import { fileToAttachment, uploadAttachment, type Attachment } from "@/lib/image";
+import { fileToAttachment, shrinkDataUrl, srcToModelImage, uploadAttachment, type Attachment } from "@/lib/image";
+import {
+  activeMentionQuery,
+  buildMentionables,
+  filterMentionables,
+  hasToken,
+  removeToken,
+  MENTION_TOKEN_RE,
+  type Mentionable,
+} from "@/lib/mentions";
+import { fetchInstagram, findInstagramUrl } from "@/lib/instagram";
+import type { ChatMention, InstagramRef } from "@/lib/requests";
 import type { UsageEvent } from "@/lib/usage";
 import { getTemplates, instantiateTemplate, type Template } from "@/lib/templates";
 import { extractReply, parseStructured } from "@/lib/stream";
@@ -46,9 +57,52 @@ export default function ChatPanel({ project, selection, selectionLabel, disabled
   // Transient turn shown while streaming, before it lands in project.chat.
   const [streamUser, setStreamUser] = useState<{ text: string; thumbs: string[] } | null>(null);
   const [streamReply, setStreamReply] = useState("");
+  // A pasted Instagram link is read before the turn is sent (slides → model).
+  const [igReading, setIgReading] = useState(false);
+  const igCache = useRef(new Map<string, { ref: InstagramRef; thumbs: string[] }>());
   const fileRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // @-mentions: typing "@" opens a preview picker of this project's cards and
+  // images (+ recent uploads); picks become tokens + chips, resolved on send.
+  const [uploads, setUploads] = useState<string[]>([]);
+  const [mentions, setMentions] = useState<Mentionable[]>([]);
+  const [mq, setMq] = useState<{ start: number; query: string } | null>(null);
+  const [mqIdx, setMqIdx] = useState(0);
+  useEffect(() => {
+    fetch("/api/asset")
+      .then((r) => r.json())
+      .then((d) => setUploads((d.uploads ?? []).map((u: { url: string }) => u.url)))
+      .catch(() => {});
+  }, [project.id]);
+  const mentionables = useMemo(() => buildMentionables(project, uploads, lang), [project, uploads, lang]);
+  const mqItems = mq ? filterMentionables(mentionables, mq.query) : [];
+
+  function syncMentionQuery(text: string, caret: number) {
+    const next = activeMentionQuery(text, caret);
+    setMq(next);
+    if (next?.query !== mq?.query) setMqIdx(0);
+  }
+
+  function pickMention(m: Mentionable) {
+    if (!mq) return;
+    const caret = inputRef.current?.selectionStart ?? input.length;
+    const next = input.slice(0, mq.start) + m.token + " " + input.slice(caret);
+    const pos = mq.start + m.token.length + 1;
+    setInput(next);
+    setMq(null);
+    setMentions((cur) => (cur.some((x) => x.token === m.token) ? cur : [...cur, m]));
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      inputRef.current?.setSelectionRange(pos, pos);
+    });
+  }
+
+  function removeMention(m: Mentionable) {
+    setMentions((cur) => cur.filter((x) => x.token !== m.token));
+    setInput((cur) => removeToken(cur, m.token));
+  }
 
   // Let the inspector's @ buttons append a reference into the input + focus it.
   useEffect(() => {
@@ -113,9 +167,54 @@ export default function ChatPanel({ project, selection, selectionLabel, disabled
     setStreamReply("");
     setInput("");
     setAttachments([]);
+    const tagged = mentions.filter((m) => hasToken(message, m.token));
+    setMentions([]);
+    setMq(null);
     scrollDown();
     const tpl = tplRef;
     try {
+      // Tagged images join this turn's attachments (the model sees them; ops
+      // place them via attachment:N → the original src). Cards map to ids.
+      const mentionImgs = await Promise.all(
+        tagged
+          .filter((m): m is Extract<Mentionable, { kind: "image" }> => m.kind === "image")
+          .map(async (m) => ({ m, img: await srcToModelImage(m.src) })),
+      );
+      const chatMentions: ChatMention[] = tagged.map((m) => {
+        if (m.kind === "card") return { token: m.token, kind: "card", n: m.n, cardId: m.cardId };
+        const i = mentionImgs.findIndex((x) => x.m.token === m.token);
+        return { token: m.token, kind: "image", src: m.src, attachmentIndex: atts.length + i, usedIn: m.usedIn };
+      });
+      const turnAtts = [
+        ...atts.map((a) => ({ apiDataUrl: a.apiDataUrl, width: a.width, height: a.height, bg: a.bg, bgUniform: a.bgUniform })),
+        ...mentionImgs.map(({ img }) => ({ apiDataUrl: img.apiDataUrl, width: img.width, height: img.height })),
+      ];
+      const mentionThumbs = mentionImgs.map(({ img }) => img.thumb);
+      if (mentionThumbs.length) setStreamUser({ text: message, thumbs: [...userThumbs, ...mentionThumbs] });
+
+      // Instagram link in the message → fetch every slide as a style reference.
+      // Cached per URL so a retry / follow-up with the same link is instant.
+      let instagram: InstagramRef | undefined;
+      let igThumbs: string[] = [];
+      const igUrl = findInstagramUrl(message);
+      if (igUrl) {
+        let hit = igCache.current.get(igUrl);
+        if (!hit) {
+          setIgReading(true);
+          try {
+            const ref = await fetchInstagram(igUrl);
+            const thumbs = await Promise.all(ref.slides.slice(0, 4).map((s) => shrinkDataUrl(s, 120)));
+            hit = { ref, thumbs };
+            igCache.current.set(igUrl, hit);
+          } finally {
+            setIgReading(false);
+          }
+        }
+        instagram = hit.ref;
+        igThumbs = hit.thumbs;
+        setStreamUser({ text: message, thumbs: [...userThumbs, ...mentionThumbs, ...igThumbs] });
+      }
+
       let acc = "";
       let doneText = "";
       let usage: UsageEvent | undefined;
@@ -124,8 +223,10 @@ export default function ChatPanel({ project, selection, selectionLabel, disabled
         selection,
         history: project.chat.map((m) => ({ role: m.role, text: m.text })),
         message,
-        attachments: atts.map((a) => ({ apiDataUrl: a.apiDataUrl, width: a.width, height: a.height, bg: a.bg, bgUniform: a.bgUniform })),
+        attachments: turnAtts,
+        mentions: chatMentions.length ? chatMentions : undefined,
         templateRef: tpl ? { name: tpl.name, theme: tpl.theme, cards: tpl.cards } : undefined,
+        instagram,
         lang,
       })) {
         if (ev.type === "delta") {
@@ -143,10 +244,10 @@ export default function ChatPanel({ project, selection, selectionLabel, disabled
       const parsed = parseStructured<{ reply?: string; operations?: unknown }>(doneText || acc);
       onApply({
         userText: message,
-        userThumbs,
+        userThumbs: [...userThumbs, ...mentionThumbs, ...igThumbs],
         reply: parsed.reply ?? extractReply(acc),
         operations: Array.isArray(parsed.operations) ? (parsed.operations as Operation[]) : [],
-        attachmentOriginals: atts.map((a) => a.url ?? a.dataUrl),
+        attachmentOriginals: [...atts.map((a) => a.url ?? a.dataUrl), ...mentionImgs.map(({ m }) => m.src)],
         usage,
       });
       setStreamUser(null);
@@ -156,6 +257,7 @@ export default function ChatPanel({ project, selection, selectionLabel, disabled
       setError(e instanceof Error ? e.message : t("chat_req_fail"));
       setInput(message);
       setAttachments(atts);
+      setMentions(tagged);
       setStreamUser(null);
       setStreamReply("");
     } finally {
@@ -184,7 +286,7 @@ export default function ChatPanel({ project, selection, selectionLabel, disabled
               // eslint-disable-next-line @next/next/no-img-element
               <img key={j} src={src} alt="" className="chat-thumb" />
             ))}
-            <div className="chat-bubble">{m.text}</div>
+            <div className="chat-bubble">{withMentions(m.text)}</div>
             {m.role === "assistant" && m.ops !== undefined && (
               <div className="chat-done">
                 <button
@@ -211,7 +313,7 @@ export default function ChatPanel({ project, selection, selectionLabel, disabled
               // eslint-disable-next-line @next/next/no-img-element
               <img key={j} src={src} alt="" className="chat-thumb" />
             ))}
-            <div className="chat-bubble">{streamUser.text}</div>
+            <div className="chat-bubble">{withMentions(streamUser.text)}</div>
           </div>
         )}
         {busy && (
@@ -223,7 +325,7 @@ export default function ChatPanel({ project, selection, selectionLabel, disabled
               </div>
             ) : (
               <div className="chat-bubble typing">
-                <span className="btn-spinner dark" /> {t("chat_thinking")}
+                <span className="btn-spinner dark" /> {igReading ? t("chat_ig_reading") : t("chat_thinking")}
               </div>
             )}
           </div>
@@ -244,7 +346,7 @@ export default function ChatPanel({ project, selection, selectionLabel, disabled
       )}
 
       {/* Thumbnails: referenced template + attached images, side by side. */}
-      {(activeTpl || attachments.length > 0) && (
+      {(activeTpl || attachments.length > 0 || mentions.length > 0) && (
         <div className="attach-row">
           {activeTpl && (
             <div className="ref-tpl-item">
@@ -265,6 +367,13 @@ export default function ChatPanel({ project, selection, selectionLabel, disabled
               </button>
             </div>
           )}
+          {mentions.map((m) => (
+            <div key={m.token} className="mention-chip" title={m.token}>
+              <MentionPreview m={m} project={project} size={30} />
+              <b>{m.token}</b>
+              <button onClick={() => removeMention(m)}>✕</button>
+            </div>
+          ))}
           {attachments.map((a) => (
             <div key={a.id} className="attach-item">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -335,13 +444,51 @@ export default function ChatPanel({ project, selection, selectionLabel, disabled
             e.target.value = "";
           }}
         />
+        {mq && mqItems.length > 0 && (
+          <div className="mention-menu" role="listbox">
+            <div className="mention-head">{t("mention_head")}</div>
+            {mqItems.map((m, i) => (
+              <button
+                key={m.token}
+                ref={(el) => {
+                  if (i === mqIdx) el?.scrollIntoView({ block: "nearest" }); // keep keyboard pick visible
+                }}
+                role="option"
+                aria-selected={i === mqIdx}
+                className={`mention-item ${i === mqIdx ? "on" : ""}`}
+                onMouseEnter={() => setMqIdx(i)}
+                onMouseDown={(e) => {
+                  e.preventDefault(); // keep textarea focus/caret
+                  pickMention(m);
+                }}
+              >
+                <MentionPreview m={m} project={project} size={40} />
+                <span className="mention-text">
+                  <b>{m.token}</b>
+                  <small>
+                    {m.kind === "card"
+                      ? cardSummary(m.card)
+                      : m.usedIn.length
+                        ? t("mention_used_in").replace("{n}", m.usedIn.join(", "))
+                        : t("mention_upload")}
+                  </small>
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
         <textarea
           ref={inputRef}
           rows={3}
           placeholder={t("chat_ph")}
           value={input}
           disabled={disabled}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={(e) => {
+            setInput(e.target.value);
+            syncMentionQuery(e.target.value, e.target.selectionStart ?? e.target.value.length);
+          }}
+          onClick={(e) => syncMentionQuery(input, e.currentTarget.selectionStart ?? input.length)}
+          onBlur={() => setMq(null)}
           onPaste={(e) => {
             const files = Array.from(e.clipboardData.files);
             if (files.length) {
@@ -350,6 +497,24 @@ export default function ChatPanel({ project, selection, selectionLabel, disabled
             }
           }}
           onKeyDown={(e) => {
+            if (mq && mqItems.length > 0) {
+              if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                e.preventDefault();
+                const d = e.key === "ArrowDown" ? 1 : -1;
+                setMqIdx((i) => (i + d + mqItems.length) % mqItems.length);
+                return;
+              }
+              if ((e.key === "Enter" || e.key === "Tab") && !e.nativeEvent.isComposing) {
+                e.preventDefault();
+                pickMention(mqItems[Math.min(mqIdx, mqItems.length - 1)]);
+                return;
+              }
+              if (e.key === "Escape") {
+                e.preventDefault();
+                setMq(null);
+                return;
+              }
+            }
             if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
               e.preventDefault();
               void send();
@@ -361,5 +526,40 @@ export default function ChatPanel({ project, selection, selectionLabel, disabled
         </button>
       </div>
     </aside>
+  );
+}
+
+// First text on a card, as the picker's one-line description.
+function cardSummary(card: Project["cards"][number]): string {
+  const text = card.elements.find((e) => e.type === "text");
+  return text && text.type === "text" ? text.text.replace(/\s+/g, " ").slice(0, 28) : "";
+}
+
+function MentionPreview({ m, project, size }: { m: Mentionable; project: Project; size: number }) {
+  if (m.kind === "card") {
+    return (
+      <span className="mention-thumb" style={{ width: size }}>
+        <CardView card={m.card} theme={project.theme} format={project.format} width={size} />
+      </span>
+    );
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img className="mention-thumb img" src={m.src} alt="" style={{ width: size, height: size }} />
+  );
+}
+
+// Render @카드N / @사진N tokens as highlighted pills inside chat bubbles.
+function withMentions(text: string) {
+  const parts = text.split(MENTION_TOKEN_RE);
+  if (parts.length === 1) return text;
+  return parts.map((p, i) =>
+    i % 2 === 1 ? (
+      <span key={i} className="mention-pill">
+        {p}
+      </span>
+    ) : (
+      p
+    ),
   );
 }

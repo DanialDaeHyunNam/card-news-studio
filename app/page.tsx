@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { GenConfig, GenProgress, Project, Theme } from "@/lib/types";
+import type { Card, GenConfig, TextElement, GenProgress, Project, Theme } from "@/lib/types";
 import { defaultTheme } from "@/lib/types";
 
 type RawCard = { background?: string; elements?: Record<string, unknown>[] };
@@ -10,7 +10,10 @@ import { newId, normalizeCard, enforceRoles } from "@/lib/ops";
 import { addUsage, type UsageEvent } from "@/lib/usage";
 import { extractCards, parseStructured } from "@/lib/stream";
 import { streamGenerate, streamVideoBg } from "@/lib/ai-transport";
-import type { GenerateBody } from "@/lib/requests";
+import type { GenerateBody, InstagramRef } from "@/lib/requests";
+import { uploadAttachment } from "@/lib/image";
+import { dressPhotoCard } from "@/lib/photoset";
+import { IG_URL_RE, fetchInstagram } from "@/lib/instagram";
 import { LangProvider, useLang } from "@/lib/i18n";
 import Home from "@/components/Home";
 import Editor from "@/components/Editor";
@@ -25,6 +28,7 @@ export default function App() {
 }
 
 const YT_RE = /(youtube\.com\/(watch|shorts|live|embed)|youtu\.be\/)/;
+
 const mmss = (t: number) => `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
 // Above this length we ask which segment to use — otherwise the transcript is
 // truncated to ~16k chars server-side and the tail is silently dropped.
@@ -56,6 +60,9 @@ function Root() {
   const [ytBusy, setYtBusy] = useState(false);
   const [ytPending, setYtPending] = useState<{ cfg: GenConfig; yt: YtResult } | null>(null);
   const projectsRef = useRef<Project[]>([]);
+  // The last generate request, handed back to Home so a failed run doesn't wipe
+  // the attached photos / script (Home unmounts while the draft editor shows).
+  const [lastCfg, setLastCfg] = useState<GenConfig | null>(null);
 
   useEffect(() => {
     void loadProjects().then((loaded) => {
@@ -79,11 +86,47 @@ function Root() {
   // Non-YouTube generates straight away; YouTube pre-fetches captions first (and
   // asks for a segment on long videos) before generating.
   function startGenerate(cfg: GenConfig) {
-    if (YT_RE.test(cfg.topic)) {
+    setLastCfg(cfg);
+    if (IG_URL_RE.test(cfg.topic)) {
+      void beginInstagram(cfg);
+    } else if (YT_RE.test(cfg.topic)) {
       void beginYoutube(cfg);
     } else {
       const topic = cfg.topic.trim();
-      void runGenerate(cfg, { requestTopic: topic, projectName: topic.slice(0, 24) || t("new_project_name") });
+      void runGenerate(cfg, { requestTopic: topic, projectName: nameFor(topic, cfg), autoName: !topic });
+    }
+  }
+
+  // Topic → else first script line → else a generic name.
+  function nameFor(topic: string, cfg: GenConfig, fallback?: string): string {
+    const firstLine = cfg.refText?.split("\n").find((l) => l.trim())?.trim();
+    return (topic || firstLine || fallback || t("new_project_name")).slice(0, 24);
+  }
+
+  // Instagram link in the bar: read every slide + caption/counts first, then
+  // generate with the post as the benchmark. Text around the link stays the topic.
+  async function beginInstagram(cfg: GenConfig) {
+    const url = IG_URL_RE.exec(cfg.topic)?.[0] ?? "";
+    const rest = cfg.topic.replace(url, "").trim();
+    setGenError(null);
+    setYtBusy(true);
+    try {
+      const ig = await fetchInstagram(url);
+      setYtBusy(false);
+      const requestTopic =
+        rest ||
+        (lang === "ko"
+          ? "레퍼런스 인스타 게시물의 형식을 벤치마킹해서 카드뉴스를 만들어줘"
+          : "Create a card set benchmarking the reference Instagram post's format");
+      void runGenerate(cfg, {
+        requestTopic,
+        projectName: nameFor(rest, cfg, ig.username ? `@${ig.username} ref` : undefined),
+        instagram: ig,
+        autoName: !rest,
+      });
+    } catch (e) {
+      setYtBusy(false);
+      setGenError(e instanceof Error ? e.message : "인스타 게시물을 읽지 못했습니다.");
     }
   }
 
@@ -156,7 +199,14 @@ function Root() {
   // Opens the Editor on an empty draft immediately, then streams cards into it.
   async function runGenerate(
     cfg: GenConfig,
-    req: { requestTopic: string; projectName: string; source?: Record<string, unknown>; bgFrame?: string },
+    req: {
+      requestTopic: string;
+      projectName: string;
+      source?: Record<string, unknown>;
+      bgFrame?: string;
+      instagram?: InstagramRef;
+      autoName?: boolean; // no topic typed → name the project after its cover title
+    },
   ) {
     const id = newId();
     const base: Project = {
@@ -170,11 +220,19 @@ function Root() {
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
+    const photos = cfg.photos ?? [];
+    // Auto count: a placeholder estimate for the skeleton strip until cards land.
+    const estimate = cfg.cardCount || (photos.length ? Math.min(Math.max(photos.length, 4), 8) : 6);
     setGenError(null);
     setDraft(base);
-    setGenProgress({ total: cfg.cardCount, done: 0, phase: "prep" });
+    setGenProgress({ total: estimate, done: 0, phase: "prep" });
 
     try {
+      // Photos go on cards by URL: /uploads/<hash> locally (dedup'd, same-origin
+      // for export), the inline data URL when the server can't write (hosted).
+      const photoUrls = await Promise.all(photos.map((p) => uploadAttachment(p.full)));
+      const dress = (c: Card, k: number) => (photoUrls.length ? dressPhotoCard(c, k, photoUrls) : c);
+
       const ref = projectsRef.current.find((p) => p.id === cfg.referenceId);
       const reference = ref
         ? {
@@ -196,6 +254,10 @@ function Root() {
         accent: cfg.accent,
         reference,
         source: req.source as GenerateBody["source"],
+        photos: photos.length ? photos.map((p) => p.api) : undefined,
+        refText: cfg.refText,
+        refImages: cfg.refImages,
+        instagram: req.instagram,
         lang,
       })) {
         if (ev.type === "delta") {
@@ -212,10 +274,14 @@ function Root() {
             if (partial.cards.length <= d.cards.length) {
               return theme ? { ...d, theme: nextTheme } : d;
             }
-            const added = partial.cards.slice(d.cards.length).map((c) => normalizeCard(c as RawCard, nextTheme));
+            const added = partial.cards
+              .slice(d.cards.length)
+              .map((c, i) => dress(normalizeCard(c as RawCard, nextTheme), d.cards.length + i));
             return { ...d, theme: nextTheme, cards: [...d.cards, ...added] };
           });
-          setGenProgress((g) => (g ? { total: g.total, done: partial.cards.length, phase: "cards" } : g));
+          setGenProgress((g) =>
+            g ? { total: Math.max(g.total, partial.cards.length), done: partial.cards.length, phase: "cards" } : g,
+          );
         } else if (ev.type === "error") {
           throw new Error(ev.error);
         } else if (ev.type === "done") {
@@ -229,10 +295,10 @@ function Root() {
       );
       const finalTheme = { ...defaultTheme(), ...(final.theme ?? {}) } as Theme;
       if (cfg.accent) finalTheme.accent = cfg.accent;
-      const cards = (final.cards ?? []).map((c) => normalizeCard(c as RawCard, finalTheme));
+      const cards = (final.cards ?? []).map((c, k) => dress(normalizeCard(c as RawCard, finalTheme), k));
       if (cards.length === 0) throw new Error("생성된 카드가 없습니다. 다시 시도해 주세요.");
       // Video frame → hook card background (heavy dark dim keeps light text legible).
-      if (req.bgFrame) {
+      if (req.bgFrame && photoUrls.length === 0) {
         cards[0] = {
           ...cards[0],
           background: `linear-gradient(180deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.4) 45%, rgba(0,0,0,0.72) 100%), url(${req.bgFrame}) center/cover no-repeat`,
@@ -240,15 +306,20 @@ function Root() {
       }
       // enforceRoles unifies same-role text styles + records project.styles, so
       // the set is consistent even if the model drifted card to card.
+      const coverTitle = cards[0]?.elements.find(
+        (e): e is TextElement => e.type === "text" && (e.role === "mega" || e.role === "title"),
+      );
+      const coverName = coverTitle?.text.replace(/\s+/g, " ").trim().slice(0, 24);
       const project: Project = enforceRoles({
         ...base,
-        name: req.projectName || base.name,
+        name: (req.autoName && coverName) || req.projectName || base.name,
         theme: finalTheme,
         cards,
         usage: addUsage(undefined, usage),
         updatedAt: Date.now(),
       });
       persist([...projectsRef.current, project]);
+      setLastCfg(null);
       setDraft(null);
       setGenProgress(null);
       setOpenId(project.id);
@@ -310,6 +381,7 @@ function Root() {
         projects={projects}
         error={genError}
         busy={ytBusy}
+        initial={genError ? lastCfg : null}
         onGenerate={startGenerate}
         onOpen={setOpenId}
         onCreate={(p) => {

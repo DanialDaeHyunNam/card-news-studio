@@ -26,6 +26,10 @@ interface CardViewProps {
   onBackgroundPointerDown?: () => void;
 }
 
+// Layered soft shadow: a tight one for glyph edges + a wide one that reads as a
+// local scrim, so white type stays legible over busy photos (reels-style).
+const TEXT_SHADOW = "0 2px 4px rgba(0,0,0,0.35), 0 4px 24px rgba(0,0,0,0.45)";
+
 export function cardHeight(format: Format, width: number): number {
   const { w, h } = FORMATS[format];
   return (width * h) / w;
@@ -100,6 +104,7 @@ export default function CardView({
                   letterSpacing: el.letterSpacing !== undefined ? `${el.letterSpacing}em` : undefined,
                   fontStyle: el.italic ? "italic" : undefined,
                   textDecoration: el.underline ? "underline" : undefined,
+                  textShadow: el.shadow ? TEXT_SHADOW : undefined,
                   whiteSpace: "pre-wrap",
                   wordBreak: "keep-all",
                   visibility: el.id === editingElementId ? "hidden" : undefined,
