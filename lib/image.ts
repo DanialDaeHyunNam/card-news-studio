@@ -145,3 +145,10 @@ export async function srcToModelImage(
     height: img.naturalHeight,
   };
 }
+
+export const IMAGE_ACCEPT = "image/*,.heic,.heif";
+
+// Image files only (incl. HEIC, whose MIME type is often empty on macOS).
+export function imageFiles(list: FileList | File[] | null | undefined): File[] {
+  return Array.from(list ?? []).filter((f) => f.type.startsWith("image/") || /\.hei[cf]$/i.test(f.name));
+}

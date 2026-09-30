@@ -105,6 +105,7 @@ export async function* claudeCliStream(model: ModelInfo, opts: AiRequest): Async
       "--verbose",
       "--include-partial-messages",
       "--model", alias,
+      ...(opts.effort ? ["--effort", opts.effort] : []),
       "--system-prompt", system,
       "--json-schema", JSON.stringify(opts.schema),
       "--tools", "",

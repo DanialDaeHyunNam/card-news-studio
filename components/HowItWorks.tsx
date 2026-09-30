@@ -1,7 +1,7 @@
 "use client";
 
 // "How it works" — a looping, pure-CSS product demo (no video files).
-// Panel A: topic → Claude drafts cards (+ structured ops). Panel B: canvas
+// Panel A: a reference post link → its slides → Claude drafts your set. Panel B: canvas
 // editing with snap guide + AI chat edit. Keyframes live in globals.css,
 // all synced to one 10s loop.
 import { useLang } from "@/lib/i18n";
@@ -18,8 +18,16 @@ export default function HowItWorks() {
         <div className="demo-panel">
           <div className="demo-window">
             <div className="demo-prompt">
+              <span className="demo-link">🔗</span>
               <span className="demo-typing">{t("demo_typing")}</span>
               <span className="demo-caret" />
+            </div>
+            {/* the reference's slides land, then the new set is drafted after them */}
+            <div className="demo-refs">
+              {[1, 2, 3, 4].map((n) => (
+                <i key={n} className={`demo-ref demo-ref-${n}`} />
+              ))}
+              <span className="demo-refs-label">→</span>
             </div>
             <div className="demo-cards">
               {[1, 2, 3].map((n) => (
@@ -31,7 +39,7 @@ export default function HowItWorks() {
                 </div>
               ))}
             </div>
-            <div className="demo-op">{`{ "op": "add_card" } ✓`}</div>
+            <div className="demo-op">{t("demo_op")}</div>
           </div>
           <div className="demo-caption">
             <strong>{t("how_cap1_t")}</strong>

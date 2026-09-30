@@ -19,6 +19,7 @@ import ChatPanel from "./ChatPanel";
 import ModelPicker from "./ModelPicker";
 import KeyPanel from "./KeyPanel";
 import Slideshow from "./Slideshow";
+import ReferenceCompare from "./ReferenceCompare";
 import InstallGuide from "./InstallGuide";
 
 const SNAP_PX = 6;
@@ -92,7 +93,9 @@ export default function Editor({ project, onChange, onClose, generating }: Edito
   // that used the old accent — the accent behaves like a variable/token.
   const [brandColor, setBrandColor] = useState<string>(() => {
     if (typeof window === "undefined") return project.theme.accent || "#3b82f6";
-    return window.localStorage.getItem("cardnews.accent") || project.theme.accent || "#3b82f6";
+    const saved = window.localStorage.getItem("cardnews.accent");
+    // "none" = the create wizard's "no point color" mode, not a color value.
+    return (saved && saved !== "none" ? saved : null) || project.theme.accent || "#3b82f6";
   });
 
   function setBrand(v: string) {
@@ -162,7 +165,9 @@ export default function Editor({ project, onChange, onClose, generating }: Edito
   const selectedEl = card?.elements.find((e) => e.id === selectedElId) ?? null;
   const editingEl = (card?.elements.find((e) => e.id === editingElId) ?? null) as TextElement | null;
 
-  const displayW = project.format === "9:16" ? 330 : 470;
+  // Side-by-side reference compare shrinks the canvas so both fit the stage.
+  const [compare, setCompare] = useState(false);
+  const displayW = compare ? (project.format === "9:16" ? 260 : 380) : project.format === "9:16" ? 330 : 470;
   const displayH = cardHeight(project.format, displayW);
   const scale = displayW / EXPORT_WIDTH;
 
@@ -289,6 +294,11 @@ export default function Editor({ project, onChange, onClose, generating }: Edito
       } else if (e.key === "Escape") {
         setEditingElId(null);
         setSelectedElId(null);
+      } else if ((e.key === "ArrowLeft" || e.key === "ArrowRight") && !typing && !selectedElId && !e.metaKey) {
+        // Card navigation without the strip (only when no element is selected).
+        e.preventDefault();
+        const n = projectRef.current.cards.length;
+        if (n) setCardIdx((i) => Math.max(0, Math.min(n - 1, Math.min(i, n - 1) + (e.key === "ArrowLeft" ? -1 : 1))));
       }
     };
     window.addEventListener("keydown", onKey);
@@ -587,7 +597,7 @@ export default function Editor({ project, onChange, onClose, generating }: Edito
                 {project.cards.length > 0
                   ? lang === "ko"
                     ? `카드 ${project.cards.length} / ${generating?.total} 만드는 중…`
-                    : `Building card ${project.cards.length} / ${generating?.total}…`
+                    : `Building slide ${project.cards.length} / ${generating?.total}…`
                   : t("gen_designing")}
               </div>
             </section>
@@ -646,6 +656,18 @@ export default function Editor({ project, onChange, onClose, generating }: Edito
             </aside>
 
             <section className="canvas-area">
+              <div className="canvas-col">
+              <div className="canvas-row">
+              {compare && (
+                <ReferenceCompare
+                  project={project}
+                  cardIdx={safeCardIdx}
+                  width={displayW}
+                  height={displayH}
+                  onAttach={(reference) => mutate((p) => void (p.reference = reference))}
+                />
+              )}
+              <div className="canvas-main">
               <div className="canvas-stage" ref={stageRef} style={{ width: displayW, height: displayH }}>
                 <CardView
                   card={card}
@@ -677,6 +699,39 @@ export default function Editor({ project, onChange, onClose, generating }: Edito
                     onDone={() => setEditingElId(null)}
                   />
                 )}
+              </div>
+              {/* under the card, like a slideshow's page indicator — lines up with
+                  the reference pane's own bar in compare mode */}
+              <div className="canvas-nav">
+                <button
+                  className="canvas-nav-btn"
+                  disabled={safeCardIdx === 0}
+                  title={t("ed_prev")}
+                  onClick={() => setCardIdx(safeCardIdx - 1)}
+                >
+                  ‹
+                </button>
+                <span className="canvas-nav-pos">
+                  {safeCardIdx + 1} / {project.cards.length}
+                </span>
+                <button
+                  className="canvas-nav-btn"
+                  disabled={safeCardIdx >= project.cards.length - 1}
+                  title={t("ed_next")}
+                  onClick={() => setCardIdx(safeCardIdx + 1)}
+                >
+                  ›
+                </button>
+                <button
+                  className={`canvas-nav-ref ${compare ? "on" : ""}`}
+                  title={t("ed_ref_title")}
+                  onClick={() => setCompare((v) => !v)}
+                >
+                  📎 {t("ed_ref_toggle")}
+                </button>
+              </div>
+              </div>
+              </div>
               </div>
             </section>
 

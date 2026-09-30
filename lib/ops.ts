@@ -242,7 +242,7 @@ export function roleSharedStyle(project: Project, role: string): RoleStyle {
 export function summarizeOps(project: Project, ops: Operation[]): string[] {
   const cardNum = (id?: string) => {
     const i = project.cards.findIndex((c) => c.id === id);
-    return i >= 0 ? `Card ${i + 1}` : "Card";
+    return i >= 0 ? `Slide ${i + 1}` : "Slide";
   };
   const keys = (patch?: Record<string, unknown>) => (patch ? Object.keys(patch).join(", ") : "");
   return ops.map((o) => {
@@ -258,9 +258,9 @@ export function summarizeOps(project: Project, ops: Operation[]): string[] {
       case "update_card":
         return `${cardNum(o.cardId)}: background`;
       case "add_card":
-        return `+ card`;
+        return `+ slide`;
       case "remove_card":
-        return `${cardNum(o.cardId)}: − card`;
+        return `${cardNum(o.cardId)}: − slide`;
       case "update_theme":
         return `Theme: ${keys(o.patch)}`;
       case "update_style":

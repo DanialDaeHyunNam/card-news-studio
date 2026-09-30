@@ -11,7 +11,7 @@ export type Mentionable =
 
 const LABEL = {
   ko: { card: "카드", image: "사진" },
-  en: { card: "card", image: "img" },
+  en: { card: "slide", image: "img" },
 } as const;
 
 // Every image a card shows (image elements + a url() background), in card order.
@@ -68,4 +68,4 @@ export const hasToken = (text: string, token: string) => tokenRe(token).test(tex
 export const removeToken = (text: string, token: string) => text.replace(tokenRe(token, "g", " ?"), "");
 
 // Split text into plain + mention-token runs, for highlighting in bubbles.
-export const MENTION_TOKEN_RE = /(@(?:카드|사진|card|img)\d+)/g;
+export const MENTION_TOKEN_RE = /(@(?:카드|사진|slide|card|img)\d+)/g;

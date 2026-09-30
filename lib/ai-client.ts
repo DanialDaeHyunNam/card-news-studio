@@ -9,6 +9,7 @@
 import { resolveModel, type ModelInfo } from "./models";
 import { openaiCompatStream, type StreamEvent } from "./ai-compat";
 import type { AiRequest } from "./requests";
+import { anthropicCall, anthropicCost, refusalError } from "./ai-anthropic";
 
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION = "2023-06-01";
@@ -27,6 +28,8 @@ export async function* streamDirect(req: AiRequest, apiKey: string): AsyncGenera
 // "dangerous" warns against shipping the OPERATOR'S key to clients; sending the
 // user's own key from their own browser is exactly the intended use.
 async function* anthropicDirect(model: ModelInfo, req: AiRequest, apiKey: string): AsyncGenerator<StreamEvent> {
+  // Same body as the server path (lib/ai-anthropic.ts) — one shape, two transports.
+  const { body, betas } = anthropicCall(model, req);
   const res = await fetch(ANTHROPIC_URL, {
     method: "POST",
     headers: {
@@ -34,16 +37,9 @@ async function* anthropicDirect(model: ModelInfo, req: AiRequest, apiKey: string
       "x-api-key": apiKey,
       "anthropic-version": ANTHROPIC_VERSION,
       "anthropic-dangerous-direct-browser-access": "true",
+      ...(betas.length ? { "anthropic-beta": betas.join(",") } : {}),
     },
-    body: JSON.stringify({
-      model: model.id,
-      max_tokens: 16000,
-      stream: true,
-      thinking: { type: "adaptive" },
-      system: req.system,
-      messages: [{ role: "user", content: req.content }],
-      output_config: { format: { type: "json_schema", schema: req.schema } },
-    }),
+    body: JSON.stringify({ ...body, stream: true }),
   });
 
   if (!res.ok || !res.body) {
@@ -119,18 +115,13 @@ async function* anthropicDirect(model: ModelInfo, req: AiRequest, apiKey: string
     }
   }
 
+  if (stopReason === "refusal") throw refusalError();
   if (stopReason === "max_tokens") {
     throw new Error("응답이 너무 길어 잘렸습니다. 요청을 나눠서 시도해 주세요.");
   }
   if (!full) throw new Error("모델이 텍스트 응답을 반환하지 않았습니다.");
 
-  const p = model.pricing!;
-  const costUsd =
-    (inputTokens * p.inPerMTok +
-      outputTokens * p.outPerMTok +
-      cacheReadTokens * p.inPerMTok * 0.1 +
-      cacheCreationTokens * p.inPerMTok * 1.25) /
-    1_000_000;
+  const costUsd = anthropicCost(model, { inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens });
 
   yield {
     type: "done",

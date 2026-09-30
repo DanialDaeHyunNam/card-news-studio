@@ -20,7 +20,7 @@ const SECTIONS: Section[] = [
     body: [
       [
         "브라우저에서 쓸 때, 만든 카드뉴스·채팅 기록·설정은 전부 이 브라우저(localStorage)에만 저장됩니다. 서버에 업로드되거나 저장되지 않으며, 운영자는 볼 수 없습니다. 브라우저 데이터를 지우면 함께 사라지니 ⬇ 내보내기로 백업하세요.",
-        "In the browser, everything you make — card sets, chat history, settings — is stored only in this browser (localStorage). Nothing is uploaded to or stored on a server, and the operator cannot see it. Clearing browser data erases it, so back up with ⬇ export.",
+        "In the browser, everything you make — carousels, chat history, settings — is stored only in this browser (localStorage). Nothing is uploaded to or stored on a server, and the operator cannot see it. Clearing browser data erases it, so back up with ⬇ export.",
       ],
       [
         "로컬 설치에서 쓸 때는 작업물이 당신 컴퓨터의 파일(data/projects)로 저장됩니다. 어디로도 전송되지 않습니다.",
@@ -46,7 +46,7 @@ const SECTIONS: Section[] = [
     body: [
       [
         "AI 생성/편집을 실행하면 입력한 주제·카드 내용·첨부 이미지(유튜브 링크를 쓰면 해당 영상의 자막 포함)가 당신이 선택한 제공자(Anthropic, OpenAI, Google)의 API로 전송됩니다. 그 데이터의 취급은 각 제공자의 개인정보 정책을 따릅니다: anthropic.com/privacy · openai.com/policies/privacy-policy · policies.google.com/privacy",
-        "When you run an AI generation or edit, the topic, card contents and attached images you provide (plus video captions if you used a YouTube link) are sent to the provider you selected (Anthropic, OpenAI, or Google). That data is then governed by the provider's own privacy policy: anthropic.com/privacy · openai.com/policies/privacy-policy · policies.google.com/privacy",
+        "When you run an AI generation or edit, the topic, slide contents and attached images you provide (plus video captions if you used a YouTube link) are sent to the provider you selected (Anthropic, OpenAI, or Google). That data is then governed by the provider's own privacy policy: anthropic.com/privacy · openai.com/policies/privacy-policy · policies.google.com/privacy",
       ],
       [
         "유튜브 링크의 자막·썸네일을 가져오는 것과 무료 사진 라이브러리 프록시는 키나 개인 데이터 없이 이 사이트의 서버를 경유합니다.",

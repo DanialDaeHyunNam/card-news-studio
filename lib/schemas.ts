@@ -163,3 +163,63 @@ export const chatSchema = {
     operations: { type: "array", items: operationSchema },
   },
 };
+
+// Analysis step (lib/prompts.ts planSystem). Kept flat and enum-constrained so
+// every track (Anthropic structured outputs, CLI --json-schema, OpenAI
+// json_object) produces the same shape; lib/harness.ts normalizes it anyway.
+export const planSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["reply", "referenceLayout", "style", "cardCount", "cards", "sufficient", "needMore", "question", "options"],
+  properties: {
+    reply: { type: "string" },
+    referenceLayout: { type: "string" },
+    // The reference's visual + narrative spec, applied to generation AND to the
+    // client's photo dressing (lib/photoset.ts RefStyle). Numbers: px @1080 wide.
+    style: {
+      type: "object",
+      additionalProperties: false,
+      required: [
+        "dim", "scrim", "textColor", "accentColor", "textEffect", "align", "anchor",
+        "headlineSize", "bodySize", "headlineWeight", "letterCase", "levels",
+        "wordsPerSlide", "hierarchy", "storyPattern", "voice",
+      ],
+      properties: {
+        dim: { type: "number" },
+        scrim: { type: "string", enum: ["none", "uniform", "top", "bottom", "text"] },
+        textColor: { type: "string" },
+        accentColor: { type: "string" },
+        textEffect: { type: "string", enum: ["shadow", "none"] },
+        align: { type: "string", enum: ["left", "center", "right"] },
+        anchor: { type: "string", enum: ["top", "center", "bottom", "free"] },
+        headlineSize: { type: "number" },
+        bodySize: { type: "number" },
+        headlineWeight: { type: "number" },
+        letterCase: { type: "string", enum: ["lower", "sentence", "upper", "as-is"] },
+        levels: { type: "integer" },
+        wordsPerSlide: { type: "integer" },
+        hierarchy: { type: "string" },
+        storyPattern: { type: "string" },
+        voice: { type: "string" },
+      },
+    },
+    cardCount: { type: "integer" },
+    cards: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["layout", "photos", "idea"],
+        properties: {
+          layout: { type: "string", enum: ["full", "stack2", "side2", "stack3", "grid4", "none"] },
+          photos: { type: "array", items: { type: "integer" } },
+          idea: { type: "string" },
+        },
+      },
+    },
+    sufficient: { type: "boolean" },
+    needMore: { type: "integer" },
+    question: { type: "string" },
+    options: { type: "array", items: { type: "string" } },
+  },
+};
