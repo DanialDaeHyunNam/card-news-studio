@@ -5,7 +5,12 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "desktop:build": "node scripts/build-desktop.mjs",
+    "desktop": "electron .",
+    "desktop:dev": "bun build ./electron/main.ts --target=node --format=cjs --external=electron --outfile dist-electron/main.cjs && bun build ./electron/preload.ts --target=node --format=cjs --external=electron --outfile dist-electron/preload.cjs && CARDNEWS_DEV_URL=${CARDNEWS_DEV_URL:-http://localhost:3457} electron .",
+    "dist:mac": "node scripts/build-desktop.mjs && electron-builder --mac",
+    "dist:win": "node scripts/build-desktop.mjs && electron-builder --win"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.129.0",
@@ -19,6 +24,12 @@
     "@types/node": "^26.1.0",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
+    "electron": "^43",
+    "electron-builder": "^26",
+    "electron-updater": "^6",
     "typescript": "^6.0.3"
-  }
+  },
+  "description": "AI carousel / card news maker — topic or reference post in, editable slides out.",
+  "author": "DaeHyun Nam",
+  "main": "dist-electron/main.cjs"
 }

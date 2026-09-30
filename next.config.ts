@@ -38,7 +38,28 @@ const csp = [
   "frame-ancestors 'self'",
 ].join("; ");
 
+// The desktop app (electron/) embeds Next's standalone server. Only its build
+// sets CARDNEWS_STANDALONE (scripts/build-desktop.mjs) — Vercel and `bun dev`
+// keep the default output. The tracing root is pinned to this folder so the
+// standalone tree doesn't nest under a parent workspace directory. Routes that
+// read under process.cwd() make the tracer pull in the whole repo — the server
+// needs none of it (sources are compiled into .next; user data lives in
+// userData), so it's excluded here. .env* never ships.
+const standalone = process.env.CARDNEWS_STANDALONE === "1";
+const TRACE_EXCLUDES = [
+  "./app/**", "./components/**", "./lib/**", "./electron/**", "./scripts/**", "./build/**",
+  "./data/**", "./public/**", "./release/**", "./dist-electron/**", "./.git/**",
+  "./*.md", "./.env*", "./LICENSE", "./bun.lock", "./tsconfig*", "./electron-builder.yml",
+  "./instrumentation.ts", "./next.config.ts",
+  "./.vercel/**", "./.gstack/**", "./.omniscitus/**", "./.gitignore", "./.vercelignore", "./.tool-versions",
+];
+
 const nextConfig: NextConfig = {
+  ...(standalone ? {
+        output: "standalone" as const,
+        outputFileTracingRoot: process.cwd(),
+        outputFileTracingExcludes: { "*": TRACE_EXCLUDES },
+      } : {}),
   env: { NEXT_PUBLIC_APP_VERSION: process.env.NEXT_PUBLIC_APP_VERSION || version },
   async headers() {
     return [{ source: "/(.*)", headers: [{ key: "Content-Security-Policy", value: csp }] }];

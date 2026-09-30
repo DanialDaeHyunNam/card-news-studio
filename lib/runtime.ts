@@ -32,3 +32,16 @@ export function uploadsDir(): string {
 }
 
 export const LOCAL_ONLY_ERROR = "로컬 앱(데스크톱 또는 bun dev)에서만 사용할 수 있습니다.";
+
+// Official desktop builds gate AI on a license or the trial. electron/main.ts
+// sets CARDNEWS_ENTITLED at spawn and pushes changes over parentPort
+// (instrumentation.ts applies them). Everything else — dev, hosted, source
+// builds — is always entitled.
+export const isEntitled = (): boolean => !isDesktopRuntime() || process.env.CARDNEWS_ENTITLED !== "0";
+
+export function notEntitledResponse(): Response {
+  return Response.json(
+    { error: "무료 사용 기간이 끝났어요. 라이선스 키를 입력하면 계속 쓸 수 있어요.", code: "license_required" },
+    { status: 402 },
+  );
+}
