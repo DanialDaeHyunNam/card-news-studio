@@ -125,6 +125,33 @@ auto-selects a model whose key is connected.
   types an answer → re-plan with the dialogue. Sufficient → generation with
   `plan` (photoPlanRules: text per slot; client `dressPlannedCard` lays the
   photos). Verified live 2026-09 on the subscription (reference = 8× stack2).
+- **Photo framing**: ImageElement `focusX/focusY` (object-position %, default
+  50) + `zoom` (1–3, transform-origin at the focus). On the canvas a plain drag
+  on a cover-fit photo PANS inside the frame (Editor drag mode "pan"; span =
+  cover overflow×zoom + frame×(zoom−1) so the photo tracks the pointer); ⌥/Alt+
+  drag moves the frame. Inspector: zoom slider + reset. AI chat reframes via
+  focusX/Y/zoom ("face is cut off") instead of moving x/y.
+- **Chat recipes** (chatSystem): layout presets with slot rects ("make this a
+  top/bottom two-photo slide" → first photo to slot 1, new image at index 1,
+  texts + their decorative bars into their slots; no photo given → reuse a
+  different photo from the set) and "remove the accent color" (theme.accent =
+  textColor, accent text → textColor, remove small accent shapes). Verified
+  2026-09 with the ops applied through applyOperations.
+- **Output language** (`lib/lang.ts`): copy language is NOT the UI language.
+  Wizard step 2 "Output language" = Auto (default) | explicit. Auto detects
+  from the source text (script → story → notes) by script: Hangul/Kana/Han
+  (简/繁)/Thai/Cyrillic/Vietnamese → that language; other Latin → "same
+  language as the source". `outputLangRule` feeds both plan and generate and
+  guards against drift toward the Korean prompt text / the reference post's
+  language. Chat copy follows the existing slides' language.
+- **Creator brief** (`Project.brief`, `CreatorBrief`): generation must decide
+  audience / purpose / contentType / keepOriginal / languageNote BEFORE writing
+  copy (generateSchema `brief` first); the wizard's "Purpose & audience" field
+  (`intent`) overrides inference. keepOriginal = what the content teaches or
+  names (e.g. the Korean words in an English lesson) — never translated. The
+  brief is sent with every chat edit and the chat can refine it with the
+  `update_brief` op (merged; keepOriginal accumulates). Verified 2026-09 on the
+  "Korean 개 for English speakers" case (gen + one-shot chat fix).
 - **Reference style spec** (`RefStyle`, lib/photoset.ts): the analysis step
   also MEASURES the reference — dim + scrim, text color/effect, anchor/align,
   hierarchy (levels, headline/body px, weight, letter case, words per slide),

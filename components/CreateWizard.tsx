@@ -23,6 +23,7 @@ import {
   type WizardState,
 } from "@/lib/wizard";
 import { trackEvent } from "@/lib/analytics";
+import { detectLang, langLabel, OUTPUT_LANGS, sourceText, type OutputLang } from "@/lib/lang";
 import { sortLibrary, type RefEntry } from "@/lib/references";
 import { runPlan, slotsNeeded, type Plan } from "@/lib/harness";
 import { LAYOUT_SLOTS } from "@/lib/photoset";
@@ -131,6 +132,8 @@ export default function CreateWizard(props: Props) {
           photos: w.photos.map((p) => p.api),
           referencePost: w.refSource === "url" ? (w.refPost ?? undefined) : undefined,
           dialogue,
+          outputLang: w.outputLang,
+          intent: w.intent,
           lang,
           model: w.model,
         },
@@ -639,6 +642,21 @@ function GoalStep({ w, patch }: { w: WizardState; patch: (p: Partial<WizardState
       )}
 
       {w.goal && (
+        <label className="wz-field">
+          <span>{t("wz_intent")}</span>
+          <textarea
+            rows={2}
+            value={w.intent}
+            placeholder={t("wz_intent_ph")}
+            onChange={(e) => patch({ intent: e.target.value })}
+          />
+          <small className="wz-hint">{t("wz_intent_hint")}</small>
+        </label>
+      )}
+
+      {w.goal && <OutputLangField w={w} patch={patch} />}
+
+      {w.goal && (
         <div className="wz-more">
           {!showMore ? (
             <button className="link-mini" onClick={() => setShowMore(true)}>
@@ -947,7 +965,10 @@ function ModelStep({
         </li>
         <li>
           <span>{t("wz_s2")}</span>
-          <b>{w.goal === "video" ? t("wz_goal_video_short") : t("wz_goal_story_short")}</b>
+          <b>
+            {w.goal === "video" ? t("wz_goal_video_short") : t("wz_goal_story_short")} ·{" "}
+            {w.outputLang === "auto" ? t("wz_lang_auto") : langLabel(w.outputLang)}
+          </b>
         </li>
         <li>
           <span>{t("wz_s3")}</span>
@@ -1176,5 +1197,33 @@ function LibraryStrip({ library, onPick }: { library: RefEntry[]; onPick: (e: Re
         ))}
       </div>
     </div>
+  );
+}
+
+// Copy language — "auto" follows the subtitles/script/story (live-detected).
+function OutputLangField({ w, patch }: { w: WizardState; patch: (p: Partial<WizardState>) => void }) {
+  const { t } = useLang();
+  const src = sourceText(w.goal === "video" ? [w.script, w.extra] : [w.story]);
+  const d = detectLang(src);
+  const autoLabel = d === "latin" ? t("wz_lang_auto_same") : d ? langLabel(d) : t("wz_lang_auto_ui");
+  return (
+    <label className="wz-field wz-lang">
+      <span>{t("wz_lang")}</span>
+      <select
+        className="ctl"
+        value={w.outputLang}
+        onChange={(e) => patch({ outputLang: e.target.value as OutputLang })}
+      >
+        <option value="auto">
+          {t("wz_lang_auto")} — {autoLabel}
+        </option>
+        {OUTPUT_LANGS.map((l) => (
+          <option key={l.code} value={l.code}>
+            {l.label}
+          </option>
+        ))}
+      </select>
+      <small className="wz-hint">{t("wz_lang_hint")}</small>
+    </label>
   );
 }

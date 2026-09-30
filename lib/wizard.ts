@@ -12,6 +12,7 @@
 import type { Format, GenConfig, GenPhoto } from "./types";
 import type { ReferencePost } from "./reference";
 import type { TemplateRef } from "./requests";
+import type { OutputLang } from "./lang";
 
 export type RefSource = "url" | "template" | "project" | "none";
 export type Goal = "video" | "story";
@@ -40,6 +41,8 @@ export interface WizardState {
   extra: string; // what else to reflect (video)
   story: string; // the story (new card set)
   notes: string; // analytics / extra notes (either goal)
+  outputLang: OutputLang; // copy language — "auto" follows the script/story's language
+  intent: string; // creator's purpose & audience, in their words (optional but steers all copy)
   refImages: RefImage[]; // screenshots (insights, script)
   // 3. design
   cardCount: number; // 0 = auto
@@ -69,6 +72,8 @@ export function initialWizard(): WizardState {
     extra: "",
     story: "",
     notes: "",
+    outputLang: "auto",
+    intent: "",
     refImages: [],
     cardCount: 0,
     designNotes: "",
@@ -141,6 +146,8 @@ export function toGenConfig(
     referenceId: s.refSource === "project" ? s.projectRefId ?? undefined : undefined,
     photos: s.photos.length ? s.photos : undefined,
     refText: s.notes.trim() || undefined,
+    outputLang: s.outputLang,
+    intent: s.intent.trim() || undefined,
     refImages: s.refImages.length ? s.refImages.map((r) => r.api) : undefined,
   };
 }

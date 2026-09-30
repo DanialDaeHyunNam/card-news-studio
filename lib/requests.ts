@@ -17,6 +17,7 @@ import {
 } from "./prompts";
 import { generateSchema, chatSchema, planSchema } from "./schemas";
 import { LAYOUT_SLOTS, type PlannedCard, type RefStyle } from "./photoset";
+import { outputLangRule, sourceText, type OutputLang } from "./lang";
 import { FORMATS, type ChatMessage, type Format, type Project, type Theme } from "./types";
 
 export type MsgContent = Anthropic.MessageParam["content"];
@@ -110,6 +111,8 @@ export interface GenerateBody {
   reference?: { theme: Theme; sampleTexts: string[] }; // continue a previous project's style
   plan?: PlannedCard[]; // from the analysis step: fixed card count, layout + photo per slot
   refStyle?: RefStyle; // the reference's measured look + narrative (analysis step)
+  outputLang?: OutputLang; // copy language: "auto" = follow the source content (default)
+  intent?: string; // the creator's stated purpose & audience — top priority for the copy
 }
 
 function planText(plan: PlannedCard[]): string {
@@ -147,6 +150,9 @@ export function buildGenerateRequest(body: GenerateBody): AiRequest {
         ? `## 카드 수\n자동 — 내용에 맞게 3~10장 사이에서 결정`
         : `## 카드 수\n${Math.min(Math.max(body.cardCount ?? 6, 2), 12)}장 (훅 카드와 CTA 카드 포함)`,
   ];
+  if (body.intent?.trim()) {
+    parts.unshift(`## 제작자가 밝힌 의도·타깃 (최우선 — brief와 모든 카피가 이걸 따를 것)\n${body.intent.trim().slice(0, 1500)}`);
+  }
   if (video && body.script?.trim()) {
     parts.push(`## 영상 자막/스크립트 (원문)\n${body.script.trim().slice(0, 16000)}`);
   }
@@ -185,7 +191,12 @@ export function buildGenerateRequest(body: GenerateBody): AiRequest {
     );
   }
 
-  let system = generateSystem(body.format, body.lang);
+  const langRule = outputLangRule(
+    body.outputLang,
+    sourceText([body.script, body.topic, body.refText]),
+    body.lang ?? "ko",
+  );
+  let system = generateSystem(body.format, body.lang, langRule);
   const hasStyle = !!body.refStyle;
   if (photos.length > 0) {
     system += body.plan?.length
@@ -270,6 +281,7 @@ function sanitizeProject(project: Project) {
     id: project.id,
     name: project.name,
     format: project.format,
+    brief: project.brief, // creator intent — every edit is interpreted in its light
     theme: project.theme,
     cards: project.cards.map((c, i) => ({
       n: i + 1,
@@ -426,6 +438,8 @@ export interface PlanBody {
   photos?: string[]; // model-sized data URLs, labelled 사진 N
   referencePost?: ReferencePost;
   dialogue?: { question: string; answer: string }[]; // earlier ask → answer turns
+  outputLang?: OutputLang;
+  intent?: string;
   lang?: "ko" | "en";
   model?: string;
 }
@@ -445,6 +459,8 @@ export function buildPlanRequest(body: PlanBody): AiRequest {
       ? `## 목표: 영상을 캐러셀로\n${body.topic || ""}\n\n## 자막/스크립트(발췌)\n${(body.script ?? "").slice(0, 6000)}`
       : `## 목표: 새 카드뉴스 — 스토리\n${body.topic}`,
     body.designNotes?.trim() ? `## 디자인 요청\n${body.designNotes.trim()}` : "",
+    body.intent?.trim() ? `## 제작자가 밝힌 의도·타깃 (최우선)\n${body.intent.trim().slice(0, 1500)}` : "",
+    outputLangRule(body.outputLang, sourceText([body.script, body.topic]), body.lang ?? "ko"),
     body.dialogue?.length
       ? `## 지금까지의 확인 질문과 사용자 답변 (반드시 반영)\n${body.dialogue.map((d, i) => `Q${i + 1}: ${d.question}\nA${i + 1}: ${d.answer}`).join("\n")}`
       : "",

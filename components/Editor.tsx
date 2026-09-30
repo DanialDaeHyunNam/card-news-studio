@@ -25,7 +25,12 @@ import InstallGuide from "./InstallGuide";
 const SNAP_PX = 6;
 
 interface DragState {
-  mode: "move" | "resize";
+  mode: "move" | "resize" | "pan"; // pan = reframe a photo inside its frame
+  // pan: starting focus + display px the photo moves per 100% of focus change
+  baseFX?: number;
+  baseFY?: number;
+  spanX?: number;
+  spanY?: number;
   cardId: string;
   elId: string;
   startClientX: number;
@@ -208,6 +213,44 @@ export default function Editor({ project, onChange, onClose, generating }: Edito
     setSelectedElId(el.id);
     const cardNode = stageRef.current?.querySelector<HTMLElement>(".cardview");
     if (!cardNode) return;
+    // Photos (cover fit): a plain drag reframes the photo INSIDE its frame;
+    // ⌥/Alt + drag moves the frame itself.
+    if (mode === "move" && el.type === "image" && el.fit === "cover" && !e.altKey) {
+      const img = cardNode.querySelector<HTMLImageElement>(`[data-el-id="${el.id}"] img`);
+      const fw = (el.w / 100) * displayW;
+      const fh = (el.h / 100) * displayH;
+      const nw = img?.naturalWidth || fw;
+      const nh = img?.naturalHeight || fh;
+      const zoom = el.zoom ?? 1;
+      const cover = Math.max(fw / nw, fh / nh);
+      // Visual shift per 100% of focus: object-position overflow (scaled by the
+      // zoom transform) + the zoom's own origin travel.
+      const spanX = (nw * cover - fw) * zoom + fw * (zoom - 1);
+      const spanY = (nh * cover - fh) * zoom + fh * (zoom - 1);
+      dragRef.current = {
+        mode: "pan",
+        cardId: card.id,
+        elId: el.id,
+        startClientX: e.clientX,
+        startClientY: e.clientY,
+        baseX: el.x,
+        baseY: el.y,
+        baseW: el.w,
+        baseH: el.h,
+        measuredH: el.h,
+        hasH: true,
+        targetsV: [],
+        targetsH: [],
+        displayW,
+        displayH,
+        pushed: false,
+        baseFX: el.focusX ?? 50,
+        baseFY: el.focusY ?? 50,
+        spanX,
+        spanY,
+      };
+      return;
+    }
     const { targetsV, targetsH, rects } = collectTargets(cardNode, el.id);
     const measured = rects.get(el.id);
     dragRef.current = {
@@ -238,6 +281,16 @@ export default function Editor({ project, onChange, onClose, generating }: Edito
       if (!d.pushed) {
         pushHistory();
         d.pushed = true;
+      }
+      if (d.mode === "pan") {
+        // Dragging right reveals more of the photo's left → focus goes down.
+        const px = ev.clientX - d.startClientX;
+        const py = ev.clientY - d.startClientY;
+        const fx = d.spanX && d.spanX > 0.5 ? d.baseFX! - (px / d.spanX) * 100 : d.baseFX!;
+        const fy = d.spanY && d.spanY > 0.5 ? d.baseFY! - (py / d.spanY) * 100 : d.baseFY!;
+        const clamp = (v: number) => Math.round(Math.min(100, Math.max(0, v)) * 10) / 10;
+        patchElement(d.cardId, d.elId, { focusX: clamp(fx), focusY: clamp(fy) });
+        return;
       }
       const dx = ((ev.clientX - d.startClientX) / d.displayW) * 100;
       const dy = ((ev.clientY - d.startClientY) / d.displayH) * 100;

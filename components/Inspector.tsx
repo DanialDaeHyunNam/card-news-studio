@@ -476,6 +476,31 @@ export default function Inspector({
                   onChange={(e) => onPatchElement({ dim: Number(e.target.value) })}
                 />
               </label>
+              {element.fit === "cover" && (
+                <div className="field framing">
+                  <span>
+                    {t("insp_zoom")} · {Math.round((element.zoom ?? 1) * 100)}%
+                    {(element.focusX ?? 50) !== 50 || (element.focusY ?? 50) !== 50 || (element.zoom ?? 1) !== 1 ? (
+                      <button
+                        className="framing-reset"
+                        onClick={() => onPatchElement({ focusX: 50, focusY: 50, zoom: 1 }, true)}
+                      >
+                        ↺ {t("insp_framing_reset")}
+                      </button>
+                    ) : null}
+                  </span>
+                  <input
+                    type="range"
+                    min={1}
+                    max={3}
+                    step={0.05}
+                    value={element.zoom ?? 1}
+                    onPointerDown={beginEdit}
+                    onChange={(e) => onPatchElement({ zoom: Number(e.target.value) })}
+                  />
+                  <p className="hint">{t("insp_framing_hint")}</p>
+                </div>
+              )}
               <div className="subject-tools">
                 <button className="btn small" onClick={() => void separateSubject(element)}>
                   {t("insp_subject_sep")}

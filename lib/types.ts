@@ -89,6 +89,12 @@ export interface ImageElement {
   radius: number;
   dim?: number; // 0–1 black overlay opacity over the image (scrim for text readability)
   opacity?: number; // 0–1 element alpha (default 1)
+  // Framing inside the element (cover fit): which part of the photo shows.
+  // focusX/Y = CSS object-position % (default 50/50); zoom = 1–3 scale about
+  // that point. Dragging a photo on the canvas pans these, not x/y.
+  focusX?: number;
+  focusY?: number;
+  zoom?: number;
 }
 
 export type CardElement = TextElement | ShapeElement | ImageElement;
@@ -97,6 +103,15 @@ export interface Card {
   id: string;
   background: string; // CSS color or gradient
   elements: CardElement[];
+}
+
+export interface CreatorBrief {
+  intent?: string; // the creator's own words (wizard / chat)
+  audience: string;
+  purpose: string;
+  contentType: string;
+  keepOriginal: string[];
+  languageNote: string; // e.g. "explanations in English, the Korean expressions stay in Hangul"
 }
 
 export interface Theme {
@@ -129,6 +144,11 @@ export interface Project {
   // it side by side (Editor "Reference" compare). Slides are small copies
   // (/uploads URLs locally, ≤480px data URLs when hosted).
   reference?: { platform: string; url: string; author: string; caption: string; slides: string[] };
+  // What the creator is making, for whom — decided at generation (from the
+  // wizard's intent field + the model's read of the content) and kept so every
+  // later chat edit writes copy in that context. `keepOriginal` = terms that must
+  // never be translated/replaced (e.g. the Korean words an English lesson teaches).
+  brief?: CreatorBrief;
   createdAt: number;
   updatedAt: number;
 }
@@ -146,12 +166,14 @@ export interface Operation {
     | "add_card"
     | "remove_card"
     | "update_theme"
-    | "update_style"; // change a role's shared typography → propagates to all same-role text
+    | "update_style" // change a role's shared typography → propagates to all same-role text
+    | "update_brief"; // record/refine the creator brief (intent, audience, terms to keep as-is)
   cardId?: string;
   elementId?: string;
   index?: number;
   role?: string; // for update_style: which role's shared style to change
   patch?: Record<string, unknown>;
+  brief?: Partial<CreatorBrief>; // for update_brief
   element?: Record<string, unknown>;
   card?: { background?: string; elements?: Record<string, unknown>[] };
 }
@@ -177,6 +199,8 @@ export interface GenConfig {
   refImages?: string[]; // screenshots (script, insights) — model-sized data URLs
   plan?: import("./photoset").PlannedCard[]; // analysis-step result: fixed cards + photo per slot
   refStyle?: import("./photoset").RefStyle; // the reference's measured look + narrative
+  outputLang?: import("./lang").OutputLang; // copy language ("auto" = follow the source content)
+  intent?: string; // creator's stated purpose & audience (wizard step 2)
   planUsage?: import("./usage").UsageEvent[]; // analysis passes — counted into the project's spend
 }
 // A user photo for a photo-set generation. `full` is what lands on the card
