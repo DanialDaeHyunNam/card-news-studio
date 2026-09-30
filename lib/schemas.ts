@@ -59,6 +59,9 @@ const imageElement = {
     radius: { type: "number" },
     dim: { type: "number" },
     opacity: { type: "number" },
+    focusX: { type: "number" },
+    focusY: { type: "number" },
+    zoom: { type: "number" },
   },
 };
 
@@ -74,11 +77,25 @@ const cardSchema = {
   },
 };
 
+const briefSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["audience", "purpose", "contentType", "keepOriginal", "languageNote"],
+  properties: {
+    audience: { type: "string" },
+    purpose: { type: "string" },
+    contentType: { type: "string" },
+    keepOriginal: { type: "array", items: { type: "string" } },
+    languageNote: { type: "string" },
+  },
+};
+
 export const generateSchema = {
   type: "object",
   additionalProperties: false,
-  required: ["theme", "cards"],
+  required: ["brief", "theme", "cards"],
   properties: {
+    brief: briefSchema, // decided FIRST — the copy is written to serve it
     theme: {
       type: "object",
       additionalProperties: false,
@@ -117,6 +134,9 @@ const patchSchema = {
     fit: { type: "string", enum: ["cover", "contain"] },
     dim: { type: "number" },
     opacity: { type: "number" },
+    focusX: { type: "number" },
+    focusY: { type: "number" },
+    zoom: { type: "number" },
     src: { type: "string" }, // image element source (URL or attachment:N)
     background: { type: "string" },
     textColor: { type: "string" },
@@ -142,6 +162,7 @@ const operationSchema = {
         "remove_card",
         "update_theme",
         "update_style",
+        "update_brief",
       ],
     },
     cardId: { type: "string" },
@@ -151,6 +172,7 @@ const operationSchema = {
     patch: patchSchema,
     element: anyElement,
     card: cardSchema,
+    brief: briefSchema, // for update_brief
   },
 };
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { Card, GenConfig, TextElement, GenProgress, Project, Theme } from "@/lib/types";
+import type { Card, CreatorBrief, GenConfig, TextElement, GenProgress, Project, Theme } from "@/lib/types";
 import { defaultTheme } from "@/lib/types";
 
 type RawCard = { background?: string; elements?: Record<string, unknown>[] };
@@ -221,6 +221,8 @@ function Root() {
         templateRef: cfg.templateRef,
         plan: cfg.plan,
         refStyle: cfg.refStyle,
+        outputLang: cfg.outputLang,
+        intent: cfg.intent,
         lang,
       })) {
         if (ev.type === "delta") {
@@ -253,7 +255,11 @@ function Root() {
         }
       }
 
-      const final = parseStructured<{ theme?: Record<string, unknown>; cards?: Record<string, unknown>[] }>(
+      const final = parseStructured<{
+        brief?: Partial<CreatorBrief>;
+        theme?: Record<string, unknown>;
+        cards?: Record<string, unknown>[];
+      }>(
         doneText || acc,
       );
       const finalTheme = { ...defaultTheme(), ...(final.theme ?? {}) } as Theme;
@@ -274,9 +280,23 @@ function Root() {
         (e): e is TextElement => e.type === "text" && (e.role === "mega" || e.role === "title"),
       );
       const coverName = coverTitle?.text.replace(/\s+/g, " ").trim().slice(0, 24);
+      // The creator brief the copy was written against — kept for chat edits.
+      const b = final.brief;
+      const brief: CreatorBrief | undefined =
+        b || cfg.intent
+          ? {
+              intent: cfg.intent?.trim() || undefined,
+              audience: String(b?.audience ?? ""),
+              purpose: String(b?.purpose ?? ""),
+              contentType: String(b?.contentType ?? ""),
+              keepOriginal: Array.isArray(b?.keepOriginal) ? b.keepOriginal.map(String).slice(0, 60) : [],
+              languageNote: String(b?.languageNote ?? ""),
+            }
+          : undefined;
       const project: Project = enforceRoles({
         ...base,
         reference: referenceSnapshot,
+        brief,
         name: (req.autoName && coverName) || req.projectName || base.name,
         theme: finalTheme,
         cards,

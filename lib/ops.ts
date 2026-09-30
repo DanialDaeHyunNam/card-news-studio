@@ -101,6 +101,9 @@ export function normalizeElement(
       radius: num(raw.radius, 0, 0, 500),
       dim: raw.dim !== undefined ? num(raw.dim, 0, 0, 1) : undefined,
       opacity: raw.opacity !== undefined ? num(raw.opacity, 1, 0, 1) : undefined,
+      focusX: raw.focusX !== undefined ? num(raw.focusX, 50, 0, 100) : undefined,
+      focusY: raw.focusY !== undefined ? num(raw.focusY, 50, 0, 100) : undefined,
+      zoom: raw.zoom !== undefined ? num(raw.zoom, 1, 1, 3) : undefined,
     };
   }
   return null;
@@ -119,7 +122,8 @@ export function normalizeCard(
 
 const TEXT_PATCH_KEYS = ["text", "role", "fontSize", "fontWeight", "color", "align", "lineHeight", "fontFamily", "letterSpacing", "italic", "underline", "shadow", "opacity", "x", "y", "w"] as const;
 const SHAPE_PATCH_KEYS = ["color", "radius", "opacity", "x", "y", "w", "h"] as const;
-const IMAGE_PATCH_KEYS = ["fit", "radius", "dim", "opacity", "x", "y", "w", "h"] as const;
+const IMAGE_PATCH_KEYS = ["fit", "radius", "dim", "opacity", "focusX", "focusY", "zoom", "x", "y", "w", "h"] as const;
+const FRAMING_RANGE: Record<string, [number, number]> = { focusX: [0, 100], focusY: [0, 100], zoom: [1, 3] };
 
 function patchElement(el: CardElement, patch: Record<string, unknown>) {
   const keys: readonly string[] =
@@ -138,6 +142,8 @@ function patchElement(el: CardElement, patch: Record<string, unknown>) {
       target[key] = clampTracking(num(value, 0, -1, 1), typeof target.fontSize === "number" ? target.fontSize : 48);
     } else if (typeof value === "boolean") {
       target[key] = value; // italic / underline / shadow
+    } else if (typeof value === "number" && FRAMING_RANGE[key]) {
+      target[key] = num(value, 50, FRAMING_RANGE[key][0], FRAMING_RANGE[key][1]);
     } else if (typeof value === "number") {
       const current = target[key];
       target[key] = num(value, typeof current === "number" ? current : 0, -1000, 10000);
@@ -265,6 +271,8 @@ export function summarizeOps(project: Project, ops: Operation[]): string[] {
         return `Theme: ${keys(o.patch)}`;
       case "update_style":
         return `Style [${o.role ?? "?"}]: ${keys(o.patch)}`;
+      case "update_brief":
+        return `Brief: ${keys(o.brief as Record<string, unknown> | undefined) || "intent"}`;
       default:
         return String(o.op);
     }
@@ -308,6 +316,25 @@ export function applyOperations(project: Project, ops: Operation[], attachments?
       case "update_style": {
         // Change a role's shared typography → propagate to same-role text.
         if (o.role && o.patch) applyRoleStyleInPlace(p, o.role, o.patch);
+        break;
+      }
+      case "update_brief": {
+        // Creator intent learned in chat — merged, never wiped: text fields
+        // replace when given, keepOriginal accumulates (dedup'd).
+        const b = o.brief;
+        if (!b) break;
+        const cur = p.brief ?? { audience: "", purpose: "", contentType: "", keepOriginal: [], languageNote: "" };
+        const str = (v: unknown, d: string) => (typeof v === "string" && v.trim() ? v.trim() : d);
+        p.brief = {
+          ...cur,
+          audience: str(b.audience, cur.audience),
+          purpose: str(b.purpose, cur.purpose),
+          contentType: str(b.contentType, cur.contentType),
+          languageNote: str(b.languageNote, cur.languageNote),
+          keepOriginal: [
+            ...new Set([...cur.keepOriginal, ...(Array.isArray(b.keepOriginal) ? b.keepOriginal.map(String) : [])]),
+          ].slice(0, 60),
+        };
         break;
       }
       case "update_card": {

@@ -82,7 +82,8 @@ export default function CardView({
             top: `${el.y}%`,
             width: `${el.w}%`,
             opacity: el.opacity,
-            cursor: interactive ? "move" : undefined,
+            // Cover-fit photos drag to reframe (pan) — ⌥-drag moves the frame.
+            cursor: interactive ? (el.type === "image" && el.fit === "cover" ? "grab" : "move") : undefined,
             outline: selected ? `${1.5 * ui}px solid #3b82f6` : undefined,
             outlineOffset: 2 * ui,
             touchAction: "none",
@@ -150,7 +151,15 @@ export default function CardView({
                   src={el.src}
                   alt=""
                   draggable={false}
-                  style={{ width: "100%", height: "100%", objectFit: el.fit, pointerEvents: "none" }}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: el.fit,
+                    pointerEvents: "none",
+                    objectPosition: `${el.focusX ?? 50}% ${el.focusY ?? 50}%`,
+                    transform: el.zoom && el.zoom > 1 ? `scale(${el.zoom})` : undefined,
+                    transformOrigin: `${el.focusX ?? 50}% ${el.focusY ?? 50}%`,
+                  }}
                 />
                 {el.dim ? (
                   <div

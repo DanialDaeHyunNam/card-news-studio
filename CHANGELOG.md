@@ -5,6 +5,27 @@ All notable changes to Card News Studio. This project uses simple
 the deployed one and prompts an update when it's behind (see
 [ARCHITECTURE.md](ARCHITECTURE.md#hosted-vs-local-mode)).
 
+## 0.11.0 — 2026-09-30
+
+Copy that fits what you're making: the output language follows your source
+(or your pick), a creator brief keeps the audience, purpose and must-keep terms
+in every generation and chat edit, and photos can be reframed by dragging.
+
+### Added
+- **Output language** setting in the create flow — Auto (default) follows the
+  language of your subtitles/script/story (English script → English slides,
+  Chinese → Chinese); or pick one to translate. No more drifting to the UI language.
+- **Creator brief** — tell it who the content is for and what it's for; the AI
+  settles audience, purpose, content type and the terms that must never be
+  translated (e.g. the Korean words an English lesson teaches) before writing
+  any copy. The brief is saved with the project and every AI chat edit follows
+  it; say your intent in chat once and it's remembered.
+- **Reframe photos by dragging** — drag a photo on the canvas to change what
+  shows inside its frame (⌥/Alt + drag still moves the frame); zoom slider and
+  reset in the inspector. The AI chat can reframe too ("his face is cut off").
+- The AI chat now knows the photo layouts ("make this a top/bottom two-photo
+  slide") and how to drop the accent color ("remove the point color").
+
 ## 0.10.0 — 2026-09-30
 
 Reference-first carousels. Show it a post that worked, tell it your story (or
