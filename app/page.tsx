@@ -19,11 +19,13 @@ import type { ReferencePost } from "@/lib/reference";
 import { LangProvider, useLang } from "@/lib/i18n";
 import Home from "@/components/Home";
 import Editor from "@/components/Editor";
+import { DesktopGate } from "@/components/Desktop";
 
 export default function App() {
   return (
     <LangProvider>
       <Root />
+      <DesktopGate />
     </LangProvider>
   );
 }

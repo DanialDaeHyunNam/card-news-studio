@@ -9,7 +9,7 @@
 // Why a FIXED port: UI prefs (language, brand color) live in localStorage,
 // which is per-origin. A random port would forget them on every launch.
 import { app, BrowserWindow, dialog, ipcMain, Menu, safeStorage, shell, utilityProcess, type UtilityProcess } from "electron";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, hostname } from "node:os";
 import { join } from "node:path";
 import { createLicense } from "./license";
@@ -18,7 +18,10 @@ import { createUpdater } from "./updater";
 const PORT = 3458;
 const ORIGIN = `http://127.0.0.1:${PORT}`;
 // Baked at build time by scripts/build-desktop.mjs (CI release only).
-const OFFICIAL = process.env.CARDNEWS_OFFICIAL_BUILD === "1";
+// Unpackaged runs can force it (CARDNEWS_FORCE_OFFICIAL=1) to test the trial /
+// lock UI without a signed build; a packaged app never reads that variable.
+const OFFICIAL =
+  process.env.CARDNEWS_OFFICIAL_BUILD === "1" || (!app.isPackaged && process.env.CARDNEWS_FORCE_OFFICIAL === "1");
 // `bun run desktop:dev` points the window at a running `bun dev` instead.
 const DEV_URL = process.env.CARDNEWS_DEV_URL;
 const KEY_ENV_VARS = ["ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY"];
@@ -74,14 +77,16 @@ const license = createLicense(join(userData(), "license.json"), OFFICIAL);
 // The server gates AI routes on this (lib/runtime.ts isEntitled). Source builds
 // are always entitled.
 function pushEntitlement(): void {
-  server?.postMessage({ type: "entitlement", entitled: license.info().entitled });
+  const info = license.info();
+  server?.postMessage({ type: "entitlement", entitled: info.entitled });
+  win?.webContents.send("license:changed", info);
 }
 
 // ---------- Next server ----------
 function serverEntry(): string {
   return app.isPackaged
     ? join(process.resourcesPath, "server", "server.js")
-    : join(__dirname, "..", ".next", "standalone", "server.js");
+    : join(app.getAppPath(), ".next", "standalone", "server.js");
 }
 
 // Finder-launched apps don't inherit the shell PATH; the Claude CLI and its
@@ -152,7 +157,10 @@ function createWindow(): void {
     titleBarStyle: "hiddenInset",
     show: false,
     webPreferences: {
-      preload: join(__dirname, "preload.cjs"),
+      // NOT __dirname: bun's bundler bakes it in as the SOURCE folder's absolute
+      // path (verified — the preload silently failed to load). getAppPath() is
+      // the project root unpackaged and app.asar when packaged.
+      preload: join(app.getAppPath(), "dist-electron", "preload.cjs"),
       contextIsolation: true,
       sandbox: true,
     },
@@ -171,6 +179,27 @@ function createWindow(): void {
     }
   });
   win.on("closed", () => (win = null));
+  win.webContents.on("preload-error", (_e, p, err) => console.error("[preload-error]", p, String(err)));
+  // Dev-only visual check: CARDNEWS_SCREENSHOT=/path.png captures the window
+  // a few seconds after load (unpackaged runs only).
+  const shot = !app.isPackaged ? process.env.CARDNEWS_SCREENSHOT : undefined;
+  if (shot) {
+    win.webContents.once("did-finish-load", () => {
+      setTimeout(async () => {
+        console.log(
+          "[screenshot] bridge:",
+          await win?.webContents.executeJavaScript("typeof window.cardnewsDesktop"),
+        );
+        // CARDNEWS_SCREENSHOT_JS runs first (e.g. open a modal), then 800ms settle.
+        if (process.env.CARDNEWS_SCREENSHOT_JS) {
+          await win?.webContents.executeJavaScript(process.env.CARDNEWS_SCREENSHOT_JS).catch(() => {});
+          await new Promise((r) => setTimeout(r, 800));
+        }
+        const img = await win?.webContents.capturePage();
+        if (img) writeFileSync(shot, img.toPNG());
+      }, Number(process.env.CARDNEWS_SCREENSHOT_DELAY ?? 4000));
+    });
+  }
   void win.loadURL(DEV_URL ?? ORIGIN);
 }
 
@@ -233,6 +262,26 @@ ipcMain.handle("app:openExternal", (_e, url: string) => {
   if (typeof url === "string" && /^https:\/\//.test(url)) void shell.openExternal(url);
 });
 ipcMain.handle("app:openDataFolder", () => void shell.openPath(userData()));
+ipcMain.handle("app:info", () => ({ version: app.getVersion(), dataDir: userData(), official: OFFICIAL }));
+// "Your data never leaves this computer" needs its pair: a way to delete it
+// here (trashing the app leaves userData behind on macOS). Projects, the
+// reference library and uploads go; the license + trial record and API keys
+// stay (removed from License / AI keys instead).
+ipcMain.handle("data:wipe", () => {
+  let n = 0;
+  for (const p of ["data", "uploads"]) {
+    const t = join(userData(), p);
+    if (existsSync(t)) {
+      rmSync(t, { recursive: true, force: true });
+      n++;
+    }
+  }
+  return n;
+});
+ipcMain.handle("app:relaunch", () => {
+  app.relaunch();
+  app.quit();
+});
 
 // ---------- Lifecycle ----------
 app.on("second-instance", () => {
@@ -260,15 +309,9 @@ app.whenReady().then(async () => {
   updater.start();
   // Re-check the license in the background (24h throttle inside), then tell the
   // server and the window if the answer changed.
-  void license.revalidate().then(() => {
-    pushEntitlement();
-    win?.webContents.send("license:changed", license.info());
-  });
+  void license.revalidate().then(pushEntitlement);
   // The trial can run out while the app is open.
-  setInterval(() => {
-    pushEntitlement();
-    win?.webContents.send("license:changed", license.info());
-  }, 10 * 60 * 1000);
+  setInterval(pushEntitlement, 10 * 60 * 1000);
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

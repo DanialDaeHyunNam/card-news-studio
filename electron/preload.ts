@@ -27,4 +27,7 @@ contextBridge.exposeInMainWorld("cardnewsDesktop", {
   },
   openExternal: (url: string) => ipcRenderer.invoke("app:openExternal", url),
   openDataFolder: () => ipcRenderer.invoke("app:openDataFolder"),
+  info: () => ipcRenderer.invoke("app:info"),
+  wipeData: () => ipcRenderer.invoke("data:wipe"),
+  relaunch: () => ipcRenderer.invoke("app:relaunch"),
 });

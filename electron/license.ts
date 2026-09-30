@@ -24,8 +24,9 @@ export const LS_STORE_ID = "443985";
 export const LS_VARIANTS: Record<string, Plan> = {
   // "0000000": "byo", // Card News Studio — one-time, lifetime (bring your own AI)
 };
-// Checkout page opened from the lock screen / license panel (owner TODO).
-export const BUY_URL = "https://all-libertas.lemonsqueezy.com";
+// Opened from the lock screen / settings: the product site's pricing section
+// (it links to the Lemon Squeezy checkout). Same pattern as ZTO.
+export const BUY_URL = "https://card-news-zeta.vercel.app/#pricing";
 
 // "plus" (hosted AI through the shared proxy) is reserved for later.
 export type Plan = "byo" | "plus";

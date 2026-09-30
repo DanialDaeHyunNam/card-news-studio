@@ -443,6 +443,10 @@ const D = {
     "배포 환경에서는 환경 변수로 설정하세요. (로컬 dev에서만 저장 가능)",
     "Set env vars on your deployment platform. (In-app save works in local dev only)",
   ],
+  keys_hint_desktop: [
+    "macOS 키체인으로 암호화해 이 컴퓨터에만 저장 · 즉시 적용. 키를 연결하면 해당 프로바이더 모델이 바로 열립니다.",
+    "Encrypted with the macOS keychain, stored only on this computer · applied instantly. Connect a key and that provider's models unlock immediately.",
+  ],
   keys_hint: [
     ".env.local에 저장 · 즉시 적용 · 값은 서버에만 남습니다. 키를 연결하면 해당 프로바이더 모델이 바로 열립니다.",
     "Saved to .env.local · applied instantly · never leaves the server. Connect a key and that provider's models unlock immediately.",
@@ -858,6 +862,91 @@ const D = {
     "card-news-studio 폴더의 터미널에서 아래를 실행하세요. (개발 서버가 켜져 있으면 Ctrl+C로 먼저 끄고요.)",
     "In the card-news-studio folder's terminal, run these. (If the dev server is running, stop it first with Ctrl+C.)",
   ],
+  // desktop app (components/Desktop.tsx) — mirrors ZTO's wording
+  desk_source_badge: ["source", "source"],
+  desk_title_source: ["Card News Studio — 소스 빌드", "Card News Studio — source build"],
+  desk_plan_title: ["플랜 · 설정 열기", "Plan · open settings"],
+  desk_plan_trial: ["무료 {d}일", "{d} days free"],
+  desk_plan_over: ["무료 기간 종료", "Free period over"],
+  desk_ver_check: ["업데이트 확인", "Check for updates"],
+  desk_ver_checking: ["확인 중…", "Checking…"],
+  desk_upd_ready: ["업데이트 사용 가능: {v}", "Update available: {v}"],
+  desk_upd_confirm: ["지금 재시작하고 설치", "Restart now and install"],
+  desk_upd_confirm_short: ["설치하고 재시작", "Install & restart"],
+  desk_upd_dl: ["업데이트 받는 중 {p}%", "Downloading update {p}%"],
+  desk_settings: ["설정", "Settings"],
+  // settings — license
+  set_lic_title: ["라이선스", "License"],
+  set_lic_intro: [
+    "결제하신 라이선스 키를 등록하면 AI 생성·편집이 열립니다. 확인은 이 컴퓨터에서 직접 하고, 키는 암호화해 보관해요.",
+    "Register the license key from your purchase to unlock AI generation and editing. It's verified from this computer and stored encrypted.",
+  ],
+  set_lic_active: ["등록됨", "Active"],
+  set_lic_remove: ["이 기기에서 해제", "Remove from this device"],
+  set_lic_trial_left: ["무료 사용이 {d}일 남았어요", "{d} free days left"],
+  set_lic_trial_over: ["무료 기간 종료", "Free period over"],
+  set_lic_source: [
+    "소스 빌드 — 키 없이 무료로 쓸 수 있어요.",
+    "Source build — free to use, no key needed.",
+  ],
+  set_lic_placeholder: ["라이선스 키", "License key"],
+  set_lic_activate: ["등록", "Activate"],
+  set_lic_checking: ["확인 중…", "Checking…"],
+  set_lic_buy: ["라이선스 구매", "Buy a license"],
+  set_lic_offline: [
+    "지금 라이선스 확인이 안 되고 있어요 — {d}일 안에 인터넷에 연결되면 그대로 계속 쓸 수 있어요.",
+    "We can't reach the license server right now — connect within {d} days and everything keeps working.",
+  ],
+  set_lic_err_invalid: ["유효하지 않거나 만료된 키예요.", "That key is invalid or expired."],
+  set_lic_err_product: ["Card News Studio 라이선스가 아니에요.", "That key isn't for Card News Studio."],
+  set_lic_err_empty: ["키를 입력해 주세요.", "Enter a key."],
+  // settings — update
+  set_upd_title: ["업데이트", "Updates"],
+  set_upd_latest: ["최신 버전이에요", "You're up to date"],
+  set_upd_checking: ["확인 중…", "Checking…"],
+  set_upd_found: ["{v} 받는 중", "Getting {v}"],
+  set_upd_dl: ["내려받는 중 {p}%", "Downloading {p}%"],
+  set_upd_ready: ["{v} 준비됨 — 재시작하면 적용돼요", "{v} is ready — restart to apply"],
+  set_upd_install: ["재시작하고 업데이트", "Restart & update"],
+  set_upd_check: ["업데이트 확인", "Check for updates"],
+  set_upd_error: ["업데이트를 확인하지 못했어요", "Couldn't check for updates"],
+  set_upd_off: ["이 실행에서는 자동 업데이트를 쓰지 않아요 (개발 실행).", "Auto-update is off for this run (development)."],
+  set_upd_dev: [
+    "소스 빌드 — 자동 업데이트 없음. 새 버전은 git pull 후 다시 빌드하세요.",
+    "Source build — no auto-update. Pull and rebuild for new versions.",
+  ],
+  // settings — AI / language / data
+  set_ai_title: ["AI 연결", "AI connection"],
+  set_ai_intro: [
+    "Claude 구독(Claude Code 로그인)이 있으면 키 없이 바로 써요. API 키를 쓰려면 아래에 넣으세요 — 키체인에 암호화해 저장합니다.",
+    "With a Claude subscription (logged in to Claude Code) it just works, no key. To use an API key instead, add it below — it's stored encrypted in the keychain.",
+  ],
+  set_lang_title: ["언어", "Language"],
+  set_data_title: ["내 데이터", "Your data"],
+  set_data_intro: [
+    "프로젝트·레퍼런스·사진은 이 컴퓨터에만 저장돼요. 백업하려면 이 폴더를 복사하면 됩니다.",
+    "Projects, references and photos live only on this computer. Copy this folder to back them up.",
+  ],
+  set_data_path: ["데이터 폴더", "Data folder"],
+  set_data_open: ["폴더 열기", "Open folder"],
+  set_data_keeps: [
+    "라이선스 키와 API 키는 남습니다 — 위에서 따로 해제하세요.",
+    "Your license and API keys stay — remove them above.",
+  ],
+  set_data_wipe: ["로컬 데이터 전체 삭제", "Delete all local data"],
+  set_data_wipe_sure: ["전부 삭제 — 되돌릴 수 없습니다", "Delete everything — can't be undone"],
+  set_data_done: ["삭제했어요. 마무리하려면 재시작하세요.", "Deleted. Restart to finish."],
+  set_data_restart: ["지금 재시작", "Restart now"],
+  // lock (official build, free period over)
+  gate_title: ["무료 사용 기간이 끝났어요", "Your free period has ended"],
+  gate_desc: [
+    "라이선스를 등록하면 AI 생성·편집을 계속 쓸 수 있어요. 한 번 결제로 평생 쓰고, AI는 내 Claude 구독이나 API 키로 돌아가요. 만든 프로젝트는 그대로 보고 내보낼 수 있어요.",
+    "Register a license to keep generating and editing with AI. Pay once, use it for life — the AI runs on your own Claude subscription or API key. Your projects stay viewable and exportable.",
+  ],
+  gate_cta: ["라이선스 구매", "Buy a license"],
+  gate_enter: ["키 등록하기", "Enter a key"],
+  gate_browse: ["둘러보기만 할게요", "Just browse"],
+  gate_banner: ["무료 기간이 끝나 AI 기능이 잠겨 있어요.", "The free period is over — AI features are locked."],
 } as const;
 
 export type DictKey = keyof typeof D;

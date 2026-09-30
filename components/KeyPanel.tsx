@@ -5,6 +5,7 @@ import { KEY_ENV_VARS, MODELS, PROVIDER_LABELS } from "@/lib/models";
 import { getClientKey, isRemembered, maskKey, removeClientKey, setClientKey } from "@/lib/client-keys";
 import { trackEvent } from "@/lib/analytics";
 import { useLang } from "@/lib/i18n";
+import { isDesktop } from "@/lib/desktop";
 
 // Same shape the server-side /api/keys enforces — printable, no whitespace.
 const KEY_SHAPE = /^[\x21-\x7E]{8,300}$/;
@@ -206,7 +207,7 @@ export default function KeyPanel({
           </p>
         </div>
       ) : (
-        <p className="key-hint">{t("keys_hint")}</p>
+        <p className="key-hint">{t(isDesktop() ? "keys_hint_desktop" : "keys_hint")}</p>
       )}
     </div>
   );

@@ -1,5 +1,6 @@
 import { useEffect, useState, type RefObject } from "react";
 import { CANONICAL_URL, VERSION, isNewerVersion } from "./site";
+import { isDesktop } from "./desktop";
 
 // Checks whether a newer version has been deployed. Only runs on a local copy
 // (the hosted deploy IS the latest, so it never self-checks) — it fetches the
@@ -7,7 +8,8 @@ import { CANONICAL_URL, VERSION, isNewerVersion } from "./site";
 export function useUpdateCheck(hosted: boolean) {
   const [latest, setLatest] = useState<string | null>(null);
   useEffect(() => {
-    if (hosted) return;
+    // The desktop app updates itself (electron-updater, components/DesktopShell).
+    if (hosted || isDesktop()) return;
     let alive = true;
     fetch(`${CANONICAL_URL}/api/version`, { cache: "no-store" })
       .then((r) => r.json())
