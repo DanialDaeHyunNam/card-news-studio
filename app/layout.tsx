@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Card News Studio",
-  description: "AI-powered card news maker — generate, edit on canvas, export PNG.",
+  description: "AI carousel maker for Instagram, LinkedIn and TikTok — follow a reference, edit on canvas, export PNG.",
 };
 
 // "Hosted" = this is a public deployment (e.g. Vercel), NOT the user's own

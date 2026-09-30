@@ -11,51 +11,309 @@ export type Lang = "ko" | "en";
 const D = {
   // nav / hero
   nav_keys: ["API 키", "API Keys"],
-  hero_overline: ["AI CARD NEWS TOOL", "AI CARD NEWS TOOL"],
-  hero_h1_1: ["주제 하나,", "One topic,"],
-  hero_h1_2: ["카드뉴스 한 세트.", "one full card set."],
+  hero_overline: [
+    "AI CARD NEWS TOOL",
+    "AI CAROUSEL TOOL",
+  ],
+  hero_h1_1: [
+    "레퍼런스 하나,",
+    "One reference,",
+  ],
+  hero_h1_2: [
+    "카드뉴스 한 세트.",
+    "one full carousel.",
+  ],
   hero_sub: [
-    "Claude가 카피와 레이아웃을 설계합니다. 캔버스에서 자유롭게 다듬고, PNG로 내보내세요.",
-    "Claude drafts the copy and layout. Polish it on the canvas, export as PNG.",
+    "잘 된 게시물과 하고 싶은 이야기를 주면, Claude가 그 형식으로 한 세트를 설계해요. 이후엔 AI 채팅과 캔버스로 다듬고 PNG로 내보내세요.",
+    "Bring a post that worked and the story you want to tell — Claude designs a set in that format. Then polish it with AI chat and export as PNG.",
   ],
-  hero_ph: [
-    "주제, 원문, YouTube·Instagram 링크 — 사진은 📷로 추가…",
-    "Topic, article, YouTube or Instagram link — add photos with 📷…",
-  ],
-  gen_btn: ["카드 생성", "Generate"],
-  gen_btn_yt: ["🎬 영상으로 생성", "🎬 From video"],
-  gen_btn_ig: ["📸 레퍼런스로 생성", "📸 From reference"],
-  gen_btn_photos: ["📷 사진으로 생성", "📷 From photos"],
-  photo_add_title: [
-    "사진 추가 — 카드 배경으로 깔려요 (드래그·붙여넣기 가능, HEIC OK)",
-    "Add photos — they become card backgrounds (drag or paste works, HEIC OK)",
-  ],
-  photo_tray_title: ["배경 사진", "Background photos"],
-  photo_cycle_hint: [
-    "카드 수는 AI가 정하고, 사진은 1→N 순서로 돌아가며 깔려요",
-    "The AI picks the card count; photos cycle 1→N across cards",
-  ],
-  photo_clear: ["모두 지우기", "Clear all"],
   cards_auto: ["자동", "Auto"],
-  ref_material: ["참고 자료", "References"],
-  ref_text_ph: [
-    "릴스 스크립트, 성과 데이터(조회·저장·유지율·반응 좋았던 댓글) 등을 붙여넣으세요. 캡처 이미지는 여기 붙여넣거나 아래로 추가.",
-    "Paste the reel script, analytics (views, saves, retention, top comments)… Paste screenshots here or add them below.",
-  ],
   ref_add_images: ["캡처 이미지", "Screenshots"],
-  ref_hint: [
-    "Instagram 게시물 링크는 위 입력창에 붙여넣으면 슬라이드를 전부 읽어와 레퍼런스로 씁니다.",
-    "Paste an Instagram post link in the bar above — every slide is read and used as the reference.",
-  ],
   gen_busy: ["생성 중…", "Generating…"],
+  // create wizard
+  wz_s1: [
+    "형식 레퍼런스",
+    "Reference",
+  ],
+  wz_s2: [
+    "무엇을 만들까",
+    "Content",
+  ],
+  wz_s3: [
+    "디자인",
+    "Design",
+  ],
+  wz_s4: [
+    "비율",
+    "Size",
+  ],
+  wz_s5: [
+    "AI 실행",
+    "AI model",
+  ],
+  wz_back: ["이전", "Back"],
+  wz_next: ["다음", "Next"],
+  wz_skip: [
+    "레퍼런스 없이 다음",
+    "Skip",
+  ],
+  wz_generate: [
+    "카드 생성",
+    "Generate carousel",
+  ],
+  wz_need_goal: [
+    "목표를 고르고 내용을 채워주세요",
+    "Choose what you're making and fill it in",
+  ],
+  wz_need_model: [
+    "AI 모델을 골라주세요",
+    "Choose an AI model",
+  ],
+  wz_none: ["없음", "None"],
+  wz_ref_q: [
+    "어떤 형식을 따라 만들까요?",
+    "Pick a format to follow",
+  ],
+  wz_ref_hint: [
+    "잘 된 Instagram·LinkedIn·TikTok 게시물 링크를 넣으면 슬라이드를 전부 읽어와 구성·글 배치·톤을 벤치마킹해요.",
+    "Paste a post that performed well on Instagram, LinkedIn or TikTok. We'll read every slide and match its structure, text layout and tone.",
+  ],
+  wz_an_running: ["레퍼런스와 사진을 분석하는 중…", "Analyzing the reference and your photos…"],
+  wz_an_done: [
+    "구성이 확정됐어요 — 카드를 만드는 중",
+    "Layout locked — building the slides",
+  ],
+  wz_an_ask_title: ["확인이 필요해요", "A quick question first"],
+  wz_an_fail: ["분석에 실패했어요", "Analysis failed"],
+  wz_an_retry: ["다시 분석", "Retry analysis"],
+  wz_an_back: ["설정으로 돌아가기", "Back to settings"],
+  wz_an_cuts: ["필요한 컷 {need} · 올린 사진 {have}", "{need} photo slots · {have} photos uploaded"],
+  wz_an_add_photos: ["사진 더 올리기", "Add more photos"],
+  wz_an_added: ["사진 {n}장을 더 올렸어요. 다시 판단해 주세요.", "I added {n} more photos — please re-check."],
+  wz_an_reanalyze: ["{n}장 추가 — 다시 분석", "Added {n} — re-analyze"],
+  wz_an_answer_ph: [
+    "직접 답하기 (예: 5장으로 줄여줘)",
+    "Answer in your own words (e.g. make it 5 slides)",
+  ],
+  wz_an_send: ["답하기", "Reply"],
+  wz_an_q_default: ["사진 구성 확인", "Photo layout check"],
+  wz_brand: ["브랜드 포인트 색", "Brand accent color"],
+  wz_brand_hint: [
+    "세트 전체에서 딱 한 가지로 쓰는 강조 색이에요 — 라벨·번호·강조선·CTA처럼 눈이 가야 할 곳에만. 바꾸면 그 색을 쓰던 요소가 한꺼번에 바뀌어요.",
+    "The one highlight color used across the set — labels, numbers, accent lines, CTAs. Change it later and every element using it updates together.",
+  ],
+  wz_brand_custom: ["지정", "Custom"],
+  wz_brand_none: ["없음", "None"],
+  wz_brand_auto_desc: ["AI가 레퍼런스·사진 분위기에 맞춰 골라요.", "The AI picks one to match the reference and photos."],
+  wz_brand_custom_desc: ["이 색으로 고정해요. 다음 세트에도 기억돼요.", "Locked to this color — remembered for your next sets."],
+  wz_brand_none_desc: ["포인트 색 없이 흰색·검정만으로 — 사진이 주인공인 미니멀한 세트에 좋아요.", "No accent at all, just black & white — great for photo-first, minimal sets."],
+  ed_prev: [
+    "이전 카드 (←)",
+    "Previous slide (←)",
+  ],
+  ed_next: [
+    "다음 카드 (→)",
+    "Next slide (→)",
+  ],
+  ed_ref_toggle: ["레퍼런스 비교", "Compare reference"],
+  ed_ref_title: ["레퍼런스 슬라이드를 옆에 띄워 비교해요", "Show the reference slides side by side"],
+  ed_ref_none: ["이 세트엔 레퍼런스가 없어요", "No reference for this set"],
+  ed_ref_none_hint: ["비교할 게시물 링크를 붙여넣으세요.", "Paste a post link to compare against."],
+  ed_ref_follow: [
+    "현재 카드 번호에 맞추기",
+    "Follow the current slide",
+  ],
+  lib_title: ["레퍼런스 라이브러리", "Reference library"],
+  lib_sub: [
+    "지금까지 쓴 레퍼런스가 자동으로 쌓이고, 나중에 쓸 게시물은 링크로 미리 ★ 저장해 둘 수 있어요.",
+    "Every reference you've used is kept here automatically — and you can ★ save posts ahead of time by link.",
+  ],
+  lib_all: ["전체", "All"],
+  lib_fav: ["즐겨찾기", "Favorites"],
+  lib_add_ph: ["나중에 쓸 게시물 링크 (Instagram·LinkedIn·TikTok)", "A post to save for later (Instagram, LinkedIn, TikTok)"],
+  lib_add: ["저장", "Save"],
+  lib_empty: ["아직 레퍼런스가 없어요. 생성 1단계에서 링크를 불러오면 여기 쌓여요.", "No references yet — links you load in step 1 collect here."],
+  lib_empty_fav: ["즐겨찾기가 없어요. ☆를 누르거나 위에 링크를 저장해 보세요.", "No favorites yet — tap ☆ or save a link above."],
+  lib_used: ["{n}회 사용 · {d}", "Used {n}× · {d}"],
+  lib_saved: ["저장 {d}", "Saved {d}"],
+  lib_open: ["원본 게시물 열기", "Open the original post"],
+  lib_use: ["이걸로 만들기", "Use as reference"],
+  lib_delete_confirm: ["이 레퍼런스를 라이브러리에서 뺄까요?", "Remove this reference from the library?"],
+  lib_strip: ["내 레퍼런스", "My references"],
+  lib_manage: ["관리", "Manage"],
+  wz_platform_upload: ["캡처", "Screenshots"],
+  wz_rec: ["추천", "Recommended"],
+  wz_open_tpl: ["그대로 열기", "Open as-is"],
+  demo_op: ["레퍼런스 형식 적용 ✓", "Reference format applied ✓"],
+  wz_ref_tab_url: [
+    "🔗 게시물 링크",
+    "🔗 Post link",
+  ],
+  wz_ref_tab_tpl: ["템플릿", "Template"],
+  wz_ref_tab_proj: [
+    "내 프로젝트 스타일",
+    "My projects",
+  ],
+  wz_ref_tab_none: [
+    "없이 진행",
+    "Skip",
+  ],
+  wz_ref_load: ["불러오기", "Load"],
+  wz_ref_loading: ["읽는 중…", "Reading…"],
+  wz_ref_bad_url: [
+    "Instagram·LinkedIn·TikTok 게시물 링크가 아니에요.",
+    "That isn't an Instagram, LinkedIn or TikTok post link.",
+  ],
+  wz_ref_fail: [
+    "게시물을 읽지 못했어요.",
+    "Couldn't read that post.",
+  ],
+  wz_ref_fallback: [
+    "대신 게시물 슬라이드를 캡처해서 올려주세요 — 캡처를 그대로 레퍼런스로 씁니다.",
+    "Upload screenshots of its slides instead — we'll use them as the reference.",
+  ],
+  wz_ref_shots: ["캡처 올리기", "Upload screenshots"],
+  wz_ref_manual: [
+    "링크 대신 캡처로 넣기",
+    "Or use screenshots instead",
+  ],
+  wz_ref_more_shots: ["캡처 더 추가", "Add more screenshots"],
+  wz_ref_partial: [
+    "TikTok이 일부 정보(캡션·커버)만 줬어요. 슬라이드가 더 있으면 캡처로 넣어주세요.",
+    "TikTok only shared the caption and cover. If there are more slides, add screenshots.",
+  ],
+  wz_ref_has_subs: [
+    "영상 자막도 함께 읽었어요",
+    "Subtitles included",
+  ],
+  wz_ref_has_texts: [
+    "슬라이드별 텍스트도 함께 읽었어요",
+    "Slide text included",
+  ],
+  wz_ref_none_hint: [
+    "레퍼런스 없이 AI가 형식을 정해요. 다음 단계의 디자인 요청으로 방향을 줄 수 있어요.",
+    "No reference — the AI picks the format. You can steer it with design notes in step 3.",
+  ],
+  wz_kind_carousel: ["캐러셀", "Carousel"],
+  wz_kind_document: ["문서형 캐러셀", "Document carousel"],
+  wz_kind_video: ["영상", "Video"],
+  wz_kind_image: ["이미지", "Image"],
+  wz_kind_text: ["텍스트", "Text"],
+  wz_goal_q: ["무엇을 만들까요?", "What are you making?"],
+  wz_goal_video: [
+    "이미 있는 영상을 캐러셀로",
+    "Turn a video into a carousel",
+  ],
+  wz_goal_video_sub: [
+    "자막·스크립트를 카드로 펼쳐요",
+    "Unfold its subtitles or script into slides",
+  ],
+  wz_goal_story: [
+    "새 카드뉴스",
+    "A new carousel",
+  ],
+  wz_goal_story_sub: [
+    "원하는 스토리를 자세히 알려주세요",
+    "Tell us the story you want to tell",
+  ],
+  wz_goal_video_short: ["영상 → 캐러셀", "Video → carousel"],
+  wz_goal_story_short: [
+    "새 카드뉴스",
+    "New carousel",
+  ],
+  wz_video_url: [
+    "영상 링크 (선택 — 자막 자동으로 가져오기)",
+    "Video link (optional — we'll fetch the subtitles)",
+  ],
+  wz_subs_fetch: [
+    "자막 가져오기",
+    "Get subtitles",
+  ],
+  wz_subs_fail: [
+    "자막을 가져오지 못했어요 — 아래에 직접 붙여넣어 주세요.",
+    "Couldn't get subtitles — paste them below.",
+  ],
+  wz_subs_caption_only: [
+    "자막이 없어 캡션만 가져왔어요. 스크립트가 있으면 붙여넣어 주세요.",
+    "No subtitles found, so we pulled the caption. Paste the script if you have it.",
+  ],
+  wz_subs_bad_url: [
+    "YouTube·TikTok·Instagram 링크만 자막을 가져올 수 있어요.",
+    "Subtitles work with YouTube, TikTok and Instagram links.",
+  ],
+  wz_script: ["자막 / 스크립트", "Subtitles / script"],
+  wz_script_ph: ["영상 자막이나 대본을 붙여넣으세요.", "Paste the video's subtitles or script."],
+  wz_script_long: [
+    "앞 16,000자까지만 반영돼요. 핵심 구간만 남기면 더 정확해요.",
+    "Only the first 16,000 characters are used — trim it to the part that matters.",
+  ],
+  wz_extra: [
+    "그 외 반영하고 싶은 내용",
+    "Anything else to include?",
+  ],
+  wz_extra_ph: [
+    "예) 3번째 팁은 빼줘 / 마지막엔 무료 가이드 DM 유도 / 20대 직장인 대상 말투로",
+    "e.g. drop the 3rd tip / end with a free-guide DM CTA / speak to people in their 20s",
+  ],
+  wz_story: [
+    "원하는 스토리 (자세할수록 좋아요)",
+    "Your story — the more detail, the better",
+  ],
+  wz_story_ph: [
+    "누구에게, 무슨 이야기를, 어떤 흐름으로? 예)\n- 대상: 사업을 막 시작한 1인 창업자\n- 핵심 메시지: 혼자 다 하지 말고 넘길 일을 넘겨라\n- 흐름: 번아웃 경험 → 넘긴 일 3가지 → 결과 숫자 → 오늘 할 일\n- 톤: 친구에게 말하듯, 과장 없이",
+    "Who is it for, what's the story, how does it flow? e.g.\n- Audience: first-time solo founders\n- Core message: stop doing everything yourself\n- Flow: burnout → 3 things I handed off → results → today's action\n- Tone: like talking to a friend, no hype",
+  ],
+  wz_more: [
+    "성과 데이터·참고 자료 (선택)",
+    "Analytics & references (optional)",
+  ],
+  wz_notes_ph: [
+    "조회·저장·유지율, 반응 좋았던 댓글 등. 인사이트 캡처는 여기 붙여넣거나 아래로 추가.",
+    "Views, saves, retention, standout comments… Paste insight screenshots here or add them below.",
+  ],
+  wz_design_q: ["디자인 디테일", "Design details"],
+  wz_count: [
+    "장수",
+    "Slide count",
+  ],
+  wz_design_notes: ["디자인 요청 (선택)", "Design notes (optional)"],
+  wz_design_ph: [
+    "예) 흰 굵은 글씨 + 은은한 그림자, 사진 위 글은 위/아래 빈 곳에, 미니멀하게",
+    "e.g. bold white type with a soft shadow, text in the empty top/bottom of photos, minimal",
+  ],
+  wz_photos: ["배경 사진 (선택)", "Background photos (optional)"],
+  wz_photos_hint: [
+    "카드마다 1→N 순서로 돌아가며 깔려요 (드래그·HEIC OK). 없으면 레퍼런스/AI가 배경을 정해요.",
+    "They cycle across the slides in order (drag & drop, HEIC works). No photos? The reference or AI picks the backgrounds.",
+  ],
+  wz_ratio_q: [
+    "비율을 골라주세요",
+    "Choose a size",
+  ],
+  wz_ratio_rec: ["레퍼런스 기준 추천", "Matches reference"],
+  wz_model_q: [
+    "어떤 AI로 실행할까요?",
+    "Which AI should build it?",
+  ],
+  wz_model_cli: [
+    "내 Claude 구독으로 실행해요 (로컬 전용, API 키 불필요).",
+    "Runs on your Claude subscription — local only, no API key needed.",
+  ],
+  wz_model_key: [
+    "연결된 API 키로 실행해요. 생성 후 편집 화면의 AI 채팅으로 계속 다듬을 수 있어요.",
+    "Runs on your connected API key. You can keep refining in the editor's AI chat.",
+  ],
   st_yt: ["유튜브 자막 가져오는 중…", "Fetching captions…"],
-  st_design: ["카드 설계 중…", "Designing cards…"],
+  st_design: [
+    "카드 설계 중…",
+    "Designing slides…",
+  ],
   // long-video segment picker
   seg_title: ["긴 영상이에요 — 어느 구간을 만들까요?", "Long video — which part should we use?"],
   seg_total: ["전체 길이", "Total"],
   seg_hint: [
     "긴 영상은 자막이 앞부분만 반영돼요. 카드로 만들 구간을 골라주세요.",
-    "Long videos only use the start of the transcript — pick the window to turn into cards.",
+    "Long videos only use the start of the transcript — pick the window to turn into slides.",
   ],
   seg_start: ["시작 위치", "Start"],
   seg_len: ["길이", "Length"],
@@ -65,7 +323,6 @@ const D = {
   fmt_45: ["세로 · 피드 점유율 최대", "Portrait · max feed presence"],
   fmt_916: ["풀스크린 · 스토리/릴스", "Full screen · Stories/Reels"],
   model_soon: ["준비 중", "soon"],
-  ref_none: ["스타일 참고 없음", "No style reference"],
   accent_label: ["포인트", "Accent"],
   accent_auto: ["자동", "Auto"],
   brand_label: ["브랜드", "Brand"],
@@ -87,7 +344,10 @@ const D = {
     "Click any set to open it in the editor — make the colors, copy, and layout yours.",
   ],
   proj_title: ["내 프로젝트", "My projects"],
-  cards_unit: ["장", " cards"],
+  cards_unit: [
+    "장",
+    " slides",
+  ],
   proj_import: ["가져오기", "Import"],
   proj_export_title: ["프로젝트 내보내기 (.json)", "Export project (.json)"],
   import_fail: [
@@ -95,32 +355,52 @@ const D = {
     "Couldn't import that file. Make sure it's a .cardnews.json exported from this app.",
   ],
   import_fallback_name: ["가져온 프로젝트", "Imported project"],
-  new_project_name: ["새 카드뉴스", "New card set"],
+  new_project_name: [
+    "새 카드뉴스",
+    "New carousel",
+  ],
   empty_title_text: ["타이틀을 입력하세요", "Your title here"],
-  yt_fallback_name: ["유튜브 카드뉴스", "YouTube card set"],
 
   // how it works
-  how_h2: ["주제가 카드가 되는 과정", "From topic to finished cards"],
+  how_h2: [
+    "잘 된 게시물이 내 카드가 되는 과정",
+    "From a post that worked to your own set",
+  ],
   how_sub: [
-    "Claude가 카피·색·레이아웃을 JSON으로 설계하고, 캔버스에서는 요소를 집어 옮기기만 하면 됩니다. 수정은 채팅 한 줄로도 끝나요.",
-    "Claude designs the copy, colors, and layout as JSON. On the canvas you just drag things around — or fix anything with one chat message.",
+    "잘 된 게시물 링크와 하고 싶은 이야기만 주세요. Claude가 그 형식으로 한 세트를 설계하고, 나머지는 AI 채팅과 캔버스로 다듬으면 끝이에요.",
+    "Bring a post that worked and the story you want to tell. Claude designs a set in that format — then polish it with AI chat and the canvas.",
   ],
-  how_cap1_t: ["01 · AI가 설계", "01 · AI drafts"],
+  how_cap1_t: [
+    "01 · 레퍼런스 + 스토리 → 초안",
+    "01 · Reference + story → draft",
+  ],
   how_cap1_b: [
-    "주제 하나로 훅 → 본문 → CTA까지, 카드 세트 전체를 구조화된 JSON으로 뽑아냅니다.",
-    "One topic becomes a full hook → body → CTA card set, emitted as structured JSON.",
+    "Instagram·LinkedIn·TikTok 게시물의 구성과 글 배치를 읽고, 내 스토리나 영상 자막으로 훅부터 마무리까지 채워요.",
+    "It reads the post's structure and text layout, then fills hook → body → close with your story or your video's subtitles.",
   ],
-  how_cap2_t: ["02 · 캔버스에서 다듬기", "02 · Refine on canvas"],
+  how_cap2_t: [
+    "02 · AI 채팅과 캔버스로 다듬기",
+    "02 · Polish with AI chat and the canvas",
+  ],
   how_cap2_b: [
-    "드래그하면 다른 요소에 딱 맞게 스냅되고, 채팅으로 “더 강하게” 한마디면 AI가 고칩니다.",
-    "Elements snap to each other as you drag, and “make it punchier” in chat is all it takes.",
+    "드래그하면 요소끼리 딱 맞게 스냅되고, “@카드2 제목 더 강하게”처럼 채팅 한 줄이면 AI가 고쳐요.",
+    "Drag and elements snap into place — or type “@slide2 punch up the title” and the AI does it.",
   ],
-  demo_typing: ["퇴근 후 사이드프로젝트 시작하는 법", "How to start a side project after work"],
+  demo_typing: [
+    "instagram.com/p/C8x2…",
+    "instagram.com/p/C8x2…",
+  ],
   demo_title_txt: ["타이틀은 크게", "Make it bold"],
-  demo_chat: ["“타이틀 더 강하게” → 적용됨 ✓", "“Punch up the title” → applied ✓"],
+  demo_chat: [
+    "“@카드2 제목 더 강하게” → 적용됨 ✓",
+    "“@slide2 punch up the title” → applied ✓",
+  ],
 
   // footer
-  footer_desc_1: ["오픈소스 AI 카드뉴스 스튜디오.", "Open-source AI card news studio."],
+  footer_desc_1: [
+    "오픈소스 AI 카드뉴스 스튜디오.",
+    "Open-source AI carousel studio.",
+  ],
   footer_desc_2: [
     "로컬에서 돌아가고, 데이터는 브라우저에만 남습니다.",
     "Runs locally — your data stays in your browser.",
@@ -171,7 +451,7 @@ const D = {
   keyd_line2: ["지출 한도를 걸어둔 전용 키 사용을 권장해요 ↗", "We recommend a dedicated key with a spend limit ↗"],
   keyd_line3: [
     "생성 시 입력한 주제·카드 내용·첨부 이미지가 {provider} API로 전송됩니다.",
-    "When you generate, your topic, card contents, and attached images are sent to the {provider} API.",
+    "When you generate, your topic, slide contents, and attached images are sent to the {provider} API.",
   ],
   keyd_local: [
     "키가 내 컴퓨터 밖으로 안 나가는 게 더 좋다면 로컬 설치",
@@ -243,7 +523,7 @@ const D = {
   wipe_btn: ["모든 데이터 지우기", "Erase all data"],
   wipe_confirm_hosted: [
     "이 브라우저에 저장된 모든 프로젝트·설정·API 키를 지웁니다. 되돌릴 수 없어요.\n\n남기고 싶은 프로젝트가 있다면 먼저 카드의 ⬇ 버튼으로 내보내세요.\n\n정말 지울까요?",
-    "This erases every project, setting and API key stored in this browser. It cannot be undone.\n\nExport any project you want to keep (⬇ on its card) first.\n\nErase everything?",
+    "This erases every project, setting and API key stored in this browser. It cannot be undone.\n\nExport any project you want to keep (⬇ on its tile) first.\n\nErase everything?",
   ],
   wipe_confirm_local: [
     "이 브라우저에 저장된 설정(언어·브랜드색·API 키 캐시)을 지웁니다. 파일로 저장된 프로젝트(data/projects)는 지워지지 않아요.\n\n계속할까요?",
@@ -254,10 +534,16 @@ const D = {
   // editor
   ed_back: ["← 목록", "← Back"],
   ed_undo: ["↩ 실행취소", "↩ Undo"],
-  ed_export_one: ["이 카드 PNG", "Card PNG"],
+  ed_export_one: [
+    "이 카드 PNG",
+    "Slide PNG",
+  ],
   ed_export_all: ["전체 내보내기", "Export all"],
   ed_exporting: ["내보내는 중…", "Exporting…"],
-  ed_add_card: ["+ 카드 추가", "+ Add card"],
+  ed_add_card: [
+    "+ 카드 추가",
+    "+ Add slide",
+  ],
   ed_slideshow: ["▶ 슬라이드쇼", "▶ Slideshow"],
   ed_export_fail: ["PNG 내보내기에 실패했습니다.", "PNG export failed."],
   ed_model_title: ["AI 모델", "AI model"],
@@ -267,7 +553,10 @@ const D = {
   th_dup: ["복제", "Duplicate"],
   th_del: ["삭제", "Delete"],
   th_drag: ["드래그해서 순서 변경", "Drag to reorder"],
-  sel_card: ["카드", "Card"],
+  sel_card: [
+    "카드",
+    "Slide",
+  ],
   sel_text: ["텍스트", "Text"],
   sel_shape: ["도형", "Shape"],
   sel_image: ["이미지", "Image"],
@@ -296,15 +585,15 @@ const D = {
   insp_ref: ["채팅에서 참조", "Reference in chat"],
   insp_override_hint: [
     "아래 값을 바꾸면 이 카드만 달라집니다 (다른 카드는 공통 스타일 유지). 되돌리려면 ↺.",
-    "Editing the values below overrides just this card (others keep the shared style). ↺ to reset.",
+    "Editing the values below overrides just this slide (others keep the shared style). ↺ to reset.",
   ],
   insp_unify_title: [
     "모든 카드의 같은 역할 텍스트를 공통 스타일로 통일합니다.",
-    "Snap every card's same-role text to the shared style.",
+    "Snap every slide's same-role text to the shared style.",
   ],
   insp_shared_hint: [
     "여기서 바꾸면 그 역할의 모든 카드가 함께 바뀝니다. 특정 카드만 다르게 하려면 그 요소를 직접 편집하세요.",
-    "Changing these updates every card of that role. Edit an element directly to override just that card.",
+    "Changing these updates every slide of that role. Edit an element directly to override just that slide.",
   ],
   role_overline: ["오버라인", "Overline"],
   role_mega: ["메가타이틀", "Mega title"],
@@ -340,10 +629,13 @@ const D = {
   insp_radius: ["둥글기", "Radius"],
   insp_dim: ["딤 (어둡게)", "Dim"],
   insp_subject_sep: ["인물만 작게 (우하단)", "Shrink subject (corner)"],
-  insp_bg_extract: ["배경색 추출 → 카드", "Backdrop → card"],
+  insp_bg_extract: [
+    "배경색 추출 → 카드",
+    "Backdrop → slide",
+  ],
   insp_subject_hint: [
     "단색 배경 사진이면, 배경색을 카드에 깔고 이미지를 작게 옮겨 인물만 떠 보이게 합니다.",
-    "For a solid-backdrop photo: paint the card with its backdrop color and shrink the image so only the subject floats.",
+    "For a solid-backdrop photo: paint the slide with its backdrop color and shrink the image so only the subject floats.",
   ],
   insp_delete: ["요소 삭제", "Delete element"],
   insp_opacity: ["투명도 (알파)", "Opacity"],
@@ -355,18 +647,24 @@ const D = {
   lyr_backward: ["뒤로", "Down"],
   lyr_forward: ["앞으로", "Up"],
   lyr_front: ["맨앞", "Front"],
-  insp_card_bg: ["카드 배경", "Card background"],
+  insp_card_bg: [
+    "카드 배경",
+    "Slide background",
+  ],
   insp_bg_css: ["배경 (색상/그라디언트 CSS)", "Background (color/gradient CSS)"],
   insp_bg_pick: ["배경 색상 선택", "Pick a background color"],
   insp_bg_to_layer: ["이미지를 레이어로 분리", "Detach image to a layer"],
   insp_bg_to_layer_hint: [
     "이 카드의 배경에 이미지가 깔려 있습니다. 레이어로 분리하면 다른 요소처럼 선택·이동·딤 조절·삭제할 수 있습니다.",
-    "This card's background contains an image. Detach it to select, move, dim, or delete it like any other layer.",
+    "This slide's background contains an image. Detach it to select, move, dim, or delete it like any other layer.",
   ],
   insp_tab_text: ["텍스트 스타일", "Text styles"],
   insp_tab_design: ["디자인", "Design"],
   insp_ask_ai: ["✨ AI에게", "✨ Ask AI"],
-  ask_bg_prefill: ["카드 {n} 배경을", "Make card {n}'s background"],
+  ask_bg_prefill: [
+    "카드 {n} 배경을",
+    "Make slide {n}'s background",
+  ],
   ask_theme_prefill: ["테마 팔레트(배경·텍스트·포인트)를", "Make the theme palette (bg·text·accent)"],
   ask_roles_prefill: ["텍스트 공통 스타일(역할별 타이포)을", "Make the shared text styles (per-role typography)"],
   insp_tab_text_empty: [
@@ -379,7 +677,7 @@ const D = {
   insp_theme_accent: ["포인트", "Accent"],
   insp_theme_hint: [
     "기본값을 그대로 쓰던 카드·텍스트·포인트가 함께 바뀝니다. 개별 수정한 요소는 유지되고, 새 카드·요소의 기본값이기도 합니다.",
-    "Cards and text still on the default follow the change; individually edited elements keep theirs. Also the default for new cards and elements.",
+    "Slides and text still on the default follow the change; individually edited elements keep theirs. Also the default for new slides and elements.",
   ],
   insp_hint: [
     "요소를 클릭하면 속성이, 더블클릭하면 텍스트 편집이 열립니다. 드래그 중에는 다른 요소와 자동 정렬(스냅)됩니다.",
@@ -390,23 +688,41 @@ const D = {
   chat_title: ["AI 편집", "AI edit"],
   chat_hint: [
     "선택한 카드/요소를 자연어로 수정하세요. 이미지를 붙여넣거나 끌어다 놓으면 카드에 넣어달라고 요청할 수 있습니다.",
-    "Edit the selected card or element in plain language. Paste or drop images and ask to place them on a card.",
+    "Edit the selected slide or element in plain language. Paste or drop images and ask to place them on a slide.",
   ],
   chat_thinking: ["생각 중…", "Thinking…"],
   chat_ig_reading: ["인스타 슬라이드 읽는 중…", "Reading Instagram slides…"],
-  mention_head: ["카드·사진 태그 (↑↓ 선택 · Enter)", "Tag a card or image (↑↓ · Enter)"],
-  mention_used_in: ["카드 {n}에 사용 중", "on card {n}"],
-  mention_upload: ["업로드됨 · 아직 카드에 없음", "Uploaded · not on a card yet"],
+  mention_head: [
+    "카드·사진 태그 (↑↓ 선택 · Enter)",
+    "Tag a slide or image (↑↓ · Enter)",
+  ],
+  mention_used_in: [
+    "카드 {n}에 사용 중",
+    "on slide {n}",
+  ],
+  mention_upload: [
+    "업로드됨 · 아직 카드에 없음",
+    "Uploaded · not on a slide yet",
+  ],
   chat_working: ["진행 중…", "Working…"],
   chat_ph: [
     "수정 요청을 입력하세요… (@로 카드·사진 태그, 이미지 붙여넣기, 인스타 링크로 따라하기)",
-    "Ask for changes… (@ to tag cards/images, paste images, or an Instagram link to match)",
+    "Ask for changes… (@ to tag slides/images, paste images, or an Instagram link to match)",
   ],
   chat_send: ["보내기", "Send"],
   chat_attach: ["이미지 첨부", "Attach image"],
-  chat_q1: ["이 카드 타이틀 더 강하게", "Punch up this card's title"],
-  chat_q2: ["전체 색 일관성 정리해줘", "Unify colors across cards"],
-  chat_q3: ["마지막에 CTA 카드 추가", "Add a CTA card at the end"],
+  chat_q1: [
+    "이 카드 타이틀 더 강하게",
+    "Punch up this slide's title",
+  ],
+  chat_q2: [
+    "전체 색 일관성 정리해줘",
+    "Unify colors across slides",
+  ],
+  chat_q3: [
+    "마지막에 CTA 카드 추가",
+    "Add a CTA slide at the end",
+  ],
   chat_q4: ["어울리는 배경 사진 깔아줘", "Add fitting photo backgrounds"],
   chat_img_fail: ["이미지를 읽을 수 없습니다.", "Couldn't read that image."],
   chat_req_fail: ["요청에 실패했습니다.", "Request failed."],
@@ -423,7 +739,10 @@ const D = {
   mp_speed: ["속도", "Speed"],
 
   // generation (home → editor streaming)
-  gen_designing: ["카드 설계 중…", "Designing cards…"],
+  gen_designing: [
+    "카드 설계 중…",
+    "Designing slides…",
+  ],
 
   // hosted deploy — "this is a preview, run it locally" banner + install guide
   hosted_banner: [
@@ -435,7 +754,7 @@ const D = {
   inst_title: ["내 컴퓨터에서 실행하기", "Run it on your computer"],
   inst_lede: [
     "Card News Studio는 서버 없이 여러분의 컴퓨터에서만 돌아가는 오픈소스 도구입니다. 그리고 본인이 직접 발급한 API 키를 넣어 쓰는 방식이에요 — 키와 데이터는 이 컴퓨터를 절대 벗어나지 않습니다. 이 페이지는 미리보기이고, 실제로 카드를 만들려면 아래 3단계로 설치하세요.",
-    "Card News Studio is an open-source tool with no server — it runs only on your own computer, using your own API key that you issue yourself. Your key and data never leave your machine. This page is just a preview; to actually make cards, install it with the three steps below.",
+    "Card News Studio is an open-source tool with no server — it runs only on your own computer, using your own API key that you issue yourself. Your key and data never leave your machine. This page is just a preview; to actually make carousels, install it with the three steps below.",
   ],
   inst_badge_free: ["무료 · 오픈소스 (MIT)", "Free · open source (MIT)"],
   inst_badge_local: ["내 컴퓨터에서만 실행", "Runs only on your computer"],

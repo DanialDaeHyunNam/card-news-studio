@@ -102,6 +102,112 @@ auto-selects a model whose key is connected.
   text (new TextElement/role style field). Card count `0` = Auto (model picks 3–10).
   Reference material (reels script/analytics text + screenshots) rides along as
   `refText`/`refImages`. Failed runs hand the inputs back to Home (`lastCfg`).
+- **Create wizard** (Home, `components/CreateWizard.tsx` + `lib/wizard.ts`) replaces the
+  old single input bar. Steps, in order: ① format reference — a post URL first
+  (Instagram/LinkedIn/TikTok), template / previous project as fallback, or none;
+  ② goal — "video → carousel" (video link auto-fills subtitles: YouTube via
+  `/api/youtube` + SegmentPicker for long videos, TikTok/IG via `/api/reference`;
+  + "anything else to include") or "new card set" (the story = prompt core);
+  optional analytics notes/screenshots; ③ design — card count (auto default),
+  design notes (highest-priority styling input), photos, brand color; ④ ratio —
+  auto-suggested from the reference's real slide aspect until the user picks;
+  ⑤ model. `WizardState` lives in Root (page.tsx) so a failed run keeps every
+  answer; reset only on success. Maps to GenConfig/GenerateBody via `toGenConfig`
+  (`mode`, `script`, `designNotes`, `referencePost`, `templateRef`).
+- **Create harness** (`lib/harness.ts`): analyze → (ask ↔ answer)* → generate.
+  After step ⑤, if there are photos or reference slides, `/api/plan`
+  (`buildPlanRequest` + `planSystem` + `planSchema`) reads the reference's photo
+  COMPOSITION and returns card count + per-card layout (`full | stack2 | side2 |
+  stack3 | grid4 | none`, rects in `LAYOUT_SLOTS`, lib/photoset.ts) + which
+  photo goes in each slot (varied: different photos within a card, similar
+  shots not adjacent) + `sufficient`. Insufficient → the wizard shows the
+  model's question (reasons + options) and the user uploads more / picks /
+  types an answer → re-plan with the dialogue. Sufficient → generation with
+  `plan` (photoPlanRules: text per slot; client `dressPlannedCard` lays the
+  photos). Verified live 2026-09 on the subscription (reference = 8× stack2).
+- **Reference style spec** (`RefStyle`, lib/photoset.ts): the analysis step
+  also MEASURES the reference — dim + scrim, text color/effect, anchor/align,
+  hierarchy (levels, headline/body px, weight, letter case, words per slide),
+  storyPattern (refrain / contrast / numbering…) and voice. It is binding for
+  generation (`referenceStyleRules`; the hardcoded white/700/56–72 photo rules
+  only apply when there is no spec) and for the client dressing (image dim,
+  scrim mode, shadow). Verified 2026-09: reference = centered lowercase single
+  lines + "post a video" refrain → output kept 48px/600/center + a Korean refrain.
+- **Reference library** (`lib/references.ts`, `/api/references` →
+  data/references.json; localStorage fallback with ≤240px thumbs): every loaded
+  reference is recorded (use count, last used), ★ favorites can be saved ahead
+  by link. Home section `ReferenceLibrary` + step-1 quick-pick strip; picking an
+  entry converts its stored slides back to model-sized data URLs
+  (`entryToPost`). Existing projects' `reference` backfilled once.
+- **Track parity (subscription ≡ API)**: every step is an `AiRequest` with a
+  pinned `effort` (plan/generate high, chat medium, video-bg low) applied on
+  every track — Anthropic `output_config.effort`, CLI `--effort`, OpenAI
+  `reasoning_effort`. The Anthropic body is built ONCE in `lib/ai-anthropic.ts`
+  for both the server SDK (`client.beta.messages.stream`) and hosted raw fetch:
+  adaptive thinking, cache breakpoint after the image prefix (re-plans reuse
+  the photos), server-side refusal `fallbacks: "default"` on 5.x models,
+  refusal → readable error. The API model list must track what the CLI aliases
+  resolve to (verified 2026-09: opus → claude-opus-5-5, sonnet →
+  claude-sonnet-5-5); Opus 5.5's API effort default is `medium`, so pinning is
+  what keeps API output at subscription quality. SDK ≥ 0.129 (xhigh, fallbacks).
+- **Editor**: ‹ n/N › card nav (+ ←/→ when nothing is selected) and 📎 reference
+  compare (`components/ReferenceCompare.tsx`, `project.reference` saved at
+  generation as ≤480px copies; attach one by link for older projects).
+- **Brand color** has three modes in the wizard: Auto / Custom / None
+  (`noAccent` → monochrome prompt + accent = textColor). localStorage
+  `cardnews.accent` may hold "none" — the Editor ignores it as a color.
+- **Reference posts** (`/api/reference`, `lib/scrapers/*`, shared type
+  `ReferencePost` in `lib/reference.ts`), no login. Verified 2026-09:
+  Instagram = crawler (Googlebot UA) page's inline `carousel_media` (GraphQL 403,
+  embed no media, `?__a=1` 500); LinkedIn = crawler page ld+json (text, likes,
+  comments) + `data-native-document-config` → manifest → every document page
+  image + per-page transcript; TikTok = browser-UA `__UNIVERSAL_DATA_FOR_REHYDRATION__`
+  (caption, plays/likes/shares/saves, `imagePost` photos, WebVTT `subtitleInfos`)
+  — rate-limited/flaky, falls back to oEmbed (`partial: true`). ANY scrape
+  failure → the wizard asks for screenshots (`screenshotReference`, platform
+  "upload"). The editor chat accepts the same links (slides added AFTER
+  attachments so "첨부 N" indices don't shift; existing photos are user content —
+  never removed unless asked).
+- **Claude subscription provider** (`lib/claude-cli.ts`, provider `claude-cli`,
+  model ids `claude-cli:opus|sonnet|haiku`): local dev only — spawns the user's
+  installed `claude -p` (stream-json in/out, `--json-schema`, `--tools ""`,
+  `--setting-sources ""`, `--strict-mcp-config`, neutral tmp cwd) so generation
+  runs on their Claude plan, no API key. The child env has `ANTHROPIC_API_KEY`
+  STRIPPED (else the CLI bills the API). `--bare` is unusable (disables OAuth).
+  `/api/keys` reports the pseudo flag `CLAUDE_CLI` when a working binary is found
+  (`CLAUDE_CLI_PATH` overrides); the picker hides the group otherwise and it's
+  first in PROVIDER_ORDER so it auto-selects. Only the StructuredOutput tool's
+  `input_json_delta` is streamed (prose is suppressed). Cost recorded as $0.
+- **i18n** (`lib/i18n.tsx`): flat `[ko, en]` dict + LangProvider (localStorage
+  `cardnews.lang`, defaults from navigator.language) + `useLang()` → `{lang, t}`.
+  Globe dropdown = `components/LangSwitch.tsx` (Home nav + Editor topbar).
+  Templates are localized via `getTemplates(lang)` (copy hand-written per language,
+  NOT machine-translated). `lang` is sent to generate/chat so AI copy matches the UI
+  language. Server error strings are still Korean-first — localize if it matters.
+  - `generate`: topic (+ optional reference theme/texts for style continuity, + optional
+    youtube `source` with transcript — prompt tells the model to quote real 자막 lines) → `{theme, cards}`
+  - `chat`: sanitized project JSON (image srcs stripped) + selection + history +
+    image attachments → `{reply, operations[]}`
+  - `photo`: same-origin proxy for Lorem Picsum (`/api/photo?id=N&w=&h=&g=1`) so
+    AI-picked photo backgrounds survive html-to-image export (no CORS). The AI
+    chooses from the curated library in `lib/photos.ts` — IDs + bilingual tags
+    injected into both prompts via `photoLibraryPrompt(cardH)`. Tags were written
+    by actually viewing each photo; when adding entries, LOOK at the image first
+    (contact-sheet trick: grid HTML + headless screenshot). Never guess IDs/tags.
+  - `youtube`: URL → title/author/caption lines WITHOUT an API key, via the InnerTube
+    player API with the **ANDROID client** (the watch-page timedtext URLs return empty
+    bodies without a proof-of-origin token; WEB client returns no tracks — verified 2026-07).
+    Response may be json3 or timedtext XML; `parseCaptions` handles both. The Home hero
+    detects YouTube URLs in the topic input and runs 자막 fetch → generate.
+- **Photo sets** (Home 📷 tray, `lib/photoset.ts`): user photos (drag/paste/pick;
+  HEIC → JPEG via dev-only `/api/heic` = macOS `sips`) are sent to the model at
+  ≤800px so it places copy off the subject; `photoSetRules` (prompts.ts) overrides
+  the single-anchor/accent-bar rules for a reels-carousel look. The model writes
+  TEXT ONLY — `dressPhotoCard` puts photo `k mod N` full-bleed behind card k (N<M
+  loops, N>M stops), a gradient scrim on the text's half, and `shadow: true` on
+  text (new TextElement/role style field). Card count `0` = Auto (model picks 3–10).
+  Reference material (reels script/analytics text + screenshots) rides along as
+  `refText`/`refImages`. Failed runs hand the inputs back to Home (`lastCfg`).
 - **Instagram** (`/api/instagram`): a post link in the hero bar → every carousel
   slide + caption + like/comment counts, NO login — Instagram serves crawlers
   (Googlebot UA) the post's media JSON inline (`carousel_media`). Verified
@@ -146,10 +252,17 @@ auto-selects a model whose key is connected.
 
 Dark, bold aesthetic: black bg (`#050505`), pill buttons (white primary), bold tight
 headings, dark panels. All styles in `app/globals.css` (no Tailwind). Editor layout:
-card strip (left) / canvas / inspector / AI chat (right). Home = hero with the
-pill-shaped topic bar.
+card strip (left) / canvas / inspector / AI chat (right). Home = hero + the
+create wizard (+ "blank canvas" / import under it), projects, how-it-works.
+Templates no longer have their own Home gallery — they're the wizard's
+step-1 fallback reference, with "Open as-is" for manual editing.
 
 ## Conventions & gotchas
+
+- **Naming**: the app is "Card News Studio" (unchanged), but user-facing English
+  says **carousel / slides** (what Instagram, LinkedIn and TikTok users call it;
+  "card news" is a Korean-only term) and Korean says 카드뉴스 / 카드. Code and
+  data model keep `card`/`cards` (Project.cards, CardView) — don't rename those.
 
 - Single-page client app: `app/page.tsx` returns null until localStorage loads
   (hydration safety) — SSR HTML is intentionally empty.
@@ -158,8 +271,8 @@ pill-shaped topic bar.
 - Thumbnails must keep `pointer-events: none` (`.thumb-preview *`).
 - When changing the element model: update types.ts + schemas.ts + prompts.ts +
   ops.ts (normalize/patch) + CardView render together.
-- Model choice is deliberate (`claude-opus-4-8`); don't downgrade for cost without
-  the owner's say-so.
+- Model choice is deliberate (`claude-opus-5-5`, matching the subscription's
+  opus alias); don't downgrade for cost without the owner's say-so.
 - **Hosted vs local mode (v0.8.0 — hosted RUNS now, via BYOK)**: `app/layout.tsx`
   stamps `<html data-hosted>` when `process.env.VERCEL` (or `HOSTED_DEMO=1`);
   `useHosted()` reads it (non-React: `isHostedRuntime()` in `lib/ai-transport.ts`).

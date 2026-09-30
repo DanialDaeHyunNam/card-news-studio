@@ -10,6 +10,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { resolveModel, type ModelInfo } from "./models";
 import { openaiCompatStream, type StreamEvent } from "./ai-compat";
 import { claudeCliStream } from "./claude-cli";
+import { anthropicCall, anthropicCost, refusalError } from "./ai-anthropic";
 import type { AiRequest } from "./requests";
 
 export type { StreamEvent };
@@ -65,13 +66,11 @@ export function streamResponse(opts: RequestOpts): Response {
 
 async function* anthropicStream(model: ModelInfo, opts: RequestOpts): AsyncGenerator<StreamEvent> {
   const client = new Anthropic();
-  const stream = client.messages.stream({
-    model: model.id,
-    max_tokens: 16000,
-    thinking: { type: "adaptive" },
-    system: opts.system,
-    messages: [{ role: "user", content: opts.content }],
-    output_config: { format: { type: "json_schema", schema: opts.schema } },
+  const { body, betas } = anthropicCall(model, opts);
+  // Beta namespace: carries `fallbacks` (server-side refusal fallback) on the 5.x models.
+  const stream = client.beta.messages.stream({
+    ...(body as unknown as Anthropic.Beta.MessageCreateParamsStreaming),
+    ...(betas.length ? { betas } : {}),
   });
 
   for await (const ev of stream) {
@@ -81,31 +80,26 @@ async function* anthropicStream(model: ModelInfo, opts: RequestOpts): AsyncGener
   }
 
   const msg = await stream.finalMessage();
+  if (msg.stop_reason === "refusal") throw refusalError();
   if (msg.stop_reason === "max_tokens") {
     throw new Error("응답이 너무 길어 잘렸습니다. 요청을 나눠서 시도해 주세요.");
   }
-  const text = msg.content.find((b) => b.type === "text");
+  const text = msg.content.findLast((b) => b.type === "text");
   if (!text || text.type !== "text") {
     throw new Error("모델이 텍스트 응답을 반환하지 않았습니다.");
   }
 
   const u = msg.usage;
-  const inputTokens = u.input_tokens ?? 0;
-  const outputTokens = u.output_tokens ?? 0;
-  const cacheReadTokens = u.cache_read_input_tokens ?? 0;
-  const cacheCreationTokens = u.cache_creation_input_tokens ?? 0;
-  const p = model.pricing!;
-  const costUsd =
-    (inputTokens * p.inPerMTok +
-      outputTokens * p.outPerMTok +
-      cacheReadTokens * p.inPerMTok * 0.1 +
-      cacheCreationTokens * p.inPerMTok * 1.25) /
-    1_000_000;
-
+  const tokens = {
+    inputTokens: u.input_tokens ?? 0,
+    outputTokens: u.output_tokens ?? 0,
+    cacheReadTokens: u.cache_read_input_tokens ?? 0,
+    cacheCreationTokens: u.cache_creation_input_tokens ?? 0,
+  };
   yield {
     type: "done",
     text: text.text,
-    usage: { model: model.id, inputTokens, outputTokens, cacheReadTokens, cacheCreationTokens, costUsd },
+    usage: { model: msg.model || model.id, ...tokens, costUsd: anthropicCost(model, tokens) },
   };
 }
 

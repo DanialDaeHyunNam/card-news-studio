@@ -12,8 +12,8 @@ import {
   MENTION_TOKEN_RE,
   type Mentionable,
 } from "@/lib/mentions";
-import { fetchInstagram, findInstagramUrl } from "@/lib/instagram";
-import type { ChatMention, InstagramRef } from "@/lib/requests";
+import { detectReference, fetchReference, type ReferencePost } from "@/lib/reference";
+import type { ChatMention } from "@/lib/requests";
 import type { UsageEvent } from "@/lib/usage";
 import { getTemplates, instantiateTemplate, type Template } from "@/lib/templates";
 import { extractReply, parseStructured } from "@/lib/stream";
@@ -59,7 +59,7 @@ export default function ChatPanel({ project, selection, selectionLabel, disabled
   const [streamReply, setStreamReply] = useState("");
   // A pasted Instagram link is read before the turn is sent (slides → model).
   const [igReading, setIgReading] = useState(false);
-  const igCache = useRef(new Map<string, { ref: InstagramRef; thumbs: string[] }>());
+  const igCache = useRef(new Map<string, { ref: ReferencePost; thumbs: string[] }>());
   const fileRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -192,17 +192,17 @@ export default function ChatPanel({ project, selection, selectionLabel, disabled
       const mentionThumbs = mentionImgs.map(({ img }) => img.thumb);
       if (mentionThumbs.length) setStreamUser({ text: message, thumbs: [...userThumbs, ...mentionThumbs] });
 
-      // Instagram link in the message → fetch every slide as a style reference.
+      // Instagram/LinkedIn/TikTok link in the message → fetch its slides as a style reference.
       // Cached per URL so a retry / follow-up with the same link is instant.
-      let instagram: InstagramRef | undefined;
+      let referencePost: ReferencePost | undefined;
       let igThumbs: string[] = [];
-      const igUrl = findInstagramUrl(message);
+      const igUrl = detectReference(message)?.url;
       if (igUrl) {
         let hit = igCache.current.get(igUrl);
         if (!hit) {
           setIgReading(true);
           try {
-            const ref = await fetchInstagram(igUrl);
+            const ref = await fetchReference(igUrl);
             const thumbs = await Promise.all(ref.slides.slice(0, 4).map((s) => shrinkDataUrl(s, 120)));
             hit = { ref, thumbs };
             igCache.current.set(igUrl, hit);
@@ -210,7 +210,7 @@ export default function ChatPanel({ project, selection, selectionLabel, disabled
             setIgReading(false);
           }
         }
-        instagram = hit.ref;
+        referencePost = hit.ref;
         igThumbs = hit.thumbs;
         setStreamUser({ text: message, thumbs: [...userThumbs, ...mentionThumbs, ...igThumbs] });
       }
@@ -226,7 +226,7 @@ export default function ChatPanel({ project, selection, selectionLabel, disabled
         attachments: turnAtts,
         mentions: chatMentions.length ? chatMentions : undefined,
         templateRef: tpl ? { name: tpl.name, theme: tpl.theme, cards: tpl.cards } : undefined,
-        instagram,
+        referencePost,
         lang,
       })) {
         if (ev.type === "delta") {

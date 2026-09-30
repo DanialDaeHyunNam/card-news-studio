@@ -72,8 +72,10 @@ export async function* openaiCompatStream(
   // GPT-5.x rejects `max_tokens`; Gemini's compat layer expects it.
   if (isGoogle) body.max_tokens = 16000;
   else {
-    body.max_completion_tokens = 16000;
+    body.max_completion_tokens = 32000;
     body.stream_options = { include_usage: true };
+    // Same reasoning depth the Claude tracks get (xhigh/max have no OpenAI level → high).
+    if (opts.effort) body.reasoning_effort = opts.effort === "low" || opts.effort === "medium" ? opts.effort : "high";
   }
 
   const res = await fetch(`${model.apiBase}/chat/completions`, {

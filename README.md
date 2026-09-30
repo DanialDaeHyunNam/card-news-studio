@@ -1,12 +1,14 @@
 # Card News Studio
 
-**AI-powered card news maker for social media.** Type a topic — or paste an
-article or a YouTube link — and Claude (or GPT, or Gemini) drafts a full themed
-carousel: hook → body → CTA. Then refine it on a Figma-like canvas with smart
-guides and an AI chat, and export PNGs.
+**AI carousel maker for Instagram, LinkedIn and TikTok.** Show it a post that
+worked and tell it your story (or give it a video to unfold) — Claude (or GPT,
+or Gemini) studies the reference's layout, photo composition, type hierarchy
+and storytelling, then builds your carousel in that format. Refine it on a
+Figma-like canvas with smart guides and an AI chat, and export PNGs.
 
-> 주제 하나로 카드뉴스 한 세트. 주제·원문·유튜브 링크를 넣으면 AI가 카피와
-> 레이아웃을 설계하고, 캔버스에서 자유롭게 다듬은 뒤 PNG로 내보냅니다.
+> 잘 된 게시물 하나로 카드뉴스 한 세트. 레퍼런스와 하고 싶은 이야기(또는 영상)를
+> 주면 AI가 그 구성·사진 구도·글 위계·스토리텔링을 따라 설계하고, 캔버스에서
+> 다듬은 뒤 PNG로 내보냅니다.
 
 Open source (**MIT**). Two ways to use it:
 
@@ -25,8 +27,8 @@ Open source (**MIT**). Two ways to use it:
 
 ## Features
 
-- **AI draft generation** — a topic/article/YouTube video in, a themed card set
-  out, streamed card-by-card into the editor as the model writes it. Powered by
+- **AI draft generation** — a story, an article or a video in, a themed carousel
+  out, streamed slide-by-slide into the editor as the model writes it. Powered by
   structured JSON output.
 - **Multi-provider** — Claude (Opus / Sonnet / Haiku), OpenAI (GPT-5.x), and
   Gemini share one dispatcher. The app auto-selects a good-value default for
@@ -42,16 +44,23 @@ Open source (**MIT**). Two ways to use it:
 - **Brand color** — pin a point color; every element using it recolors together
   when you change it (a real design token, not a one-off value).
 - **Photo sets (reels → carousel)** — add your own photos (HEIC OK locally); the
-  AI decides the card count, places copy off each photo's subject, and cycles
-  the photos across cards with a legibility scrim + text shadow. Paste the
-  reel's script/analytics as reference material.
-- **Instagram reference** — paste a public post link (hero bar or chat) to
-  benchmark every slide of it, no login needed.
+  AI decides the slide count, copies the reference's photo composition (e.g.
+  two photos stacked per slide), places copy off each photo's subject, and asks
+  for more photos when it needs them. Paste the reel's script/analytics as
+  reference material.
+- **Guided create flow** — format reference → video-to-carousel or a new story →
+  design → ratio → AI, then refine in the editor's AI chat.
+- **Reference posts** — paste a public Instagram, LinkedIn or TikTok post (in
+  the create flow or the chat) and every slide (plus captions, per-slide text,
+  subtitles and engagement where available) is benchmarked, no login needed.
+  If a platform blocks it, drop in screenshots instead.
 - **Claude subscription mode (local)** — run on your Claude plan through the
   installed Claude Code CLI instead of an API key.
-- **@-mentions** — tag cards and images in the chat from a preview picker.
-- **YouTube → cards** — paste a video URL; captions are fetched (no API key
-  needed) and turned into a card set that quotes the real transcript.
+- **Reference library** — every reference you've used, plus favorites saved
+  ahead of time by link.
+- **@-mentions** — tag slides and images in the chat from a preview picker.
+- **Video → carousel** — paste a YouTube or TikTok link; subtitles are fetched
+  (no API key needed) and unfolded into a carousel that quotes the real script.
 - **Style continuity** — start a new set that inherits a previous project's theme
   and tone.
 - **Templates** — 10 starter sets (bilingual copy), each a launchpad you make your own.

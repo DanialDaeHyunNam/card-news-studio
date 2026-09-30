@@ -11,13 +11,22 @@ interface ModelPickerProps {
   keys: Record<string, boolean> | null; // connected-key booleans by envVar; null = unknown
   onConnectKey?: () => void; // opens the key modal when a keyless model is picked
   align?: "left" | "right";
+  placement?: "down" | "up"; // "up" where there's no room below (e.g. the create wizard's last step)
   disabled?: boolean;
 }
 
 // shadcn-style grouped model dropdown: flagship models show by default, the rest
 // live behind "All models". Each row carries a price + spec line and a speed
 // meter so you can pick by cost/speed at a glance.
-export default function ModelPicker({ value, onChange, keys, onConnectKey, align = "left", disabled }: ModelPickerProps) {
+export default function ModelPicker({
+  value,
+  onChange,
+  keys,
+  onConnectKey,
+  align = "left",
+  placement = "down",
+  disabled,
+}: ModelPickerProps) {
   const { lang, t } = useLang();
   const [open, setOpen] = useState(false);
   const [showAll, setShowAll] = useState(false);
@@ -58,7 +67,7 @@ export default function ModelPicker({ value, onChange, keys, onConnectKey, align
       </button>
 
       {open && (
-          <div className={`mp-menu ${align}`}>
+          <div className={`mp-menu ${align} ${placement === "up" ? "up" : ""}`}>
             <div className="mp-scroll">
               {groups.map((g) => {
                 const hasKey = keys ? !!keys[g.envVar] : true;

@@ -5,6 +5,73 @@ All notable changes to Card News Studio. This project uses simple
 the deployed one and prompts an update when it's behind (see
 [ARCHITECTURE.md](ARCHITECTURE.md#hosted-vs-local-mode)).
 
+## 0.10.0 — 2026-09-30
+
+Reference-first carousels. Show it a post that worked, tell it your story (or
+give it a video), and it studies the reference — photo composition, dim, type
+hierarchy, storytelling — asks for more photos if it needs them, then builds
+your carousel in that format. Subscription and API keys now run the same models
+at the same quality.
+
+### Added
+- **Analysis step with follow-up questions**: before generating, the AI reads
+  the reference's photo composition (e.g. two different photos stacked per
+  slide), plans each card's layout and assigns your photos to every slot
+  (varied, no near-duplicates side by side). If the photos don't suffice it
+  asks — with reasons and suggested answers — and re-analyzes after you
+  upload more or reply. Works on the subscription and on API keys alike.
+- Multi-photo card layouts: top/bottom, left/right, three-row, 2×2.
+- **Reference style spec**: the analysis measures the reference's dim, text
+  color/effect, text position, hierarchy, letter case, words per slide,
+  storytelling devices (e.g. a repeated refrain line) and voice — generation
+  and photo compositing follow it instead of one fixed house style.
+- **Reference library**: every reference you load is kept (with its link, use
+  count and last use); save favorites ahead of time by link; pick one from the
+  create flow's step 1 or from the library section on Home.
+- Editor: reference compare next to the canvas; ‹ › card navigation (under
+  the card) and ←/→ keys.
+- Brand color "None" (monochrome) with an explanation of what the brand color does.
+
+### Changed
+- **English says "carousel"** — the English UI and docs now use the term people
+  actually search for ("carousel" / "slides" instead of "card set" / "cards");
+  the app name stays Card News Studio and Korean keeps 카드뉴스. English @-tags
+  are `@slide3` (old `@card3` still works).
+- API models now match the subscription: Claude Opus 5.5 (default),
+  Sonnet 5.5, Fable 5.1; effort is pinned per step on every track, the image
+  prefix is cached across re-analyses, and server-side refusal fallback is on
+  for the 5.x models. `@anthropic-ai/sdk` 0.129.
+- The model menu in the create flow opens upward (no longer clipped).
+
+### Fixed
+- Instagram slides were fetched as square crops (e.g. 640×640 of a 4:5 post);
+  they now keep their real shape, so the ratio suggestion and the AI's view are right.
+
+### Changed
+- **Guided create flow** replaces the single input bar: ① format reference
+  (post link first, template / previous project as fallback) → ② goal (turn an
+  existing video into a carousel — subtitles auto-fetched from YouTube / TikTok —
+  or a new story) → ③ design (auto card count, design notes, photos, brand
+  color) → ④ ratio (suggested from the reference) → ⑤ AI.
+
+### Added
+- LinkedIn (document carousels: every page + per-page text) and TikTok (photo
+  carousels, stats incl. saves, video subtitles) as reference posts, alongside
+  Instagram (`/api/reference`).
+- Screenshot fallback whenever a post can't be read.
+
+- Home copy for the new flow ("One reference, one full card set."), reworked
+  English wording throughout the wizard, and a "How it works" demo that shows
+  reference → draft → chat edits with @-tags.
+- The template gallery left Home: templates are the wizard's fallback
+  reference, with "Open as-is" for manual editing; "Blank canvas" sits under
+  the wizard.
+
+### Fixed
+- The header no longer overflows horizontally on narrow screens (version chip
+  and GitHub button hide; lang + keys stay).
+- Wizard step numbers and labels align; English step labels no longer truncate.
+
 ## 0.9.0 — 2026-09-30
 
 Turn a reel that worked into a carousel: drop in your own photos, paste the

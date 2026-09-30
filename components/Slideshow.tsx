@@ -90,7 +90,7 @@ export default function Slideshow({
               <button
                 key={c.id}
                 className={i === idx ? "on" : ""}
-                aria-label={`card ${i + 1}`}
+                aria-label={`slide ${i + 1}`}
                 onClick={() => setIdx(i)}
               />
             ))}

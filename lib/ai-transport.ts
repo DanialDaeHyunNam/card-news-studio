@@ -10,9 +10,11 @@ import { readSSE, type WireEvent } from "./stream";
 import {
   buildChatRequest,
   buildGenerateRequest,
+  buildPlanRequest,
   buildVideoBgRequest,
   type ChatBody,
   type GenerateBody,
+  type PlanBody,
 } from "./requests";
 import { streamDirect } from "./ai-client";
 import { getClientKey } from "./client-keys";
@@ -51,6 +53,11 @@ function requireClientKey(modelId: string | undefined): string {
 export function streamGenerate(body: GenerateBody): AsyncGenerator<WireEvent> {
   if (isHostedRuntime()) return streamDirect(buildGenerateRequest(body), requireClientKey(body.model));
   return viaRoute("/api/generate", body);
+}
+
+export function streamPlan(body: PlanBody): AsyncGenerator<WireEvent> {
+  if (isHostedRuntime()) return streamDirect(buildPlanRequest(body), requireClientKey(body.model));
+  return viaRoute("/api/plan", body);
 }
 
 export function streamChat(body: ChatBody): AsyncGenerator<WireEvent> {

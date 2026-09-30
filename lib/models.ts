@@ -30,6 +30,16 @@ export interface ModelInfo {
   // cachedInPerMTok: explicit cached-input rate (OpenAI). Anthropic cache
   // billing uses multipliers of the input rate instead (0.1× read, 1.25× write).
   pricing?: { inPerMTok: number; outPerMTok: number; cachedInPerMTok?: number };
+  // Anthropic request capabilities (lib/ai-anthropic.ts): `effort` = accepts
+  // output_config.effort + adaptive thinking (false on Haiku 4.5); `fallbacks` =
+  // server-side refusal fallbacks (the 5.x generation); `maxOutput` = max_tokens.
+  effort?: boolean;
+  fallbacks?: boolean;
+  maxOutput?: number;
+  // Subscription (CLI) entries: the API model the alias resolves to — shown so
+  // the two tracks are visibly the same model (verified 2026-09: opus →
+  // claude-opus-5-5, sonnet → claude-sonnet-5-5).
+  twin?: string;
   // Short spec blurb shown under the model name, [ko, en].
   note: [string, string];
 }
@@ -43,10 +53,11 @@ export const MODELS: ModelInfo[] = [
   // ---- Claude subscription via the local Claude Code CLI ---- (id = "claude-cli:<alias>")
   {
     id: "claude-cli:opus",
-    label: "Claude Opus (구독)",
-    short: "Opus · 구독",
+    label: "Claude Opus 5.5 (구독)",
+    short: "Opus 5.5 · 구독",
     provider: "claude-cli",
     envVar: CLAUDE_CLI_FLAG,
+    twin: "claude-opus-5-5",
     implemented: true,
     tier: "recommended",
     speed: 1,
@@ -54,10 +65,11 @@ export const MODELS: ModelInfo[] = [
   },
   {
     id: "claude-cli:sonnet",
-    label: "Claude Sonnet (구독)",
-    short: "Sonnet · 구독",
+    label: "Claude Sonnet 5.5 (구독)",
+    short: "Sonnet 5.5 · 구독",
     provider: "claude-cli",
     envVar: CLAUDE_CLI_FLAG,
+    twin: "claude-sonnet-5-5",
     implemented: true,
     tier: "recommended",
     speed: 2,
@@ -75,29 +87,35 @@ export const MODELS: ModelInfo[] = [
     note: ["내 Claude 구독 · 가장 빠름", "Your Claude plan · fastest"],
   },
 
-  // ---- Anthropic (Claude) ----
+  // ---- Anthropic (Claude) ---- (IDs + pricing verified 2026-09 against the Claude API reference)
   {
-    id: "claude-opus-4-8",
-    label: "Claude Opus 4.8",
-    short: "Opus 4.8",
+    id: "claude-opus-5-5",
+    label: "Claude Opus 5.5",
+    short: "Opus 5.5",
     provider: "anthropic",
     envVar: "ANTHROPIC_API_KEY",
     implemented: true,
     tier: "recommended",
     speed: 1,
-    pricing: { inPerMTok: 5, outPerMTok: 25 },
-    note: ["최고 품질 · 기본값", "Best quality · default"],
+    pricing: { inPerMTok: 4, outPerMTok: 20, cachedInPerMTok: 0.2 },
+    effort: true,
+    fallbacks: true,
+    maxOutput: 64000,
+    note: ["최고 품질 · 기본값 (구독 Opus와 같은 모델)", "Best quality · default (same model as subscription Opus)"],
   },
   {
-    id: "claude-sonnet-5",
-    label: "Claude Sonnet 5",
-    short: "Sonnet 5",
+    id: "claude-sonnet-5-5",
+    label: "Claude Sonnet 5.5",
+    short: "Sonnet 5.5",
     provider: "anthropic",
     envVar: "ANTHROPIC_API_KEY",
     implemented: true,
     tier: "recommended",
     speed: 2,
-    pricing: { inPerMTok: 3, outPerMTok: 15 },
+    pricing: { inPerMTok: 2, outPerMTok: 10, cachedInPerMTok: 0.2 },
+    effort: true,
+    fallbacks: true,
+    maxOutput: 64000,
     note: ["균형 · 고속", "Balanced · fast"],
   },
   {
@@ -110,43 +128,51 @@ export const MODELS: ModelInfo[] = [
     tier: "recommended",
     speed: 3,
     pricing: { inPerMTok: 1, outPerMTok: 5 },
+    maxOutput: 16000,
     note: ["초고속 · 저가", "Fastest · cheap"],
   },
   {
-    id: "claude-fable-5",
-    label: "Claude Fable 5",
-    short: "Fable 5",
+    id: "claude-fable-5-1",
+    label: "Claude Fable 5.1",
+    short: "Fable 5.1",
     provider: "anthropic",
     envVar: "ANTHROPIC_API_KEY",
     implemented: true,
     tier: "more",
     speed: 1,
-    pricing: { inPerMTok: 10, outPerMTok: 50 },
+    pricing: { inPerMTok: 10, outPerMTok: 50, cachedInPerMTok: 0.25 },
+    effort: true,
+    fallbacks: true,
+    maxOutput: 64000,
     note: ["최상위 · 고가", "Most capable · premium"],
   },
   {
-    id: "claude-opus-4-7",
-    label: "Claude Opus 4.7",
-    short: "Opus 4.7",
+    id: "claude-opus-4-8",
+    label: "Claude Opus 4.8",
+    short: "Opus 4.8",
     provider: "anthropic",
     envVar: "ANTHROPIC_API_KEY",
     implemented: true,
     tier: "more",
     speed: 1,
     pricing: { inPerMTok: 5, outPerMTok: 25 },
-    note: ["구형 플래그십", "Prev-gen flagship"],
+    effort: true,
+    maxOutput: 64000,
+    note: ["이전 세대 플래그십", "Previous flagship"],
   },
   {
-    id: "claude-sonnet-4-6",
-    label: "Claude Sonnet 4.6",
-    short: "Sonnet 4.6",
+    id: "claude-sonnet-5",
+    label: "Claude Sonnet 5",
+    short: "Sonnet 5",
     provider: "anthropic",
     envVar: "ANTHROPIC_API_KEY",
     implemented: true,
     tier: "more",
     speed: 2,
-    pricing: { inPerMTok: 3, outPerMTok: 15 },
-    note: ["구형 균형", "Older balanced"],
+    pricing: { inPerMTok: 2, outPerMTok: 10 },
+    effort: true,
+    maxOutput: 64000,
+    note: ["이전 세대 균형", "Previous balanced"],
   },
 
   // ---- OpenAI ---- (pricing per OpenAI pricing page, verified 2026-07)
@@ -328,7 +354,7 @@ export const MODELS: ModelInfo[] = [
   },
 ];
 
-export const DEFAULT_MODEL = "claude-opus-4-8";
+export const DEFAULT_MODEL = "claude-opus-5-5";
 
 // Real API-key env vars (the key modal / BYOK storage) — excludes the CLI flag.
 export const KEY_ENV_VARS = [...new Set(MODELS.filter((m) => m.provider !== "claude-cli").map((m) => m.envVar))];

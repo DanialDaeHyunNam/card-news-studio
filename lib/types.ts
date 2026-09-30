@@ -125,6 +125,10 @@ export interface Project {
   model?: string; // lib/models.ts id; undefined = default
   ignoreBrand?: boolean; // this set uses a custom accent instead of the brand color
   usage?: import("./usage").UsageTotals; // cumulative AI spend for this project
+  // The format reference this set was made from — kept so the editor can show
+  // it side by side (Editor "Reference" compare). Slides are small copies
+  // (/uploads URLs locally, ≤480px data URLs when hosted).
+  reference?: { platform: string; url: string; author: string; caption: string; slides: string[] };
   createdAt: number;
   updatedAt: number;
 }
@@ -154,15 +158,26 @@ export interface Operation {
 
 // Generation request from Home → Root, and the live progress Root feeds the Editor.
 export interface GenConfig {
-  topic: string;
+  topic: string; // story (mode "story") or what else to reflect (mode "video")
   format: Format;
+  mode?: "video" | "story";
+  script?: string; // video subtitles / script
+  videoTitle?: string;
+  youtubeId?: string; // lets generation vision-pick a video frame as the hook background
+  designNotes?: string;
   cardCount: number; // 0 = auto (the AI decides how many cards)
   model: string;
-  referenceId?: string;
+  referenceId?: string; // continue a previous project's style
+  referencePost?: import("./reference").ReferencePost; // format reference (IG / LinkedIn / TikTok / screenshots)
+  templateRef?: import("./requests").TemplateRef; // fallback format reference
   accent?: string; // fixed brand point color (hex); omitted = AI chooses
+  noAccent?: boolean; // "None" brand mode: no point color at all (monochrome)
   photos?: GenPhoto[]; // user photos → full-bleed card backgrounds, cycled
-  refText?: string; // reels script / analytics notes to build from
+  refText?: string; // analytics / extra notes
   refImages?: string[]; // screenshots (script, insights) — model-sized data URLs
+  plan?: import("./photoset").PlannedCard[]; // analysis-step result: fixed cards + photo per slot
+  refStyle?: import("./photoset").RefStyle; // the reference's measured look + narrative
+  planUsage?: import("./usage").UsageEvent[]; // analysis passes — counted into the project's spend
 }
 // A user photo for a photo-set generation. `full` is what lands on the card
 // (uploaded to /uploads on local), `api` the small copy the model looks at.

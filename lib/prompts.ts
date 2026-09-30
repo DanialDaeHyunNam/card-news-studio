@@ -64,7 +64,7 @@ ${coordinateDocs(format)}
 
 ${photoLibraryPrompt(FORMATS[format].h)}
 
-## 유튜브 자막이 원문으로 주어진 경우
+## 영상 자막이 원문으로 주어진 경우
 - 영상의 핵심 흐름을 카드 시리즈로 재구성할 것.
 - 인상적인 실제 발화 문장은 따옴표(" ")로 그대로 인용해 카드 카피로 활용 — 자막의 생생함이 살아야 함.
 - 1장 훅에는 영상에서 가장 강한 문장이나 반전을 배치. 마지막 장에 "원본 영상에서 더 보기" 류 CTA.`;
@@ -141,7 +141,7 @@ ${photoLibraryPrompt(FORMATS[format].h)}
 - 사용자의 추가 단서(예: "배경 사진은 첨부 이미지로만 교체")가 있으면 그 지시를 최우선으로 반영.
 
 ## @멘션 (제공될 때)
-- 사용자가 "@카드3", "@사진2"(영문 "@card3", "@img2")처럼 태그하면 "@멘션" 블록에 정확한 대상이 적혀 있습니다. 메시지 속 그 토큰은 그 대상을 뜻함 — 추측하지 말고 매핑대로 처리.
+- 사용자가 "@카드3", "@사진2"(영문 "@slide3", "@img2")처럼 태그하면 "@멘션" 블록에 정확한 대상이 적혀 있습니다. 메시지 속 그 토큰은 그 대상을 뜻함 — 추측하지 말고 매핑대로 처리.
 - @카드N → 그 cardId의 카드. @사진N → 첨부로 함께 온 이미지(직접 보고 판단). 그 사진을 카드에 넣거나 바꿀 땐 src "attachment:K"(블록에 적힌 K) 사용 — add_element(배경이면 index 0, x0 y0 w100 h100, fit cover, dim) 또는 기존 image의 update_element patch.src.
 - 예: "@사진2를 @카드4 배경으로" = 4번 카드의 기존 배경 image 요소 src를 attachment:K로 update_element(없으면 index 0으로 add_element).
 
@@ -162,24 +162,96 @@ ${photoLibraryPrompt(FORMATS[format].h)}
 // Appended to generateSystem when the user attached their own photos. It
 // deliberately OVERRIDES a few base rules (single block anchor, accent bars,
 // "no images") — the reels-carousel look is photo-first, text-light.
-export function photoSetRules(photoCount: number, autoCount: boolean): string {
+export function photoSetRules(photoCount: number, autoCount: boolean, hasStyle = false): string {
   return `## 사용자 사진 세트 모드 (위 규칙보다 우선)
 사용자가 자기 사진 ${photoCount}장을 첨부했습니다(메시지의 "사진 1…${photoCount}"). 잘 된 릴스를 캐러셀로 펼친 느낌 — 사진이 주인공이고 글은 사진 위에 얹힙니다.
 - **배경 배정은 클라이언트가 함**: k번째 카드(1부터)의 배경 = 사진 ((k-1) mod ${photoCount}) + 1. 카드가 사진보다 많으면 1,2,…,${photoCount},1,2… 로 돌고, 적으면 앞에서부터 씀. 이미지 요소·배경 사진·딤·스크림 shape를 직접 만들지 말 것 — cards[].background는 "#111111", elements에는 text만.
 ${autoCount ? `- **카드 수는 네가 결정**: 원문/스크립트의 핵심 포인트 수에 맞춰 3~10장. 훅 1장 + 포인트마다 1장 (+ 필요하면 마무리 1장). 억지로 늘리거나 사진 수에 맞추지 말 것.\n` : ""}- 각 카드를 만들 때 **그 카드에 깔릴 사진을 실제로 보고** 글 위치를 정할 것: 얼굴·인물·핵심 피사체를 가리지 않는 빈 영역(하늘, 벽, 바닥, 어두운 면)에 둔다. 사진마다 위(y 6~14 시작) 또는 아래(블록 끝이 y 90 안쪽) 중 빈 쪽을 고르고, 카드마다 달라도 됨(이 모드에선 앵커 통일 규칙 대신 이 규칙).
 - 한 카드의 글은 한 덩어리: title 바로 아래(약 2~4%) body. 정렬은 left, x 7~9, w 82~86. 1장 훅만 center 허용.
-- 스타일(모든 text에 shadow: true, color "#ffffff"):
+${hasStyle ? "- 스타일(글자색·크기·위계·위치·말투)은 아래 '레퍼런스 스타일 명세'를 따를 것.\n" : `- 스타일(모든 text에 shadow: true, color "#ffffff"):
   - 1장 훅: role "mega" **하나만** 한 줄~두 줄 (fontSize 80~96, fontWeight 700, letterSpacing -0.03, lineHeight 1.1, align center). 부제(body)는 쓰지 말 것 — body는 세트 전체에서 left로 통일되므로 가운데 mega 아래에 두면 정렬이 어긋남.
   - 본문 카드: role "title" = 짧은 명령형/한 문장 핵심(fontSize 64~76, fontWeight 700, letterSpacing -0.03, lineHeight 1.12) + role "body" = 1~2문장 구체적 경험·숫자(fontSize 32~36, fontWeight 500, lineHeight 1.35).
   - overline 번호·accent 바·caption은 쓰지 말 것(사진 세트는 깔끔하게). 마지막 장도 과한 CTA 대신 여운 있는 한 줄.
-- 카피: 구어체, 짧게. body에는 스크립트/경험의 구체 디테일(숫자, 실제 상황)을 살릴 것.`;
+`}- 카피: 구어체, 짧게. body에는 스크립트/경험의 구체 디테일(숫자, 실제 상황)을 살릴 것.`;
 }
 
-// Appended when reference material (script / analytics / an Instagram post) came along.
+// Appended when the wizard brought reference material / a format reference /
+// a video to unfold. Priority: design notes > reference post > template.
 export function referenceRules(): string {
-  return `## 참고 자료 사용법
-- "릴스 스크립트/메모"가 있으면 그게 원문 — 흐름과 핵심 포인트를 카드로 펼칠 것. 좋은 대사는 살리고, 말로 한 것을 읽히는 문장으로 다듬을 것.
-- "성과 데이터(analytics)"가 있으면 반응이 좋았던 지점(시청 유지, 저장·공유, 댓글에서 많이 나온 반응)을 훅과 앞쪽 카드에 배치.
-- "참고 이미지"는 스크립트·인사이트 캡처일 수 있음 — 읽어서 내용으로 활용.
-- "레퍼런스 인스타 게시물"이 있으면 그 구조(장 수, 훅 방식, 카드당 글 양, 글 위치·크기감)를 벤치마킹. 문구를 그대로 베끼지 말 것. 사용자 자신의 스크립트/주제가 있으면 내용은 그걸로, 형식만 레퍼런스에서.`;
+  return `## 입력 자료 사용법
+- **목표가 "영상을 캐러셀로"**면 "영상 자막/스크립트"가 원문: 영상의 흐름과 핵심 포인트를 카드로 펼칠 것. 인상적인 실제 발화는 따옴표로 살리고, 말로 한 것을 읽히는 문장으로 다듬을 것. "그 외 반영할 내용"은 반드시 반영.
+- **목표가 "새 카드뉴스"**면 "원하는 스토리"가 프롬프트의 핵심 — 그 흐름·메시지·톤을 그대로 구현할 것.
+- "성과 데이터"가 있으면 반응이 좋았던 지점(시청 유지, 저장·공유, 댓글 반응)을 훅과 앞쪽 카드에 배치. "참고 이미지"는 인사이트·스크립트 캡처일 수 있으니 읽어서 활용.
+- "디자인 요청"은 스타일의 최우선 입력 — 레퍼런스/템플릿과 충돌하면 디자인 요청을 따를 것.
+- **"레퍼런스 게시물"(Instagram/LinkedIn/TikTok 또는 캡처)은 형식의 기준**: 슬라이드를 직접 보고 장 구성, 훅 방식, 카드당 글 양, 글 위치·정렬·크기 비율·굵기, 배경 처리(사진/단색/그라디언트), 색감, 장식 요소를 벤치마킹. 슬라이드별 텍스트·자막·반응 수가 있으면 무엇이 먹혔는지 판단에 활용. 문구는 베끼지 말고, 내용은 사용자의 스토리/자막으로.
+- "형식 레퍼런스: 템플릿"이 있으면 그 테마·배경·배치를 따르되(레퍼런스 게시물이 없을 때의 기준), 내용은 새로 쓸 것.`;
+}
+
+
+// ------------------------------------------------------------------ plan step
+// The analysis step before generation (lib/harness.ts). Runs on every track
+// (subscription CLI, API keys, hosted BYOK) through the same AiRequest. It
+// decides the card count and each card's photo LAYOUT (copied from the
+// reference's composition), assigns the user's photos to slots, and — when the
+// photos don't suffice — asks the user for more, with reasons.
+export function planSystem(lang: "ko" | "en" = "ko"): string {
+  const outLang = lang === "en" ? "영어(English)" : "한국어";
+  return `당신은 SNS 캐러셀의 아트 디렉터입니다. 카피를 쓰기 전에 레퍼런스를 해부해서 (1) 사진 구성 계획과 (2) 따라할 스타일 명세를 만듭니다. 이 명세는 다음 단계(카피·레이아웃 생성)와 사진 합성에 그대로 강제 적용되므로, 보이는 대로 정확하게 측정할 것.
+
+## 1. 레퍼런스 해부 — 슬라이드를 한 장씩 직접 보고 (레퍼런스가 없으면 스토리에 맞는 기본값)
+- **사진 구도**: 한 장에 몇 컷인지(1컷 풀블리드 / 위아래 2컷 / 좌우 2컷 / 3단 / 2×2), 컷마다 글이 따로 붙는지, 인물·배경 비중, 표지와 본문 장의 차이.
+- **딤(어둡게)**: 사진을 얼마나 어둡게 눌렀는지 → style.dim(0 없음 · 0.15 살짝 · 0.3 확실히 · 0.5+ 매우 어둡게). 전체를 고르게 눌렀으면 scrim "uniform", 글 쪽만 그라디언트면 "text", 위/아래만 어두우면 "top"/"bottom", 딤이 거의 없으면 "none".
+- **글자 색과 대비 장치**: 본문 글자색 textColor(hex), 강조색 accentColor(없으면 textColor와 같게), 가독성을 무엇으로 확보하는지(그림자 → textEffect "shadow" / 딤·배경만으로 → "none").
+- **글 위치와 정렬**: 컷/카드 안에서 글이 어디 붙는지 → anchor(top · center · bottom · 피사체 피해 자유 = free), align(left · center · right). 피사체(얼굴)와의 관계도 관찰.
+- **위계(hierarchy)**: 한 장에 텍스트 층이 몇 개인지 levels, 헤드라인 크기 headlineSize와 보조 문장 크기 bodySize(1080px 폭 기준 px, 보조가 없으면 0), 굵기 headlineWeight, 대소문자 습관 letterCase(전부 소문자면 "lower"), 줄 수와 자간 느낌 → hierarchy에 한 줄로.
+- **스토리텔링**: 서사 구조와 장치 → storyPattern에 구체적으로. 예) "표지=질문형 훅 → 본문 7장 각각 '핑계(위 컷) → 같은 답 반복(아래 컷)' 리프레인 → 마지막 장 결론". 반복되는 문구(리프레인), 대비(상황↔해결), 번호 매기기, 1인칭 경험담 여부, 마무리 방식까지.
+- **말투(voice)**: 반말/존댓말, 구어체, 문장 길이, 이모지 여부 등. wordsPerSlide = 장당 평균 단어 수(한국어면 어절 수).
+
+## 2. 구성 계획
+- **장수**: "카드 수" 고정이면 그대로, "자동"이면 스토리/자막의 핵심 포인트 수와 레퍼런스의 서사 구조에 맞게 3~10장.
+- **장마다 layout**(레퍼런스 구도를 따라): "full" · "stack2"(위아래 2컷) · "side2"(좌우 2컷) · "stack3"(3단) · "grid4"(2×2) · "none"(사진 없는 텍스트 장). 레퍼런스가 없으면 대부분 "full".
+- **idea**: 장마다 무엇을 말할지 — 레퍼런스의 storyPattern을 사용자 스토리에 적용한 형태로(예: 리프레인 구조면 매 장 같은 답 문구를 유지).
+- **사진 배정**: photos = 그 layout 슬롯 순서(위→아래, 왼→오른)대로 사용자 사진 번호(1부터). 사진을 직접 보고: 한 장 안의 컷끼리는 반드시 서로 다른 사진(구도·장소·거리감이 다르게), 비슷한 사진이 연달아 오지 않게, 표지엔 가장 강한 사진, 그 장의 idea와 분위기가 맞는 사진. 반복 허락이 없으면 한 사진은 한 번만.
+
+## 3. 충분한지 판단
+- 필요한 컷 수 = 모든 장의 슬롯 합. 사진이 모자라거나(반복 불허 시), 레퍼런스 구도에 맞는 종류의 사진이 부족하면 sufficient=false.
+- 이때 question에 이유와 함께 무엇이 몇 장 더 필요한지 구체적으로, options에 고를 답 2~4개(예: "사진 더 올릴게요", "있는 사진 반복해서 써줘", "장수를 줄여서 맞춰줘", "구성은 1컷으로 바꿔줘"). needMore = 부족한 컷 수.
+- 이전 답변(대화)은 반드시 반영: 반복 허용 → 반복 배정 후 sufficient=true, 장수 줄이기 → 줄임, 1컷으로 → layout 변경.
+- 사진 0장인데 레퍼런스가 사진 중심이면 올릴지 물을 것(options에 "사진 없이 진행" 포함). 사진 없이 진행 → layout "none", sufficient=true.
+- 충분하면 question "" , options [], needMore 0.
+
+## 4. reply
+사용자에게 보여줄 분석 요약 3~5문장: 레퍼런스의 구도·딤·글 위치/위계·서사 장치를 어떻게 읽었고, 그걸 어떻게 적용해 몇 장으로 가는지, 사진을 어떻게 배치했는지. referenceLayout = 구도 한 줄 요약(없으면 ""). 문장형 필드는 모두 ${outLang}로.`;
+}
+
+
+// Replaces photoSetRules when the analysis step produced a plan: the layout and
+// the photo in every slot are FIXED; the model writes text that fits the slots.
+export function photoPlanRules(planText: string, hasStyle = false): string {
+  return `## 확정된 사진 배치 계획 (위 규칙보다 우선 — 반드시 따를 것)
+카드 수와 장마다의 사진 구성은 아래로 확정. cards 배열 길이 = 계획의 장 수. 이미지 요소·배경 사진·스크림 shape는 만들지 말 것(클라이언트가 계획대로 사진을 깔아줌) — cards[].background는 "#111111", elements에는 text만.
+${planText}
+- **슬롯마다 글을 그 슬롯 영역 안에**: 예) stack2 = 위 사진 y 0~50, 아래 사진 y 50~100 → 위 컷의 문장은 위 영역 안(보통 세로 중앙 근처, y≈20~30), 아래 컷의 문장은 아래 영역 안(y≈70~80). 경계선(y 50)에 걸치지 말 것. side2면 왼쪽/오른쪽 영역 안에.
+- 컷마다 짧은 한 줄씩(레퍼런스처럼 "상황 → 해결" 식 대비가 잘 먹힘). 각 사진의 인물 얼굴은 가리지 말 것 — 사진을 보고 빈 곳에.
+${hasStyle ? "- 글자색·크기·굵기·위계·위치는 아래 '레퍼런스 스타일 명세'를 따를 것." : `- 모든 text는 color "#ffffff", shadow: true, fontWeight 700, letterSpacing -0.03. 컷당 문장이면 fontSize 56~72, 1컷 풀블리드 장은 기존 규칙(title+body)대로.`}
+- 계획의 idea(장마다 말할 내용)를 따르되, 문구는 스토리/자막에서 구체적으로.`;
+}
+
+// Binding style spec from the analysis step — the reference's look and
+// narrative, measured. Overrides the generic role sizes/colors/anchor rules.
+export function referenceStyleRules(st: import("./photoset").RefStyle): string {
+  const caseRule = {
+    lower: "영문은 전부 소문자로(레퍼런스처럼). 한글은 해당 없음.",
+    upper: "영문 헤드라인은 대문자.",
+    sentence: "문장형 대소문자.",
+    "as-is": "대소문자 규칙 없음.",
+  }[st.letterCase];
+  return `## 레퍼런스 스타일 명세 (분석 단계에서 측정 — 위의 일반 규칙보다 우선, 반드시 따를 것)
+- 글자색 ${st.textColor} · 강조색 ${st.accentColor} · 그림자 ${st.textEffect === "shadow" ? "있음(모든 text에 shadow: true)" : "없음(shadow 쓰지 말 것)"}.
+- 정렬 ${st.align} · 글 위치 ${{ top: "사진/슬롯의 위쪽", center: "사진/슬롯의 세로 중앙", bottom: "사진/슬롯의 아래쪽", free: "피사체를 피한 빈 곳" }[st.anchor]}.
+- 위계: 텍스트 층 ${st.levels}개 · 헤드라인 ${Math.round(st.headlineSize)}px/굵기 ${Math.round(st.headlineWeight)}${st.bodySize > 0 ? ` · 보조 문장 ${Math.round(st.bodySize)}px` : " · 보조 문장 없음(헤드라인만)"} — ${st.hierarchy}. 이 크기 비율과 층 수를 전 장에서 유지.
+- ${caseRule} 장당 약 ${st.wordsPerSlide}단어(어절) — 더 길게 쓰지 말 것.
+- 서사 구조·장치: ${st.storyPattern} → 사용자 스토리에 같은 구조를 적용(리프레인이면 같은 문구를 반복, 대비면 대비 유지).
+- 말투: ${st.voice}.
+- 딤·스크림은 클라이언트가 이 명세(dim ${st.dim}, ${st.scrim})대로 깔아줌 — shape로 스크림을 만들지 말 것.`;
 }
