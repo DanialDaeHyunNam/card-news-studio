@@ -5,6 +5,35 @@ All notable changes to Card News Studio. This project uses simple
 the deployed one and prompts an update when it's behind (see
 [ARCHITECTURE.md](ARCHITECTURE.md#hosted-vs-local-mode)).
 
+## 0.12.0 — unreleased
+
+Card News Studio becomes a desktop app (macOS), in the same shape as its
+sibling ZTO: open source and free to build, with signed official builds sold
+as a one-time license.
+
+### Added
+- **Desktop app** (Electron). It is the local mode, packaged: projects,
+  references and photos live in the app's data folder; AI runs on your Claude
+  subscription (installed Claude Code) or your own API keys, encrypted in the
+  macOS keychain. Settings covers license/plan, updates, AI keys, language and
+  your data (open the folder, or erase everything).
+- **Official builds**: 3 days free from the first launch, then a license key
+  (Lemon Squeezy). Projects stay viewable and exportable after the free period;
+  only AI generation/editing locks. Offline use keeps working for 14 days
+  between license checks.
+- **Auto-update** for official builds — downloads in the background; the
+  version line in the header turns into a restart button (click twice).
+- **Source builds** carry a `source` badge, never lock, and never nag.
+- **Product site**: the hosted deploy now presents the app (download, pricing,
+  FAQ, terms, refunds). **/export** lets web-version users download the
+  projects stored in their browser as `.cardnews.json` for ⬆ Import in the app.
+
+### Changed
+- The in-browser (BYOK) editor is no longer the hosted front page; set
+  `HOSTED_APP=1` on a deployment to bring it back.
+- Node 22 is now required for development (`.tool-versions`) — Electron's
+  installer needs it.
+
 ## 0.11.0 — 2026-09-30
 
 Copy that fits what you're making: the output language follows your source

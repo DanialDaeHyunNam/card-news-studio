@@ -84,30 +84,35 @@ private data. Preview the hosted behavior locally with `HOSTED_DEMO=1 bun dev`.
 
 ## Releasing
 
-The app shows its version in the header/footer, and a locally-running copy
-compares it against the canonical deploy's `/api/version` to prompt updates. The
-"update available" chip only fires when the deployed version is higher, so every
-release must bump the version, write notes, tag, and redeploy:
+`package.json` `version` is the single source: the desktop app's
+auto-updater, the header version line and `/api/version` all read it. Bump it
+on every release.
 
-1. **Bump** `version` in `package.json` (`MAJOR.MINOR.PATCH`; the compare is
-   numeric per dotted segment).
-2. **Write release notes** — add a section to [CHANGELOG.md](CHANGELOG.md) for
-   the new version (Added / Changed / Fixed). The version chip links users to the
-   GitHub releases page, so notes are what they see.
+1. **Bump** `version` in `package.json` (`MAJOR.MINOR.PATCH`).
+2. **Write release notes** in [CHANGELOG.md](CHANGELOG.md) (Added / Changed / Fixed).
 3. **Commit** (`Release vX.Y.Z`) and push.
-4. **Tag + GitHub release** so the releases page has content:
+4. **Tag** — this is what builds the desktop app:
    ```bash
    git tag vX.Y.Z && git push origin vX.Y.Z
-   gh release create vX.Y.Z --title "vX.Y.Z" --notes-file <(sed -n '/## X.Y.Z/,/## /p' CHANGELOG.md)
    ```
-5. **Redeploy** so the canonical `/api/version` returns the new version.
-6. **Restart your local dev server.** `next.config.ts` inlines the version at
-   startup, so a server that was already running keeps reporting the *old*
-   version and will show a false "update available" against the new deploy.
-   A restart (`Ctrl+C`, then `bun dev`) makes it read the bumped version.
+   `.github/workflows/release.yml` builds the **official** macOS app
+   (`CARDNEWS_OFFICIAL=1`: trial + license gate), signs and notarizes it, and
+   uploads the dmg/zip/`latest-mac.yml` to a **draft** GitHub release.
+5. **Check the draft, then Publish it.** Publishing moves
+   `/releases/latest/download/…`, which is what the site's download buttons
+   and every installed app's auto-updater follow.
+6. **Redeploy the site** (`vercel --prod` from `card-news/`) if site copy or
+   pricing changed — it shows the app, not the editor, so it doesn't need a
+   redeploy for app-only changes.
 
-Preview the "update available" state locally without deploying anything:
-`NEXT_PUBLIC_APP_VERSION=0.0.1 npm run dev`.
+Official builds refuse to build while `electron/license.ts` `LS_VARIANTS` is
+empty (no Lemon Squeezy product yet) — see the check in
+`scripts/build-desktop.mjs`. The CI secrets it needs are listed at the top of
+the workflow.
+
+Try the desktop UI states without a signed build (unpackaged only):
+`CARDNEWS_FORCE_OFFICIAL=1 bun run desktop:dev` (trial / lock gate),
+`CARDNEWS_FAKE_UPDATE=9.9.9 bun run desktop:dev` (update-ready line).
 
 ## Pull requests
 
