@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
+import { HOSTED, SITE } from "@/lib/runtime-flags";
 
 export const metadata: Metadata = {
   title: "Card News Studio",
@@ -14,14 +15,19 @@ export const metadata: Metadata = {
 // keys + filesystem projects. Vercel sets VERCEL=1 automatically; HOSTED_DEMO=1
 // lets you preview the hosted behavior locally. Stamped on <html> server-side
 // so the client knows on first paint (see useHosted()).
-const HOSTED = process.env.VERCEL === "1" || process.env.HOSTED_DEMO === "1";
+// SITE: the hosted product site instead of the editor (lib/runtime-flags.ts).
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     // suppressHydrationWarning: browser extensions (GA opt-out, ColorZilla, …)
     // inject attributes into <html>/<body> before React hydrates — harmless,
     // and this only suppresses attribute mismatches on these two elements.
-    <html lang="ko" data-hosted={HOSTED ? "1" : undefined} suppressHydrationWarning>
+    <html
+      lang="ko"
+      data-hosted={HOSTED ? "1" : undefined}
+      data-site={SITE ? "1" : undefined}
+      suppressHydrationWarning
+    >
       <body suppressHydrationWarning>
         {children}
         {/* Cookieless anonymous page views (works on all plans). Custom click

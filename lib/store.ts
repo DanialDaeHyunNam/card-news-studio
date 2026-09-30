@@ -14,7 +14,8 @@ const MIGRATED_KEY = "cardnews.migrated.v1";
 
 let mode: "fs" | "local" = "local";
 
-function readLocal(): Project[] {
+// Exported for /export (the product site's "take your web projects with you" page).
+export function readLocal(): Project[] {
   try {
     const raw = window.localStorage.getItem(KEY);
     if (!raw) return [];
