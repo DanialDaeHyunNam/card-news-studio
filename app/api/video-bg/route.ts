@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { streamResponse } from "@/lib/ai";
 import { buildVideoBgRequest } from "@/lib/requests";
+import { isEntitled, notEntitledResponse } from "@/lib/runtime";
 
 export const maxDuration = 60;
 
@@ -28,6 +29,7 @@ async function fetchB64(url: string): Promise<string | null> {
 }
 
 export async function POST(req: Request) {
+  if (!isEntitled()) return notEntitledResponse();
   let body: { videoId?: string; model?: string; lang?: "ko" | "en" };
   try {
     body = await req.json();

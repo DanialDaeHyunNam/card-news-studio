@@ -1,6 +1,7 @@
 // Server-only: run a structured request through the user's locally installed
 // Claude Code CLI (`claude -p`), so a local copy can generate on the user's own
-// Claude subscription instead of an API key. Local dev only — never offered on
+// Claude subscription instead of an API key. Local runtimes only (dev + the
+// desktop app) — never offered on
 // a hosted deploy (the CLI and its login live on the user's machine).
 //
 // Verified with Claude Code 2.1.284 (2026-09):
@@ -17,6 +18,7 @@ import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import type { ModelInfo } from "./models";
+import { isLocalRuntime } from "./runtime";
 import type { AiRequest } from "./requests";
 import type { StreamEvent } from "./ai-compat";
 
@@ -41,7 +43,7 @@ let cached: { bin: string | null; at: number } | null = null;
 
 // The first candidate that answers `--version`, cached for a minute.
 export async function findClaudeCli(): Promise<string | null> {
-  if (process.env.NODE_ENV !== "development") return null;
+  if (!isLocalRuntime()) return null;
   if (cached && Date.now() - cached.at < 60_000) return cached.bin;
   let bin: string | null = null;
   for (const c of candidates()) {

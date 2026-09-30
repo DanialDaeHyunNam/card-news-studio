@@ -1,0 +1,72 @@
+# Card News Studio desktop packaging (mac: signed + notarized / win: unsigned NSIS).
+# Mirrors ZTO's setup — see electron/main.ts for how the app runs.
+#
+# ⚠️ Official releases are built ONLY by .github/workflows/release.yml
+#    (CARDNEWS_OFFICIAL=1 → trial + license gate). A plain `bun run dist:mac` is a
+#    free, ungated source build — that's intended, not a leak.
+#
+# Layout:
+#   app.asar          dist-electron/{main,preload}.cjs (+ package.json) — nothing else;
+#                     electron-updater is bundled into main.cjs, so no node_modules.
+#   Resources/server  Next standalone server (.next/standalone). It runs in a
+#                     utilityProcess, so it must live OUTSIDE the asar.
+appId: com.cardnews.desktop
+productName: Card News Studio
+copyright: © DaeHyun Nam
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - dist-electron/**/*
+  - package.json
+  - "!node_modules/**/*"
+
+extraResources:
+  - from: .next/standalone
+    to: server
+    # .next must be named explicitly (the default glob skips dot-folders).
+    # node_modules is ALWAYS dropped here, whatever the filter says — the
+    # afterPack hook copies it in.
+    filter: ["**/*", ".next/**/*"]
+
+afterPack: build/afterPack.cjs
+
+# The standalone tree already contains its own traced node_modules; nothing to rebuild.
+npmRebuild: false
+nodeGypRebuild: false
+
+mac:
+  category: public.app-category.graphics-design
+  # No version in the file name, so the site can link a fixed
+  # releases/latest/download/CardNewsStudio-arm64.dmg.
+  artifactName: "CardNewsStudio-${arch}.${ext}"
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+    - target: zip # auto-update uses the zip
+      arch: [arm64, x64]
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  # Needs APPLE_ID · APPLE_APP_SPECIFIC_PASSWORD · APPLE_TEAM_ID (CI secrets).
+  notarize: true
+
+win:
+  artifactName: "CardNewsStudio-Setup.${ext}"
+  target:
+    - target: nsis
+      arch: [x64]
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+
+# The update channel is NOT set here: CI injects
+# `-c.publish.provider=generic -c.publish.url=$CARDNEWS_UPDATE_URL`.
+# ⚠️ `publish: null` is load-bearing — without it electron-builder infers a
+# GitHub provider from the git remote and unsigned source builds would try
+# (and fail) to self-update. (Learned on ZTO.)
+publish: null

@@ -28,3 +28,16 @@ export const SOCIAL = {
   threads: { url: "https://www.threads.com/@build_useful", handle: "@build_useful" },
   x: { url: "https://x.com/build_useful", handle: "@build_useful" },
 };
+
+// ---------- product (desktop app) ----------
+// Desktop downloads: fixed "latest" URLs (electron-builder artifactName has no
+// version), so these never change between releases.
+const RELEASES = "https://github.com/DanialDaeHyunNam/card-news-studio/releases/latest/download";
+export const DOWNLOAD_MAC_ARM = `${RELEASES}/CardNewsStudio-arm64.dmg`;
+export const DOWNLOAD_MAC_INTEL = `${RELEASES}/CardNewsStudio-x64.dmg`;
+// One-time price of the official build (owner: confirm before launch — mirrors
+// ZTO's $5 lifetime BYO tier) and its Lemon Squeezy checkout. The checkout URL
+// is the store root until the product exists (owner TODO: /checkout/buy/<id>).
+export const PRICE_ONE_TIME = "$5";
+export const BUY_URL = "https://all-libertas.lemonsqueezy.com";
+export const CONTACT_EMAIL = "libertas.kr@gmail.com";

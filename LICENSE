@@ -1,3 +1,12 @@
+Note on official builds — this license covers the source code in this
+repository. The signed and notarized desktop builds sold at
+https://card-news-zeta.vercel.app are distributed under their own terms
+(https://card-news-zeta.vercel.app/terms): they include a free period and
+require a license key. Building from source yourself needs no key and never
+will.
+
+---
+
 MIT License
 
 Copyright (c) 2026 Danial Nam

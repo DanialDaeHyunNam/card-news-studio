@@ -1,25 +1,25 @@
 import { readdirSync, readFileSync, writeFileSync, renameSync, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { dataDir, isLocalRuntime, LOCAL_ONLY_ERROR } from "@/lib/runtime";
 
-// Filesystem project store (dev only, like /api/keys and /api/asset). Projects
+// Filesystem project store (local runtimes only — dev + desktop, like /api/keys and /api/asset). Projects
 // live in data/projects/<id>.json — one file each, so a corrupted file loses one
 // project, not all of them, and a folder copy is a full backup. localStorage's
 // ~5MB quota (and its origin/port coupling) stops applying; the client falls
 // back to localStorage only where this route can't run (hosted demo / prod).
-const isDev = () => process.env.NODE_ENV === "development";
-const DIR = join(process.cwd(), "data", "projects");
+const DIR = dataDir("projects");
 // Deletes are soft: files move here instead of being unlinked, so an
 // accidental delete (or a buggy client posting a stale list) is recoverable
 // by moving the file back. Latest deletion of the same id wins.
-const TRASH = join(process.cwd(), "data", "trash");
+const TRASH = dataDir("trash");
 
 // Project ids are crypto.randomUUID(), but they arrive as client JSON — never
 // let one become a path segment without this check.
 const SAFE_ID = /^[A-Za-z0-9_-]{1,64}$/;
 
 export async function GET() {
-  if (!isDev()) {
-    return Response.json({ error: "로컬 개발 모드(bun dev)에서만 사용할 수 있습니다." }, { status: 403 });
+  if (!isLocalRuntime()) {
+    return Response.json({ error: LOCAL_ONLY_ERROR }, { status: 403 });
   }
   if (!existsSync(DIR)) return Response.json({ projects: [] });
   const projects: unknown[] = [];
@@ -37,8 +37,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  if (!isDev()) {
-    return Response.json({ error: "로컬 개발 모드(bun dev)에서만 사용할 수 있습니다." }, { status: 403 });
+  if (!isLocalRuntime()) {
+    return Response.json({ error: LOCAL_ONLY_ERROR }, { status: 403 });
   }
   let body: { projects?: { id?: unknown }[] };
   try {

@@ -1,0 +1,85 @@
+# Official desktop release — runs ONLY on a v* tag push. (Ported from ZTO.)
+#
+# This is the one official path for CARDNEWS_OFFICIAL=1 (trial + license gate).
+# A gate-less build reaching the sales channel is prevented by this file, not
+# by someone remembering a flag.
+#
+# Security:
+#  - fork PRs never get secrets; only writers can push tags
+#  - no third-party actions (supply chain) — official actions/* and the
+#    runner's gh CLI only; bun comes from its official install script, pinned
+#  - signing/notarization secrets are scoped to the build step only, so the
+#    install step (postinstall scripts) can't see them
+#
+# Output is a DRAFT release — a human checks the assets and presses Publish.
+# Publishing moves /releases/latest/download, which is what auto-update and
+# the site's download buttons follow.
+#
+# Required secrets (Settings → Secrets and variables → Actions) — the same
+# Developer ID as ZTO works (it's per team, not per app):
+#   MAC_CERT_P12                 base64 of the Developer ID Application .p12
+#   MAC_CERT_PASSWORD            .p12 export password
+#   APPLE_ID                     Apple ID (email) for notarization
+#   APPLE_APP_SPECIFIC_PASSWORD  app-specific password (appleid.apple.com)
+#   APPLE_TEAM_ID                developer team id
+#
+# ⚠️ The build refuses to run while electron/license.ts LS_VARIANTS is empty
+#    (scripts/build-desktop.mjs) — fill in the Lemon Squeezy variant ids first.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  mac:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .tool-versions
+
+      - name: Install bun
+        run: |
+          curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.10"
+          echo "$HOME/.bun/bin" >> "$GITHUB_PATH"
+
+      - run: bun install --frozen-lockfile
+
+      - name: Build, sign & notarize (official)
+        env:
+          CARDNEWS_OFFICIAL: "1"
+          # Auto-update channel — GitHub Releases' fixed "latest" URL.
+          CARDNEWS_UPDATE_URL: https://github.com/DanialDaeHyunNam/card-news-studio/releases/latest/download
+          CSC_LINK: ${{ secrets.MAC_CERT_P12 }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        # The publish channel is injected here, not in electron-builder.yml, so a
+        # source builder's `bun run dist:mac` works with no env at all. Official
+        # builds get the blue-accent icon; source builds keep the gray one.
+        run: |
+          node scripts/build-desktop.mjs
+          node_modules/.bin/electron-builder --mac --publish never \
+            -c.publish.provider=generic -c.publish.url="$CARDNEWS_UPDATE_URL" \
+            -c.mac.icon=build/icon-official.png
+
+      - name: Checksums
+        run: cd release && shasum -a 256 *.dmg *.zip > SHA256SUMS.txt
+
+      # Draft — a human verifies and publishes. Re-runs overwrite the draft's assets.
+      - name: Draft release with assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --draft --title "Card News Studio $GITHUB_REF_NAME" --generate-notes \
+            || true
+          gh release upload "$GITHUB_REF_NAME" --clobber \
+            release/*.dmg release/*.zip release/*.blockmap \
+            release/latest-mac.yml release/SHA256SUMS.txt

@@ -12,13 +12,19 @@ Figma-like canvas with smart guides and an AI chat, and export PNGs.
 
 Open source (**MIT**). Two ways to use it:
 
-- **In the browser** ([card-news-zeta.vercel.app](https://card-news-zeta.vercel.app)) —
-  works instantly: editing, templates and PNG export need no key, and AI runs on
-  **your own API key**, stored only in your browser and sent **directly to the
-  provider** — the server never sees your key or your content.
-- **Installed locally** — the better home: projects are plain JSON files in the
-  app folder (`data/projects/`), keys live in `.env.local`, and nothing ever
-  leaves your machine. No server, no database, no account.
+- **Desktop app (macOS)** — [download it](https://card-news-zeta.vercel.app/#download):
+  signed, notarized, auto-updating. 3 days free, then a one-time license.
+  AI runs on **your own Claude subscription** (via an installed, logged-in
+  Claude Code — no key, $0 per generation) or **your own API key**, kept in the
+  macOS keychain. Projects are files on your disk. No account, no server of ours.
+- **From source — free, forever** — clone and run it (`bun dev`, or build the
+  desktop app yourself with `bun run dist:mac`). Every feature, no license key.
+  That's the point of the open-source build.
+
+> The hosted site used to run the editor in the browser (BYOK). It's now the
+> product site; if you made projects there, open
+> [/export](https://card-news-zeta.vercel.app/export) in the same browser to
+> download them, then use ⬆ Import in the app.
 
 - 🧠 **Deep-dive on how it works:** [ARCHITECTURE.md](ARCHITECTURE.md)
 - 🛠️ **Want to hack on it or add a model/template/language:** [CONTRIBUTING.md](CONTRIBUTING.md)
@@ -91,10 +97,36 @@ Open http://localhost:3000, click **🔑 API Keys**, and paste an
 instant a key is connected. (You can also `cp .env.example .env.local` and set
 the keys there.)
 
+## Desktop app
+
+The desktop app is the local mode, packaged: Electron starts Next's
+**standalone server** on `127.0.0.1:3458` and opens a window on it, so
+everything local mode does — filesystem projects, the Claude subscription path,
+HEIC conversion, the reference scrapers — runs unchanged.
+
+```bash
+bun install
+bun run desktop:dev   # window on your running `bun dev` (CARDNEWS_DEV_URL, default :3457)
+bun run desktop:build # standalone server + electron main/preload → then `bun run desktop`
+bun run dist:mac      # unsigned .dmg/.zip in release/ — a free "source" build
+```
+
+Needs Node 22 (`.tool-versions`) — Electron's installer requires it. Source
+builds show a `source` badge, never lock, and don't auto-update (pull + rebuild).
+Official builds come only from the tag-triggered CI workflow
+(`.github/workflows/release.yml`). Details: [ARCHITECTURE.md](ARCHITECTURE.md#desktop-app).
+
 ## Local-first by design
 
 There is still **no server-side product**: no account, no database, no stored
-user data — in either mode.
+user data — in any mode.
+
+- **In the desktop app**, projects, the reference library and photos live in
+  the app's data folder (`~/Library/Application Support/Card News Studio`),
+  API keys are encrypted with the macOS keychain (`safeStorage`), and the only
+  outside calls are the AI provider you chose, reference pages you paste,
+  license checks (Lemon Squeezy's API, official builds) and update checks
+  (GitHub Releases). Settings → Your data opens or erases the folder.
 
 - **Locally**, your API keys stay in `.env.local`; the browser only ever sees
   model *output*. Projects are JSON files under `data/projects/` (images in
@@ -114,10 +146,14 @@ and the in-app [privacy notice](https://card-news-zeta.vercel.app/privacy).
 
 [Next.js 16](https://nextjs.org) (App Router, Turbopack) · React 19 · TypeScript ·
 [@anthropic-ai/sdk](https://github.com/anthropics/anthropic-sdk-typescript) ·
-[html-to-image](https://github.com/bubkoo/html-to-image). No Tailwind (hand-written
+[html-to-image](https://github.com/bubkoo/html-to-image) · desktop: Electron 43 + electron-builder + electron-updater. No Tailwind (hand-written
 CSS in `app/globals.css`), no test framework — verification is `npm run build`
 (typecheck + prod build) plus driving the UI.
 
 ## License
 
-[MIT](LICENSE) — free to use, fork, and modify.
+[MIT](LICENSE) — free to use, fork, and modify. The source is and stays free:
+building it yourself needs no key. The signed, notarized builds sold at
+[card-news-zeta.vercel.app](https://card-news-zeta.vercel.app) are distributed
+under their own [terms](https://card-news-zeta.vercel.app/terms) (a free period,
+then a license key) — the same "VS Code model" as its sibling app ZTO.

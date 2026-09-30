@@ -15,6 +15,12 @@ bun dev            # http://localhost:3000
 bun run build      # typecheck + prod build — run after EVERY change
 ```
 
+Desktop (Node 22 — `.tool-versions`): `bun run desktop:dev` (window on the
+running dev server), `bun run dist:mac` (unsigned source build → release/).
+`CARDNEWS_FORCE_OFFICIAL=1` / `CARDNEWS_FAKE_UPDATE=9.9.9` /
+`CARDNEWS_SCREENSHOT=/p.png` are dev-only hooks in electron/main.ts for
+checking the trial/lock/update UI and capturing the real window.
+
 No tests. Verification = `bun run build` + driving the UI. AI routes need at
 least one provider key in `.env.local` (`ANTHROPIC_API_KEY` and/or
 `OPENAI_API_KEY` — see `.env.example`), or paste one in the app's 🔑 key modal
@@ -22,6 +28,19 @@ least one provider key in `.env.local` (`ANTHROPIC_API_KEY` and/or
 auto-selects a model whose key is connected.
 
 ## Architecture
+
+- **Desktop app (v0.12, ZTO model)**: Electron runs the Next standalone server
+  on 127.0.0.1:3458 (fixed — localStorage is per-origin); `lib/runtime.ts`
+  `isLocalRuntime()` (dev || `CARDNEWS_DESKTOP=1`) replaced every
+  `NODE_ENV=development` gate, data under `CARDNEWS_DATA_DIR` (userData).
+  Official builds (CI only, `CARDNEWS_OFFICIAL=1`) = 3-day trial + Lemon
+  Squeezy license (`electron/license.ts`, store 443985 shared with ZTO,
+  `LS_VARIANTS` still EMPTY → official build refuses to run until filled);
+  AI routes 402 when not entitled. Source builds: `source` badge, no gate, no
+  auto-update. Hosted `/` = product site (`HOSTED_APP=1` restores the web
+  editor); `/export` for web users' localStorage projects. Full write-up:
+  ARCHITECTURE.md → Desktop app. Packaging gotchas there too (bun `__dirname`,
+  afterPack node_modules, trace excludes, `publish: null`).
 
 - **No DB; the local filesystem is the store.** On dev, projects live in
   `data/projects/<id>.json` via `/api/projects` (dev-only, like `/api/keys`) —
@@ -291,7 +310,7 @@ step-1 fallback reference, with "Open as-is" for manual editing.
   "card news" is a Korean-only term) and Korean says 카드뉴스 / 카드. Code and
   data model keep `card`/`cards` (Project.cards, CardView) — don't rename those.
 
-- Single-page client app: `app/page.tsx` returns null until localStorage loads
+- Single-page client app: `components/AppRoot.tsx` (via `app/page.tsx`) returns null until the store loads
   (hydration safety) — SSR HTML is intentionally empty.
 - `Editor.tsx` uses `projectRef` for pointer-event handlers (stale closure guard);
   global pointermove/pointerup listeners drive drag — don't move them onto elements.

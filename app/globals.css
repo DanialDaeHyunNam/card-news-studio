@@ -4701,3 +4701,323 @@ input[type="range"]::-webkit-slider-thumb {
   align-items: center;
   gap: 8px;
 }
+
+/* ---------- desktop app (components/Desktop.tsx) ---------- */
+.logo-badge {
+  font-family: var(--mono, ui-monospace, "SF Mono", Menlo, monospace);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+.plan-chip {
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 13px;
+  cursor: pointer;
+}
+.plan-chip.byo,
+.plan-chip.plus {
+  border-color: #2b3b5c;
+  color: #9fc0ff;
+}
+.plan-chip.trial {
+  border-color: #5b4a1c;
+  color: #f7d27a;
+}
+.plan-chip.over {
+  border-color: #5c2b2b;
+  color: #ff8a8a;
+}
+.version-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.version-progress {
+  font-family: var(--mono, ui-monospace, "SF Mono", Menlo, monospace);
+  font-size: 11.5px;
+  color: var(--text-dim);
+}
+.ver-chip.update.confirm {
+  background: #fbbf24;
+  border-color: #fbbf24;
+}
+.settings-modal {
+  width: min(620px, 100%);
+  max-height: calc(100vh - 60px);
+  overflow-y: auto;
+}
+.settings-card {
+  border-top: 1px solid var(--border);
+  padding: 16px 0 6px;
+}
+.settings-card:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+.settings-h {
+  margin: 0 0 8px;
+  font-size: 13.5px;
+  font-weight: 800;
+}
+.settings-intro {
+  margin: 0 0 10px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-dim);
+}
+.settings-intro.inline {
+  margin: 0;
+}
+.lic-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.lic-input {
+  flex: 1;
+  min-width: 200px;
+}
+.status-chip {
+  font-size: 11.5px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+.status-chip.ok {
+  color: #6ee7b7;
+  border-color: #1f4d3c;
+}
+.status-chip.warn {
+  color: #f7d27a;
+  border-color: #5b4a1c;
+}
+.status-chip.off {
+  color: #ff8a8a;
+  border-color: #5c2b2b;
+}
+.cred-path {
+  font-size: 11.5px;
+  color: var(--text-dim);
+  background: var(--panel-2);
+  border-radius: 8px;
+  padding: 4px 8px;
+  word-break: break-all;
+}
+.btn.danger.armed {
+  background: #b91c1c;
+  border-color: #b91c1c;
+  color: #fff;
+}
+.gate-overlay {
+  z-index: 900;
+  backdrop-filter: blur(10px);
+}
+.gate-actions {
+  justify-content: flex-end;
+  margin: 4px 0 0;
+}
+.gate-banner {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 800;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #1a1212;
+  border: 1px solid #5c2b2b;
+  border-radius: 999px;
+  padding: 8px 10px 8px 18px;
+  font-size: 12.5px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+}
+
+/* ---------- product site (components/ProductSite.tsx, hosted /) ---------- */
+.site {
+  min-height: 100vh;
+}
+.site-navlink {
+  border-color: transparent;
+}
+.site-dl {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 28px;
+}
+.site-dl-main {
+  padding: 14px 24px;
+  font-size: 15px;
+}
+.site-dl-note {
+  margin-top: 14px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.site-sec {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 72px 20px 8px;
+}
+.site-sec.narrow {
+  max-width: 760px;
+}
+.site-sec h2 {
+  font-size: clamp(26px, 4vw, 38px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin: 0 0 22px;
+  text-align: center;
+}
+.site-lead {
+  color: var(--text-dim);
+  font-size: 16px;
+  line-height: 1.7;
+  margin: 0 0 18px;
+}
+.site-lead.center {
+  text-align: center;
+}
+.site-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+}
+.site-card,
+.site-price {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px;
+}
+.site-card h3,
+.site-price h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 800;
+}
+.site-card p {
+  margin: 0;
+  color: var(--text-dim);
+  line-height: 1.6;
+  font-size: 14px;
+}
+.site-prices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+  align-items: stretch;
+}
+.site-price {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.site-price.featured {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px #3b82f6 inset;
+}
+.site-price.muted {
+  opacity: 0.6;
+}
+.site-amount {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.site-price ul {
+  margin: 0 0 8px;
+  padding-left: 18px;
+  color: var(--text-dim);
+  line-height: 1.8;
+  font-size: 14px;
+  flex: 1;
+}
+.site-price .btn {
+  align-self: flex-start;
+}
+.site-faq {
+  border-top: 1px solid var(--border);
+  padding: 16px 0;
+}
+.site-faq summary {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 15px;
+}
+.site-faq p {
+  color: var(--text-dim);
+  line-height: 1.7;
+  margin: 10px 0 0;
+}
+.site-faq a {
+  color: #9fc0ff;
+}
+.site-foot {
+  max-width: 1080px;
+  margin: 80px auto 0;
+  padding: 28px 20px 48px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.site-foot nav {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+.site-foot a {
+  color: var(--text-dim);
+}
+.site-foot a:hover {
+  color: var(--text);
+}
+@media (max-width: 720px) {
+  .site-navlink,
+  .site .nav-github {
+    display: none;
+  }
+}
+.export-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 20px;
+}
+.export-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+.export-list small {
+  color: var(--text-dim);
+}
+.site a.logo,
+.site-foot a {
+  color: inherit;
+  text-decoration: none;
+}
+.site-foot nav a {
+  color: var(--text-dim);
+}

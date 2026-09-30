@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { streamResponse } from "@/lib/ai";
 import { buildGenerateRequest, type GenerateBody } from "@/lib/requests";
+import { isEntitled, notEntitledResponse } from "@/lib/runtime";
 
 export const maxDuration = 300;
 
 // Request assembly lives in lib/requests.ts, shared verbatim with the hosted
 // BYOK browser path — change prompts there, not here.
 export async function POST(req: Request) {
+  if (!isEntitled()) return notEntitledResponse();
   let body: GenerateBody;
   try {
     body = await req.json();

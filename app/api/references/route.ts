@@ -1,16 +1,16 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { dataDir, isLocalRuntime, LOCAL_ONLY_ERROR } from "@/lib/runtime";
 
-// Reference library store (dev only, like /api/projects): every reference post
+// Reference library store (local runtimes only, like /api/projects): every reference post
 // the user loaded or bookmarked, in one small JSON file (slides are /uploads
 // URLs, not image data). The client falls back to localStorage where this
 // route can't run (hosted / prod). `data/` is gitignored.
-const isDev = () => process.env.NODE_ENV === "development";
-const DIR = join(process.cwd(), "data");
+const DIR = dataDir();
 const FILE = join(DIR, "references.json");
 
 export async function GET() {
-  if (!isDev()) return Response.json({ error: "로컬 개발 모드에서만 사용할 수 있습니다." }, { status: 403 });
+  if (!isLocalRuntime()) return Response.json({ error: LOCAL_ONLY_ERROR }, { status: 403 });
   if (!existsSync(FILE)) return Response.json({ references: [] });
   try {
     const list = JSON.parse(readFileSync(FILE, "utf8"));
@@ -21,7 +21,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  if (!isDev()) return Response.json({ error: "로컬 개발 모드에서만 사용할 수 있습니다." }, { status: 403 });
+  if (!isLocalRuntime()) return Response.json({ error: LOCAL_ONLY_ERROR }, { status: 403 });
   let body: { references?: unknown };
   try {
     body = await req.json();

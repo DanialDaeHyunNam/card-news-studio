@@ -16,6 +16,8 @@ import CardView from "./CardView";
 import HowItWorks from "./HowItWorks";
 import Footer from "./Footer";
 import LogoMark from "./LogoMark";
+import { DesktopNav, SourceBadge } from "./Desktop";
+import { isDesktop } from "@/lib/desktop";
 import KeyPanel from "./KeyPanel";
 import LangSwitch from "./LangSwitch";
 import CreateWizard from "./CreateWizard";
@@ -72,6 +74,7 @@ export default function Home({
   const [showDiff, setShowDiff] = useState(false);
   // Local copies check the canonical deploy for a newer version.
   const { latest, hasUpdate } = useUpdateCheck(hosted);
+  const [desktop] = useState(isDesktop);
   const [showUpdate, setShowUpdate] = useState(false);
   const [updDismissed, setUpdDismissed] = useState(false);
   const [showKeys, setShowKeys] = useState(false);
@@ -200,9 +203,12 @@ export default function Home({
       <header className="home-nav">
         <div className="logo">
           <LogoMark size={22} /> Card News Studio
+          <SourceBadge />
         </div>
         <div className="nav-actions">
-          {!hosted && hasUpdate ? (
+          {desktop ? (
+            <DesktopNav />
+          ) : !hosted && hasUpdate ? (
             <button
               className="btn ghost ver-chip update"
               onClick={() => setShowUpdate(true)}
@@ -224,9 +230,12 @@ export default function Home({
             <span className="btn ghost ver-chip">v{VERSION}</span>
           )}
           <LangSwitch />
-          <button className="btn ghost" onClick={() => setShowKeys((v) => !v)}>
-            🔑 {t("nav_keys")}
-          </button>
+          {/* Desktop: API keys live in ⚙ Settings (DesktopNav). */}
+          {!desktop && (
+            <button className="btn ghost" onClick={() => setShowKeys((v) => !v)}>
+              🔑 {t("nav_keys")}
+            </button>
+          )}
           {GITHUB_URL && (
             <a className="btn ghost nav-github" href={GITHUB_URL} target="_blank" rel="noreferrer">
               GitHub ⭐

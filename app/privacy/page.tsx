@@ -10,11 +10,20 @@ import { GITHUB_URL } from "@/lib/site";
 import LogoMark from "@/components/LogoMark";
 import LangSwitch from "@/components/LangSwitch";
 
-const UPDATED = "2026-07-15";
+const UPDATED = "2026-10-01";
 
 type Section = { h: [string, string]; body: [string, string][] };
 
 const SECTIONS: Section[] = [
+  {
+    h: ["데스크톱 앱", "The desktop app"],
+    body: [
+      [
+        "데스크톱 앱에서는 프로젝트·레퍼런스·사진이 이 컴퓨터의 앱 데이터 폴더에 파일로 저장되고, API 키는 macOS 키체인으로 암호화해 보관합니다. 운영자에게는 아무것도 전송되지 않습니다. 앱이 외부와 통신하는 곳은 ① 당신이 고른 AI 제공자(또는 설치된 Claude Code) ② 당신이 붙여넣은 레퍼런스 게시물·영상 페이지 ③ 공식 빌드의 라이선스 확인(Lemon Squeezy API — 라이선스 키와 기기 이름) ④ 업데이트 확인(GitHub Releases)뿐입니다. 설정 → 내 데이터에서 폴더를 열거나 전부 지울 수 있습니다.",
+        "In the desktop app, projects, references and photos are files in the app's data folder on this computer, and API keys are encrypted with the macOS keychain. Nothing is sent to the operator. The app talks to the outside world only for: ① the AI provider you chose (or your installed Claude Code) ② reference post / video pages you paste ③ license checks on official builds (Lemon Squeezy's API — your license key and a device name) ④ update checks (GitHub Releases). Settings → Your data opens or erases the folder.",
+      ],
+    ],
+  },
   {
     h: ["작업물과 설정", "Your projects and settings"],
     body: [
