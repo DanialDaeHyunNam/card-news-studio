@@ -26,7 +26,12 @@ files:
 extraResources:
   - from: .next/standalone
     to: server
-    filter: ["**/*"]
+    # .next must be named explicitly (the default glob skips dot-folders).
+    # node_modules is ALWAYS dropped here, whatever the filter says — the
+    # afterPack hook copies it in.
+    filter: ["**/*", ".next/**/*"]
+
+afterPack: build/afterPack.cjs
 
 # The standalone tree already contains its own traced node_modules; nothing to rebuild.
 npmRebuild: false

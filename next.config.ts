@@ -51,6 +51,9 @@ const TRACE_EXCLUDES = [
   "./data/**", "./public/**", "./release/**", "./dist-electron/**", "./.git/**",
   "./*.md", "./.env*", "./LICENSE", "./bun.lock", "./tsconfig*", "./electron-builder.yml",
   "./instrumentation.ts", "./next.config.ts",
+  // sharp is only for next/image optimization (unused here) and is a per-arch
+  // native binary — an arm64 copy would break the x64 app.
+  "./node_modules/sharp/**", "./node_modules/@img/**",
   "./.vercel/**", "./.gstack/**", "./.omniscitus/**", "./.gitignore", "./.vercelignore", "./.tool-versions",
 ];
 
@@ -59,6 +62,7 @@ const nextConfig: NextConfig = {
         output: "standalone" as const,
         outputFileTracingRoot: process.cwd(),
         outputFileTracingExcludes: { "*": TRACE_EXCLUDES },
+        images: { unoptimized: true },
       } : {}),
   env: { NEXT_PUBLIC_APP_VERSION: process.env.NEXT_PUBLIC_APP_VERSION || version },
   async headers() {
