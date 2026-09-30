@@ -2,22 +2,31 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { CLAUDE_CLI_FLAG, KEY_ENV_VARS } from "@/lib/models";
 import { findClaudeCli } from "@/lib/claude-cli";
+import { isDesktopRuntime, isLocalRuntime } from "@/lib/runtime";
 
 /**
  * In-UI API key management (pattern borrowed from ZCLIP/reaction-hooks).
  *   GET  → which provider keys are present (booleans only — values never
  *          leave the server) and whether this deployment can write them.
- *   POST → local dev only: writes the key into .env.local AND into the
- *          running process env, so it works immediately without a restart.
+ *   POST → local runtimes only: sets the key in the running process env (works
+ *          immediately, no restart) and persists it —
+ *            dev:     into .env.local
+ *            desktop: handed to the Electron main process, which encrypts it
+ *                     with the OS keychain (safeStorage) and passes it back as
+ *                     env on the next launch. Never written in plain text.
  */
 
-const isDev = () => process.env.NODE_ENV === "development";
+// The desktop server runs as an Electron utilityProcess; parentPort is its
+// message channel to electron/main.ts.
+type ParentPort = { postMessage: (msg: unknown) => void };
+const parentPort = (): ParentPort | undefined =>
+  (process as unknown as { parentPort?: ParentPort }).parentPort;
 // Printable, no whitespace — matches every provider's key format.
 const KEY_SHAPE = /^[\x21-\x7E]{8,300}$/;
 
 export async function GET() {
   return Response.json({
-    writable: isDev(),
+    writable: isLocalRuntime(),
     keys: {
       ...Object.fromEntries(KEY_ENV_VARS.map((k) => [k, Boolean(process.env[k])])),
       // Local Claude Code CLI found → the subscription models are usable.
@@ -27,9 +36,9 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  if (!isDev()) {
+  if (!isLocalRuntime()) {
     return Response.json(
-      { error: "키 저장은 로컬 개발 모드(bun dev)에서만 가능합니다. 배포 환경에서는 환경 변수로 설정하세요." },
+      { error: "키 저장은 로컬 앱(데스크톱 또는 bun dev)에서만 가능합니다. 배포 환경에서는 환경 변수로 설정하세요." },
       { status: 400 },
     );
   }
@@ -47,6 +56,14 @@ export async function POST(req: Request) {
     return Response.json({ error: "API 키 형식이 아닌 것 같아요. (공백 없이 8자 이상)" }, { status: 400 });
   }
   const key = value.trim();
+
+  if (isDesktopRuntime()) {
+    const port = parentPort();
+    if (!port) return Response.json({ error: "데스크톱 앱과의 연결이 없습니다." }, { status: 500 });
+    port.postMessage({ type: "key:set", envVar, value: key });
+    process.env[envVar] = key;
+    return Response.json({ ok: true });
+  }
 
   const envPath = join(process.cwd(), ".env.local");
   const current = existsSync(envPath) ? readFileSync(envPath, "utf8") : "";

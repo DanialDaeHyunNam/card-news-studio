@@ -3,14 +3,15 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
+import { isLocalRuntime } from "@/lib/runtime";
 
 // iPhone photos arrive as HEIC, which Chrome/Firefox can't decode. On a local
 // Mac we convert with the built-in `sips` (no dependency); elsewhere the client
-// tells the user to export as JPG/PNG. Dev-only, like /api/asset.
+// tells the user to export as JPG/PNG. Local runtimes only, like /api/asset.
 const run = promisify(execFile);
 
 export async function POST(req: Request) {
-  if (process.env.NODE_ENV !== "development" || process.platform !== "darwin") {
+  if (!isLocalRuntime() || process.platform !== "darwin") {
     return Response.json({ error: "HEIC 변환은 로컬 macOS에서만 가능합니다." }, { status: 403 });
   }
   const buf = Buffer.from(await req.arrayBuffer());

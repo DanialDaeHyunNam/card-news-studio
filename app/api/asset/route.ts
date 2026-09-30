@@ -1,13 +1,13 @@
 import { writeFileSync, existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
+import { isLocalRuntime, uploadsDir } from "@/lib/runtime";
 
-// Local image store (dev only, like /api/keys). Chat-attached images are written
-// to public/uploads/<hash>.<ext> so the project references a short, same-origin
+// Local image store (local runtimes only, like /api/keys). Chat-attached images
+// are written to uploadsDir()/<hash>.<ext> (public/uploads in dev) so the project references a short, same-origin
 // URL instead of a huge data URL. That keeps them out of the ~5MB localStorage
 // budget, lets html-to-image export them (same origin), and — because the URL is
 // short — lets the AI SEE them in the project JSON and reuse them across cards.
-const isDev = () => process.env.NODE_ENV === "development";
 const EXT: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
@@ -18,8 +18,8 @@ const EXT: Record<string, string> = {
 // Recent uploads, newest first — the chat's @-mention picker offers them so an
 // image uploaded earlier (e.g. a hero photo) can be tagged without re-attaching.
 export async function GET() {
-  if (!isDev()) return Response.json({ uploads: [] });
-  const dir = join(process.cwd(), "public", "uploads");
+  if (!isLocalRuntime()) return Response.json({ uploads: [] });
+  const dir = uploadsDir();
   if (!existsSync(dir)) return Response.json({ uploads: [] });
   const uploads = readdirSync(dir)
     .filter((f) => /\.(jpe?g|png|webp|gif)$/i.test(f))
@@ -30,9 +30,9 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  if (!isDev()) {
+  if (!isLocalRuntime()) {
     return Response.json(
-      { error: "이미지 저장은 로컬 개발 모드(bun dev)에서만 가능합니다." },
+      { error: "이미지 저장은 로컬 앱(데스크톱 또는 bun dev)에서만 가능합니다." },
       { status: 403 },
     );
   }
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
 
   const buf = Buffer.from(m[2], "base64");
   const name = `${createHash("sha256").update(buf).digest("hex").slice(0, 16)}.${EXT[m[1]]}`;
-  const dir = join(process.cwd(), "public", "uploads");
+  const dir = uploadsDir();
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
   const path = join(dir, name);
   if (!existsSync(path)) writeFileSync(path, buf); // content-hashed → dedup
